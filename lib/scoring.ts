@@ -40,7 +40,15 @@ export function standingsFor(
   period: Period,
   ref?: DayKey,
 ): Standing[] {
-  const range = periodRange(period, ref);
+  return standingsForRange(athletes, activities, settings, periodRange(period, ref));
+}
+
+export function standingsForRange(
+  athletes: Athlete[],
+  activities: Activity[],
+  settings: Settings,
+  range: [DayKey, DayKey],
+): Standing[] {
   const rows = new Map<string, Standing>();
 
   for (const athlete of athletes) {
