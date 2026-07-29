@@ -5,6 +5,7 @@ import { SPORT_ORDER } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_ABBR, type Settings } from "@/lib/types";
 import { SportMark } from "./SportMark";
+import { NotificationSetup } from "./NotificationSetup";
 import type { League } from "./useLeague";
 
 /**
@@ -166,6 +167,10 @@ export function ScoringSheet({
         )}
 
         <div className="mt-6 border-t border-line pt-4">
+          <NotificationSetup />
+        </div>
+
+        <div className="mt-4">
           <p className="text-xs text-ink-3">
             Signed in as{" "}
             <span className="font-semibold text-ink-2">{state.me?.name}</span>

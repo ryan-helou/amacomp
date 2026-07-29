@@ -22,6 +22,18 @@ export interface NewActivity {
 
 export type ActivityPatch = Partial<Omit<NewActivity, "athleteId">>;
 
+/** A browser Web Push subscription (from PushSubscription.toJSON()). */
+export interface PushSub {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  expirationTime?: number | null;
+}
+
+export interface StoredSub {
+  athleteId: string;
+  sub: PushSub;
+}
+
 export interface Store {
   init(): Promise<void>;
   findOrCreateAthlete(name: string): Promise<Athlete>;
@@ -34,6 +46,14 @@ export interface Store {
   deleteActivity(id: string): Promise<boolean>;
   getSettings(): Promise<Settings>;
   setSettings(settings: Settings): Promise<Settings>;
+  // Push
+  savePushSub(athleteId: string, sub: PushSub): Promise<void>;
+  deletePushSub(endpoint: string): Promise<void>;
+  listPushSubs(): Promise<StoredSub[]>;
+  listPushSubsFor(athleteId: string): Promise<PushSub[]>;
+  // Small key/value store — used to dedupe scheduled notifications.
+  getMeta(key: string): Promise<string | null>;
+  setMeta(key: string, value: string): Promise<void>;
 }
 
 function newId(): string {
@@ -137,6 +157,22 @@ class PgStore implements Store {
            ON CONFLICT (id) DO NOTHING`,
           [JSON.stringify(DEFAULT_SETTINGS)],
         );
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS push_subs (
+            endpoint TEXT PRIMARY KEY,
+            athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            sub JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
+        await this.pool.query(
+          `CREATE INDEX IF NOT EXISTS push_subs_athlete_idx ON push_subs (athlete_id)`,
+        );
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
       })();
     }
     return this.ready;
@@ -245,6 +281,50 @@ class PgStore implements Store {
     );
     return mergeSettings(r.rows[0]?.data);
   }
+
+  async savePushSub(athleteId: string, sub: PushSub): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `INSERT INTO push_subs (endpoint, athlete_id, sub) VALUES ($1, $2, $3::jsonb)
+       ON CONFLICT (endpoint) DO UPDATE SET athlete_id = EXCLUDED.athlete_id, sub = EXCLUDED.sub`,
+      [sub.endpoint, athleteId, JSON.stringify(sub)],
+    );
+  }
+
+  async deletePushSub(endpoint: string): Promise<void> {
+    await this.init();
+    await this.pool.query("DELETE FROM push_subs WHERE endpoint = $1", [endpoint]);
+  }
+
+  async listPushSubs(): Promise<StoredSub[]> {
+    await this.init();
+    const r = await this.pool.query("SELECT athlete_id, sub FROM push_subs");
+    return r.rows.map((row) => ({ athleteId: row.athlete_id, sub: row.sub as PushSub }));
+  }
+
+  async listPushSubsFor(athleteId: string): Promise<PushSub[]> {
+    await this.init();
+    const r = await this.pool.query(
+      "SELECT sub FROM push_subs WHERE athlete_id = $1",
+      [athleteId],
+    );
+    return r.rows.map((row) => row.sub as PushSub);
+  }
+
+  async getMeta(key: string): Promise<string | null> {
+    await this.init();
+    const r = await this.pool.query("SELECT value FROM meta WHERE key = $1", [key]);
+    return r.rows[0]?.value ?? null;
+  }
+
+  async setMeta(key: string, value: string): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `INSERT INTO meta (key, value, updated_at) VALUES ($1, $2, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [key, value],
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -329,6 +409,28 @@ class MemoryStore implements Store {
   async setSettings(settings: Settings) {
     this.settings = mergeSettings(settings);
     return this.settings;
+  }
+
+  private subs = new Map<string, StoredSub>(); // endpoint → sub
+  private meta = new Map<string, string>();
+
+  async savePushSub(athleteId: string, sub: PushSub) {
+    this.subs.set(sub.endpoint, { athleteId, sub });
+  }
+  async deletePushSub(endpoint: string) {
+    this.subs.delete(endpoint);
+  }
+  async listPushSubs() {
+    return [...this.subs.values()];
+  }
+  async listPushSubsFor(athleteId: string) {
+    return [...this.subs.values()].filter((s) => s.athleteId === athleteId).map((s) => s.sub);
+  }
+  async getMeta(key: string) {
+    return this.meta.get(key) ?? null;
+  }
+  async setMeta(key: string, value: string) {
+    this.meta.set(key, value);
   }
 }
 

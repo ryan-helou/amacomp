@@ -5,6 +5,7 @@ import { readState } from "@/lib/state";
 import { isDayKey } from "@/lib/dates";
 import { isSport, SPORT_UNIT } from "@/lib/types";
 import { MAX_KM, parseKm, parseNote } from "@/lib/validate";
+import { notifyOvertakes } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Pick a valid date." }, { status: 400 });
   }
 
-  await getStore().createActivity({
+  const created = await getStore().createActivity({
     athleteId: me.id,
     sport: body.sport,
     km,
@@ -43,5 +44,17 @@ export async function POST(req: Request) {
     note: parseNote(body.note),
   });
 
-  return NextResponse.json(await readState());
+  const state = await readState();
+
+  // Fire-and-forget: notify anyone this session leapfrogged this week. Never
+  // let a push failure affect the log response.
+  void notifyOvertakes(
+    me.id,
+    state.athletes,
+    state.activities,
+    created.id,
+    state.settings,
+  ).catch(() => {});
+
+  return NextResponse.json(state);
 }

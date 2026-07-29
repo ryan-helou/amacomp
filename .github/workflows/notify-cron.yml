@@ -1,0 +1,35 @@
+name: AmaComp notifications
+
+# Scheduled push nudges. GitHub cron runs in UTC.
+#   - Weekly results:  Monday 12:00 UTC  (~08:00 America/Toronto)
+#   - Quota deadline:  Sunday 22:00 UTC  (~18:00 America/Toronto)
+on:
+  schedule:
+    - cron: "0 12 * * 1"
+    - cron: "0 22 * * 0"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which job to run (results | deadline)"
+        required: true
+        default: "results"
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pick job from schedule
+        id: pick
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "job=${{ github.event.inputs.job }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 12 * * 1" ]; then
+            echo "job=results" >> "$GITHUB_OUTPUT"
+          else
+            echo "job=deadline" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Trigger AmaComp cron
+        run: |
+          curl -fsS --max-time 30 \
+            "${{ secrets.APP_URL }}/api/cron/tick?key=${{ secrets.CRON_SECRET }}&job=${{ steps.pick.outputs.job }}" \
+            && echo " — ${{ steps.pick.outputs.job }} triggered"
