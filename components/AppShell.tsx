@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { today, type DayKey } from "@/lib/dates";
+import { today, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
 import type { AppState } from "@/lib/types";
 import { useLeague } from "./useLeague";
@@ -11,6 +11,7 @@ import { WeekTab } from "./WeekTab";
 import { BoardTab } from "./BoardTab";
 import { FeedTab } from "./FeedTab";
 import { ScoringSheet } from "./ScoringSheet";
+import { Confetti } from "./Confetti";
 
 type Tab = "log" | "week" | "board" | "feed";
 
@@ -52,6 +53,28 @@ export function AppShell({
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [send]);
 
+  // Week standing for the signed-in athlete — drives the header total and the
+  // one-time "you hit quota" confetti.
+  const week = standingsFor(state.athletes, state.activities, state.settings, "week", refDay);
+  const mine = week.find((s) => s.athlete.id === state.me?.id);
+  const myWeekPoints = mine?.points ?? 0;
+
+  const [fireKey, setFireKey] = useState(0);
+  useEffect(() => {
+    const goal = state.settings.weeklyGoal;
+    if (!state.me || goal <= 0 || myWeekPoints < goal) return;
+    // Celebrate crossing the quota once per athlete per week.
+    const key = `amacomp-celebrated-${state.me.id}-${weekStart(refDay)}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch {
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFireKey((k) => k + 1);
+  }, [state.me, myWeekPoints, state.settings.weeklyGoal, refDay]);
+
   if (!state.me) {
     return (
       <LoginScreen
@@ -63,15 +86,6 @@ export function AppShell({
       />
     );
   }
-
-  const week = standingsFor(
-    state.athletes,
-    state.activities,
-    state.settings,
-    "week",
-    refDay,
-  );
-  const mine = week.find((s) => s.athlete.id === state.me?.id);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
@@ -155,6 +169,8 @@ export function AppShell({
       {scoringOpen && (
         <ScoringSheet league={league} onClose={() => setScoringOpen(false)} />
       )}
+
+      <Confetti fireKey={fireKey} />
     </div>
   );
 }

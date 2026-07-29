@@ -11,6 +11,8 @@ import {
 import { SPORT_UI, initials } from "@/lib/ui";
 import { PERIODS, formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
 import { SPORT_UNIT, rateLabel, type AppState } from "@/lib/types";
+import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
+import { AthleteSheet } from "./AthleteSheet";
 
 /**
  * The leaderboard is a pool: one lane per athlete, lane 1 for the leader, and a
@@ -19,10 +21,20 @@ import { SPORT_UNIT, rateLabel, type AppState } from "@/lib/types";
  */
 export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const [period, setPeriod] = useState<Period>("week");
+  const [selected, setSelected] = useState<string | null>(null);
 
   const standings = useMemo(
     () => standingsFor(state.athletes, state.activities, state.settings, period, refDay),
     [state.athletes, state.activities, state.settings, period, refDay],
+  );
+
+  const titles = useMemo(
+    () => championshipsByAthlete(state.athletes, state.activities, state.settings, refDay),
+    [state.athletes, state.activities, state.settings, refDay],
+  );
+  const movement = useMemo(
+    () => movementByAthlete(state.athletes, state.activities, state.settings, refDay),
+    [state.athletes, state.activities, state.settings, refDay],
   );
 
   const leader = standings[0];
@@ -71,6 +83,9 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                 top={top}
                 isMe={row.athlete.id === state.me?.id}
                 index={i}
+                titles={titles.get(row.athlete.id) ?? 0}
+                delta={period === "week" ? movement.get(row.athlete.id)?.delta ?? 0 : 0}
+                onSelect={() => setSelected(row.athlete.id)}
               />
             </li>
           ))}
@@ -83,6 +98,16 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
             `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(state.settings.multipliers[s], SPORT_UNIT[s])}`,
         ).join("  ·  ")}
       </p>
+      <p className="text-center text-[0.6875rem] text-ink-3">Tap a lane for badges &amp; stats</p>
+
+      {selected && (
+        <AthleteSheet
+          state={state}
+          athleteId={selected}
+          refDay={refDay}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }
@@ -92,19 +117,26 @@ function Lane({
   top,
   isMe,
   index,
+  titles,
+  delta,
+  onSelect,
 }: {
   row: Standing;
   top: number;
   isMe: boolean;
   index: number;
+  titles: number;
+  delta: number;
+  onSelect: () => void;
 }) {
   const width = top > 0 ? Math.max(row.points / top, 0) : 0;
   const scored = row.points > 0;
 
   return (
-    <div
-      className={`lane-enter rounded-xl px-3 py-2.5 ${
-        isMe ? "bg-tile ring-2 ring-ink" : ""
+    <button
+      onClick={onSelect}
+      className={`lane-enter block w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
+        isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
       }`}
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
     >
@@ -117,7 +149,17 @@ function Lane({
           >
             {scored ? row.rank : "—"}
           </span>
-          <span className="eyebrow text-[0.5rem] text-ink-3">lane</span>
+          {delta !== 0 ? (
+            <span
+              className={`font-mono text-[0.5rem] font-bold ${
+                delta > 0 ? "text-good" : "text-run"
+              }`}
+            >
+              {delta > 0 ? `▲${delta}` : `▼${-delta}`}
+            </span>
+          ) : (
+            <span className="eyebrow text-[0.5rem] text-ink-3">lane</span>
+          )}
         </div>
 
         <div
@@ -133,6 +175,11 @@ function Lane({
           <div className="flex items-baseline justify-between gap-2">
             <span className="truncate text-[0.9375rem] font-semibold text-ink">
               {row.athlete.name}
+              {titles > 0 && (
+                <span className="ml-1.5 text-xs font-normal text-gold">
+                  🏆{titles > 1 ? `×${titles}` : ""}
+                </span>
+              )}
               {isMe && <span className="ml-1.5 text-xs font-normal text-ink-2">you</span>}
             </span>
             <span className="stamp shrink-0 text-xl text-ink">
@@ -170,6 +217,6 @@ function Lane({
           </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
