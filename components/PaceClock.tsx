@@ -35,6 +35,12 @@ export function PaceClock({
       aria-label={`${fmtPoints(points)} of ${fmtPoints(goal)} points this week`}
     >
       <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+        <defs>
+          <linearGradient id="quota-sweep" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="var(--color-accent)" />
+            <stop offset="100%" stopColor="var(--color-accent-2)" />
+          </linearGradient>
+        </defs>
         <circle
           cx="60"
           cy="60"
@@ -50,7 +56,7 @@ export function PaceClock({
           cy="60"
           r={R}
           fill="none"
-          stroke={done ? "var(--color-good)" : "var(--color-ink)"}
+          stroke={done ? "var(--color-good)" : "url(#quota-sweep)"}
           strokeWidth="9"
           strokeLinecap="round"
           strokeDasharray={C}
@@ -86,13 +92,16 @@ export function PaceClock({
             const a = (i / 12) * Math.PI * 2;
             const r1 = R - 15;
             const r2 = i % 3 === 0 ? R - 21 : R - 18;
+            // Round: Node and the browser can differ in the last bit of a trig
+            // result, which would trip an SSR hydration mismatch on these ticks.
+            const p = (v: number) => Number(v.toFixed(2));
             return (
               <line
                 key={i}
-                x1={60 + Math.cos(a) * r1}
-                y1={60 + Math.sin(a) * r1}
-                x2={60 + Math.cos(a) * r2}
-                y2={60 + Math.sin(a) * r2}
+                x1={p(60 + Math.cos(a) * r1)}
+                y1={p(60 + Math.sin(a) * r1)}
+                x2={p(60 + Math.cos(a) * r2)}
+                y2={p(60 + Math.sin(a) * r2)}
               />
             );
           })}

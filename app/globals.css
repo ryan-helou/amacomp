@@ -20,6 +20,10 @@
   --color-gold: #b08307;
   --color-good: #14806b;
 
+  /* Vibrant interactive accent — primary actions, active states, progress. */
+  --color-accent: #3d5aff;
+  --color-accent-2: #8b3df5;
+
   --font-display: var(--font-archivo), "Arial Black", system-ui, sans-serif;
   --font-body: var(--font-public-sans), system-ui, sans-serif;
   --font-mono: var(--font-mono-face), ui-monospace, monospace;
@@ -34,6 +38,53 @@ html,
 body {
   background: var(--color-deck);
   color: var(--color-ink);
+}
+
+/* A soft colour wash instead of a flat grey deck — cool at the crown,
+   settling into the pool-deck tone lower down. */
+body {
+  background-image: radial-gradient(
+      130% 55% at 8% -8%,
+      color-mix(in srgb, var(--color-accent) 16%, transparent) 0%,
+      transparent 46%
+    ),
+    radial-gradient(
+      120% 55% at 100% 0%,
+      color-mix(in srgb, var(--color-gym) 14%, transparent) 0%,
+      transparent 42%
+    );
+  background-attachment: fixed;
+}
+
+/* Gradient fills used across the app to bring in colour. */
+.accent-fill {
+  background-image: linear-gradient(
+    130deg,
+    var(--color-accent) 0%,
+    var(--color-accent-2) 100%
+  );
+  color: #fff;
+}
+
+.accent-text {
+  background-image: linear-gradient(
+    120deg,
+    var(--color-accent) 0%,
+    var(--color-accent-2) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.spectrum-bar {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-swim) 0%,
+    var(--color-bike) 38%,
+    var(--color-run) 66%,
+    var(--color-gym) 100%
+  );
 }
 
 body {

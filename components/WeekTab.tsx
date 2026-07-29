@@ -86,7 +86,7 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
                     </div>
                     <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-deck-2">
                       <div
-                        className={done ? "h-full bg-good" : "h-full bg-ink"}
+                        className={done ? "h-full bg-good" : "h-full accent-fill"}
                         style={{ width: `${pct}%` }}
                       />
                     </div>

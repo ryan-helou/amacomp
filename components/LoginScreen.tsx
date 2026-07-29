@@ -26,7 +26,7 @@ export function LoginScreen({
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
       <p className="eyebrow text-ink-2">Triathlon standings</p>
-      <h1 className="stamp mt-2 text-[clamp(2.75rem,15vw,3.75rem)] leading-[0.85] text-ink">
+      <h1 className="stamp accent-text mt-2 text-[clamp(2.75rem,15vw,3.75rem)] leading-[0.85]">
         AMACOMP
       </h1>
       <p className="mt-4 max-w-xs text-[0.9375rem] leading-snug text-ink-2">
@@ -34,7 +34,7 @@ export function LoginScreen({
         Points land on the board the moment you save them.
       </p>
 
-      <div className="mt-8 h-px w-full bg-line" />
+      <div className="spectrum-bar mt-8 h-1 w-full rounded-full" />
 
       <ul className="mt-5 space-y-2">
         {SPORT_ORDER.map((sport) => (
@@ -80,7 +80,7 @@ export function LoginScreen({
         <button
           type="submit"
           disabled={busy || !name.trim()}
-          className="eyebrow mt-4 w-full rounded-xl bg-ink px-4 py-4 text-tile transition-opacity disabled:opacity-40"
+          className="accent-fill eyebrow mt-4 w-full rounded-xl px-4 py-4 shadow-sm transition-opacity disabled:opacity-40"
         >
           {busy ? "Checking you in…" : "Enter the league"}
         </button>
