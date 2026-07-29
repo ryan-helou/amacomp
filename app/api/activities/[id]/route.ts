@@ -3,7 +3,7 @@ import { getStore, type ActivityPatch } from "@/lib/db";
 import { currentAthlete, isAdmin } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { isDayKey } from "@/lib/dates";
-import { isSport } from "@/lib/types";
+import { isSport, SPORT_UNIT } from "@/lib/types";
 import { MAX_KM, parseKm, parseNote } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
@@ -34,11 +34,16 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
   if (body.sport !== undefined) {
     if (!isSport(body.sport)) {
-      return NextResponse.json({ error: "Pick swim, bike or run." }, { status: 400 });
+      return NextResponse.json({ error: "Pick a discipline." }, { status: 400 });
     }
     patch.sport = body.sport;
   }
-  if (body.km !== undefined) {
+
+  const effectiveSport = patch.sport ?? auth.activity.sport;
+  if (SPORT_UNIT[effectiveSport] === "flat") {
+    // Gym workouts are flat; the quantity is always 1 regardless of client input.
+    patch.km = 1;
+  } else if (body.km !== undefined) {
     const km = parseKm(body.km);
     if (km === null) {
       return NextResponse.json(

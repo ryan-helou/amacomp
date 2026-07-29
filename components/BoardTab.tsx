@@ -10,7 +10,7 @@ import {
 } from "@/lib/scoring";
 import { SPORT_UI, initials } from "@/lib/ui";
 import { PERIODS, formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
-import { SPORT_UNIT, type AppState } from "@/lib/types";
+import { SPORT_UNIT, rateLabel, type AppState } from "@/lib/types";
 
 /**
  * The leaderboard is a pool: one lane per athlete, lane 1 for the leader, and a
@@ -80,7 +80,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
       <p className="pt-1 text-center font-mono text-xs text-ink-3">
         {SPORT_ORDER.map(
           (s) =>
-            `${SPORT_UI[s].label.toLowerCase()} ${state.settings.multipliers[s]}/${SPORT_UNIT[s]}`,
+            `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(state.settings.multipliers[s], SPORT_UNIT[s])}`,
         ).join("  ·  ")}
       </p>
     </div>
@@ -165,7 +165,6 @@ function Lane({
               <span key={s} className={SPORT_UI[s].text}>
                 {SPORT_UI[s].label[0]}
                 {fmtKm(row.kmBySport[s])}
-                {SPORT_UNIT[s] === "hr" ? "h" : ""}
               </span>
             ))}
           </div>

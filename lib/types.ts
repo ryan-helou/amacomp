@@ -6,20 +6,27 @@ export function isSport(v: unknown): v is Sport {
 }
 
 /**
- * Swim/bike/run are scored by distance; gym is scored by time on the clock.
- * The stored quantity and its multiplier are generic — only the unit differs.
+ * Swim/bike/run are scored by distance. Gym is flat — one logged workout is
+ * worth a fixed number of points, no distance or duration. The stored quantity
+ * for a gym log is always 1 (a workout count), so scoring stays generic:
+ * points = quantity × multiplier.
  */
-export type Unit = "km" | "hr";
+export type Unit = "km" | "flat";
 
 export const SPORT_UNIT: Record<Sport, Unit> = {
   swim: "km",
   bike: "km",
   run: "km",
-  gym: "hr",
+  gym: "flat",
 };
 
-export const UNIT_LABEL: Record<Unit, string> = { km: "km", hr: "hr" };
-export const UNIT_NOUN: Record<Unit, string> = { km: "Distance", hr: "Duration" };
+export const UNIT_LABEL: Record<Unit, string> = { km: "km", flat: "workout" };
+export const UNIT_ABBR: Record<Unit, string> = { km: "km", flat: "ea" };
+
+/** Compact rate label — "25/km" for distance, "30/ea" for a flat per-workout value. */
+export function rateLabel(multiplier: number, unit: Unit): string {
+  return `${multiplier}/${UNIT_ABBR[unit]}`;
+}
 
 export interface Athlete {
   id: string;
@@ -30,7 +37,7 @@ export interface Activity {
   id: string;
   athleteId: string;
   sport: Sport;
-  /** Kilometres for distance sports, hours for gym. See SPORT_UNIT. */
+  /** Kilometres for distance sports; always 1 for a flat gym workout. See SPORT_UNIT. */
   km: number;
   /** Local calendar date, `YYYY-MM-DD`. Deliberately date-only: no timezone maths. */
   occurredOn: string;
@@ -39,7 +46,7 @@ export interface Activity {
 }
 
 export interface Settings {
-  /** Points earned per unit (km or hr), by sport. */
+  /** Points per km for distance sports; points per workout for gym. */
   multipliers: Record<Sport, number>;
   /** Points every athlete is expected to hit each week. */
   weeklyGoal: number;

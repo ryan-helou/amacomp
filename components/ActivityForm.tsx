@@ -4,7 +4,7 @@ import { SPORT_ORDER, fmtPoints, pointsFor } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { today, type DayKey } from "@/lib/dates";
 import { MAX_NOTE } from "@/lib/validate";
-import { SPORT_UNIT, UNIT_LABEL, UNIT_NOUN, type Settings, type Sport } from "@/lib/types";
+import { SPORT_UNIT, UNIT_LABEL, rateLabel, type Settings, type Sport } from "@/lib/types";
 import { SportMark } from "./SportMark";
 
 export interface ActivityDraft {
@@ -39,10 +39,20 @@ export function ActivityForm({
   onCancel?: () => void;
   maxDate: DayKey;
 }) {
-  const km = Number(draft.km);
-  const valid = Number.isFinite(km) && km > 0;
-  const points = valid ? pointsFor(km, draft.sport, settings) : 0;
   const unit = SPORT_UNIT[draft.sport];
+  const isFlat = unit === "flat";
+  // A flat discipline (gym) has no amount to enter — the quantity is one workout.
+  const km = isFlat ? 1 : Number(draft.km);
+  const valid = isFlat || (Number.isFinite(km) && km > 0);
+  const points = valid ? pointsFor(km, draft.sport, settings) : 0;
+
+  // Switching disciplines normalizes the amount: gym carries a fixed "1", and
+  // leaving gym clears that sentinel so the next distance is typed fresh.
+  function selectSport(sport: Sport) {
+    const nextFlat = SPORT_UNIT[sport] === "flat";
+    const km = nextFlat ? "1" : isFlat ? "" : draft.km;
+    setDraft({ ...draft, sport, km });
+  }
 
   return (
     <form
@@ -63,7 +73,7 @@ export function ActivityForm({
                 key={sport}
                 type="button"
                 aria-pressed={on}
-                onClick={() => setDraft({ ...draft, sport })}
+                onClick={() => selectSport(sport)}
                 className={`flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 transition-colors ${
                   on
                     ? `${ui.border} ${ui.soft} ${ui.text}`
@@ -73,7 +83,7 @@ export function ActivityForm({
                 <SportMark sport={sport} className="h-5 w-5" />
                 <span className="eyebrow">{ui.label}</span>
                 <span className="font-mono text-[0.625rem] leading-none">
-                  {settings.multipliers[sport]}/{SPORT_UNIT[sport]}
+                  {rateLabel(settings.multipliers[sport], SPORT_UNIT[sport])}
                 </span>
               </button>
             );
@@ -84,22 +94,31 @@ export function ActivityForm({
       <div className="grid grid-cols-[1fr_auto] items-end gap-3">
         <div>
           <label htmlFor="km" className="eyebrow block text-ink-2">
-            {UNIT_NOUN[unit]}
+            {isFlat ? "Session" : "Distance"}
           </label>
-          <div className="mt-2 flex items-baseline gap-2 rounded-xl border-2 border-ink bg-tile px-4 py-2.5">
-            <input
-              id="km"
-              type="number"
-              inputMode="decimal"
-              step={unit === "hr" ? "0.25" : "0.01"}
-              min="0"
-              value={draft.km}
-              onChange={(e) => setDraft({ ...draft, km: e.target.value })}
-              placeholder="0"
-              className="stamp w-full min-w-0 bg-transparent text-3xl text-ink placeholder:text-ink-3 focus:outline-none"
-            />
-            <span className="eyebrow shrink-0 text-ink-2">{UNIT_LABEL[unit]}</span>
-          </div>
+          {isFlat ? (
+            <div className="mt-2 flex items-center gap-2 rounded-xl border-2 border-ink bg-tile px-4 py-3.5">
+              <span className={SPORT_UI[draft.sport].text}>
+                <SportMark sport={draft.sport} className="h-5 w-5" />
+              </span>
+              <span className="text-lg font-semibold text-ink">One workout</span>
+            </div>
+          ) : (
+            <div className="mt-2 flex items-baseline gap-2 rounded-xl border-2 border-ink bg-tile px-4 py-2.5">
+              <input
+                id="km"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={draft.km}
+                onChange={(e) => setDraft({ ...draft, km: e.target.value })}
+                placeholder="0"
+                className="stamp w-full min-w-0 bg-transparent text-3xl text-ink placeholder:text-ink-3 focus:outline-none"
+              />
+              <span className="eyebrow shrink-0 text-ink-2">{UNIT_LABEL[unit]}</span>
+            </div>
+          )}
         </div>
 
         <div className="pb-1 text-right">

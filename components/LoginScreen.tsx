@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SPORT_ORDER } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { SPORT_UNIT, type Settings } from "@/lib/types";
+import { SPORT_UNIT, UNIT_LABEL, type Settings } from "@/lib/types";
 import { SportMark } from "./SportMark";
 
 export function LoginScreen({
@@ -30,7 +30,7 @@ export function LoginScreen({
         AMACOMP
       </h1>
       <p className="mt-4 max-w-xs text-[0.9375rem] leading-snug text-ink-2">
-        Log every kilometre you swim, ride and run — and every hour in the gym.
+        Log every kilometre you swim, ride and run, plus every gym workout.
         Points land on the board the moment you save them.
       </p>
 
@@ -44,7 +44,7 @@ export function LoginScreen({
             </span>
             <span className="eyebrow w-12 text-ink">{SPORT_UI[sport].label}</span>
             <span className="font-mono text-sm text-ink-2">
-              {settings.multipliers[sport]} pt{settings.multipliers[sport] === 1 ? "" : "s"} / {SPORT_UNIT[sport]}
+              {settings.multipliers[sport]} pt{settings.multipliers[sport] === 1 ? "" : "s"} / {UNIT_LABEL[SPORT_UNIT[sport]]}
             </span>
           </li>
         ))}
