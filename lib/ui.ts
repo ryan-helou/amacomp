@@ -32,6 +32,14 @@ export const SPORT_UI: Record<
     soft: "bg-run/10",
     hex: "#d93b30",
   },
+  gym: {
+    label: "Gym",
+    text: "text-gym",
+    bg: "bg-gym",
+    border: "border-gym",
+    soft: "bg-gym/10",
+    hex: "#6d4fc4",
+  },
 };
 
 /** Initials for the lane avatar — one letter for a single name, two otherwise. */

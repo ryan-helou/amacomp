@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SPORT_ORDER } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import type { Settings } from "@/lib/types";
+import { SPORT_UNIT, type Settings } from "@/lib/types";
 import { SportMark } from "./SportMark";
 
 export function LoginScreen({
@@ -44,7 +44,7 @@ export function LoginScreen({
             </span>
             <span className="eyebrow w-12 text-ink">{SPORT_UI[sport].label}</span>
             <span className="font-mono text-sm text-ink-2">
-              {settings.multipliers[sport]} pt{settings.multipliers[sport] === 1 ? "" : "s"} / km
+              {settings.multipliers[sport]} pt{settings.multipliers[sport] === 1 ? "" : "s"} / {SPORT_UNIT[sport]}
             </span>
           </li>
         ))}

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { activityPoints, fmtKm, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
-import type { Activity, AppState } from "@/lib/types";
+import { SPORT_UNIT, type Activity, type AppState } from "@/lib/types";
 import { SportMark } from "./SportMark";
 
 const PAGE = 60;
@@ -69,7 +69,7 @@ export function FeedTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
                         {isMe && <span className="text-ink-3"> · you</span>}
                         <span className="text-ink-2">
                           {" "}
-                          — {fmtKm(a.km)} km {ui.label.toLowerCase()}
+                          — {fmtKm(a.km)} {SPORT_UNIT[a.sport]} {ui.label.toLowerCase()}
                         </span>
                       </p>
                       {a.note && (

@@ -3,16 +3,20 @@
   <g transform="translate(0,0) scale(1)">
     <circle cx="256" cy="256" r="205" fill="none" stroke="#0d93bd"
        stroke-width="30" stroke-linecap="butt"
-       stroke-dasharray="403.35 884.70"
+       stroke-dasharray="296.01 992.04"
        transform="rotate(-90 256 256)"/>
     <circle cx="256" cy="256" r="205" fill="none" stroke="#d98217"
        stroke-width="30" stroke-linecap="butt"
-       stroke-dasharray="403.35 884.70"
-       transform="rotate(30 256 256)"/>
+       stroke-dasharray="296.01 992.04"
+       transform="rotate(0 256 256)"/>
     <circle cx="256" cy="256" r="205" fill="none" stroke="#d93b30"
        stroke-width="30" stroke-linecap="butt"
-       stroke-dasharray="403.35 884.70"
-       transform="rotate(150 256 256)"/>
+       stroke-dasharray="296.01 992.04"
+       transform="rotate(90 256 256)"/>
+    <circle cx="256" cy="256" r="205" fill="none" stroke="#6d4fc4"
+       stroke-width="30" stroke-linecap="butt"
+       stroke-dasharray="296.01 992.04"
+       transform="rotate(180 256 256)"/>
     <g stroke="#0d2231" stroke-width="46" stroke-linecap="square" stroke-linejoin="miter" fill="none">
       <path d="M156 368 L256 152 L356 368"/>
       <path d="M196 296 L316 296"/>
