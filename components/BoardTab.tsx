@@ -13,6 +13,7 @@ import { PERIODS, formatRange, periodRange, type DayKey, type Period } from "@/l
 import { SPORT_UNIT, rateLabel, type AppState } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { AthleteSheet } from "./AthleteSheet";
+import { Glyph } from "./Glyph";
 
 /**
  * The leaderboard is a pool: one lane per athlete, lane 1 for the leader, and a
@@ -176,8 +177,9 @@ function Lane({
             <span className="truncate text-[0.9375rem] font-semibold text-ink">
               {row.athlete.name}
               {titles > 0 && (
-                <span className="ml-1.5 text-xs font-normal text-gold">
-                  🏆{titles > 1 ? `×${titles}` : ""}
+                <span className="ml-1.5 inline-flex items-baseline gap-0.5 align-baseline text-xs font-normal text-gold">
+                  <Glyph name="trophy" className="h-3.5 w-3.5 translate-y-0.5" />
+                  {titles > 1 ? `×${titles}` : ""}
                 </span>
               )}
               {isMe && <span className="ml-1.5 text-xs font-normal text-ink-2">you</span>}

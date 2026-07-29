@@ -110,7 +110,7 @@ export async function notifyOvertakes(
   await Promise.all(
     passed.map((x) =>
       sendToAthlete(x.id, {
-        title: "You just got passed 😳",
+        title: "You just got passed",
         body: `${actor.name} overtook you — you're #${aRank.get(x.id)} this week now.`,
         url: "/",
         tag: "overtake",

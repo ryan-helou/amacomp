@@ -11,7 +11,7 @@ export async function POST() {
     return NextResponse.json({ error: "Push isn't configured yet." }, { status: 503 });
   }
   await sendToAthlete(me.id, {
-    title: "🏁 Notifications are on",
+    title: "Notifications are on",
     body: `You're all set, ${me.name}. This is what a nudge looks like.`,
     url: "/",
     tag: "test",

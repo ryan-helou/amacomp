@@ -102,7 +102,7 @@ export function streakFor(
 
 export interface Badge {
   id: string;
-  emoji: string;
+  glyph: string;
   name: string;
   detail: string;
   earned: boolean;
@@ -150,14 +150,14 @@ export function badgesFor(
     sportsEver.has("gym");
 
   const catalog: (Omit<Badge, "earned"> & { earned: boolean })[] = [
-    { id: "first-splash", emoji: "🩲", name: "First Splash", detail: "Log your first session", earned: sessions >= 1 },
-    { id: "iron-will", emoji: "🎯", name: "Iron Will", detail: "Hit the weekly quota", earned: hitAnyWeek },
-    { id: "hat-trick", emoji: "🔥", name: "Hat Trick", detail: "3 weeks of quota in a row", earned: best >= 3 },
-    { id: "triple-threat", emoji: "🏊", name: "Triple Threat", detail: "Swim, bike and run in one week", earned: tripleWeek },
-    { id: "centurion", emoji: "💯", name: "Centurion", detail: "100 km logged all-time", earned: kmTotal >= 100 },
-    { id: "big-day", emoji: "💥", name: "Big Day", detail: "50+ points in a single day", earned: maxDay >= 50 },
-    { id: "all-rounder", emoji: "🌀", name: "All-Rounder", detail: "Log all four disciplines", earned: allFour },
-    { id: "gym-rat", emoji: "🏋️", name: "Gym Rat", detail: "10 gym workouts", earned: gymCount >= 10 },
+    { id: "first-splash", glyph: "drop", name: "First Splash", detail: "Log your first session", earned: sessions >= 1 },
+    { id: "iron-will", glyph: "target", name: "Iron Will", detail: "Hit the weekly quota", earned: hitAnyWeek },
+    { id: "hat-trick", glyph: "flame", name: "Hat Trick", detail: "3 weeks of quota in a row", earned: best >= 3 },
+    { id: "triple-threat", glyph: "trio", name: "Triple Threat", detail: "Swim, bike and run in one week", earned: tripleWeek },
+    { id: "centurion", glyph: "medal", name: "Centurion", detail: "100 km logged all-time", earned: kmTotal >= 100 },
+    { id: "big-day", glyph: "star", name: "Big Day", detail: "50+ points in a single day", earned: maxDay >= 50 },
+    { id: "all-rounder", glyph: "rings", name: "All-Rounder", detail: "Log all four disciplines", earned: allFour },
+    { id: "gym-rat", glyph: "dumbbell", name: "Gym Rat", detail: "10 gym workouts", earned: gymCount >= 10 },
   ];
   return catalog;
 }
