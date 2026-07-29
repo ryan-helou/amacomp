@@ -10,15 +10,17 @@ import { LogTab } from "./LogTab";
 import { WeekTab } from "./WeekTab";
 import { BoardTab } from "./BoardTab";
 import { FeedTab } from "./FeedTab";
+import { TitlesTab } from "./TitlesTab";
 import { ScoringSheet } from "./ScoringSheet";
 import { Confetti } from "./Confetti";
 
-type Tab = "log" | "week" | "board" | "feed";
+type Tab = "log" | "week" | "board" | "titles" | "feed";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "log", label: "Log" },
   { id: "week", label: "Week" },
   { id: "board", label: "Board" },
+  { id: "titles", label: "Titles" },
   { id: "feed", label: "Feed" },
 ];
 
@@ -132,6 +134,7 @@ export function AppShell({
         {tab === "log" && <LogTab league={league} refDay={refDay} />}
         {tab === "week" && <WeekTab state={state} refDay={refDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
+        {tab === "titles" && <TitlesTab state={state} refDay={refDay} />}
         {tab === "feed" && <FeedTab state={state} refDay={refDay} />}
       </main>
 

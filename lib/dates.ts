@@ -111,3 +111,26 @@ export function formatRange([from, to]: [DayKey, DayKey]): string {
   const right = `${b.getDate()} ${MONTHS[b.getMonth()]}`;
   return `${left} – ${right}`;
 }
+
+const MONTHS_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+export function formatMonth(key: DayKey): string {
+  const d = parseDayKey(key);
+  return `${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** Inclusive list of month-start keys from `fromKey`'s month to `toKey`'s month. */
+export function monthsBetween(fromKey: DayKey, toKey: DayKey): DayKey[] {
+  const keys: DayKey[] = [];
+  let cur = monthStart(fromKey);
+  const last = monthStart(toKey);
+  while (cur <= last) {
+    keys.push(cur);
+    const d = parseDayKey(cur);
+    cur = toDayKey(new Date(d.getFullYear(), d.getMonth() + 1, 1));
+  }
+  return keys;
+}
