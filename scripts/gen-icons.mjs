@@ -6,41 +6,30 @@ const OUT = path.join(process.cwd(), "public", "icons");
 await mkdir(OUT, { recursive: true });
 
 const DECK = "#e6eef1";
-const INK = "#0d2231";
-const SPORTS = ["#0d93bd", "#d98217", "#d93b30", "#6d4fc4"]; // swim, bike, run, gym
+const ACCENT = "#3d5aff";
+const ACCENT2 = "#8b3df5";
 
-const R = 205;
-const CIRC = 2 * Math.PI * R;
-const SEG = CIRC / SPORTS.length - 26; // one arc per discipline, gaps between
+// Bold "A" monogram — apex, two open legs, crossbar, triangular counter — filled
+// with the blue→violet accent. fill-rule evenodd punches out the counter.
+const A_PATH =
+  "M256 96 L398 416 L326 416 L296 344 L216 344 L186 416 L114 416 Z " +
+  "M256 214 L292 300 L220 300 Z";
 
-/**
- * The mark: a pace-clock ring cut into three discipline-coloured arcs, with a
- * stamped A in the middle. The A is drawn as strokes rather than text so the
- * render never depends on which fonts happen to be installed.
- */
 function svg({ padded = false, rounded = true } = {}) {
-  const inset = padded ? 0.14 : 0; // maskable safe zone
-  const s = 512;
-  const scale = (s - 2 * inset * s) / s;
-  const off = inset * s;
-
-  const step = 360 / SPORTS.length;
-  const arcs = SPORTS.map(
-    (color, i) => `<circle cx="256" cy="256" r="${R}" fill="none" stroke="${color}"
-       stroke-width="30" stroke-linecap="butt"
-       stroke-dasharray="${SEG.toFixed(2)} ${(CIRC - SEG).toFixed(2)}"
-       transform="rotate(${-90 + i * step} 256 256)"/>`,
-  ).join("\n    ");
-
+  // Maskable icons need the mark pulled into the safe zone; scale it about centre.
+  const mark = `<path fill="url(#g)" fill-rule="evenodd" d="${A_PATH}"/>`;
+  const inner = padded
+    ? `<g transform="translate(256 256) scale(0.76) translate(-256 -256)">${mark}</g>`
+    : mark;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="${rounded && !padded ? 104 : 0}" fill="${DECK}"/>
-  <g transform="translate(${off},${off}) scale(${scale})">
-    ${arcs}
-    <g stroke="${INK}" stroke-width="46" stroke-linecap="square" stroke-linejoin="miter" fill="none">
-      <path d="M156 368 L256 152 L356 368"/>
-      <path d="M196 296 L316 296"/>
-    </g>
-  </g>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="${ACCENT}"/>
+      <stop offset="100%" stop-color="${ACCENT2}"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="${rounded && !padded ? 96 : 0}" fill="${DECK}"/>
+  ${inner}
 </svg>`;
 }
 
@@ -61,7 +50,7 @@ await Promise.all([
   writeFile(path.join(OUT, "mark.svg"), svg()),
 ]);
 
-// Next serves app/favicon.ico automatically when present.
+// Next serves app/icon.png automatically as the favicon.
 await sharp(plain)
   .resize(48, 48)
   .toFormat("png")
