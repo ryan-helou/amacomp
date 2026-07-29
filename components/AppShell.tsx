@@ -86,8 +86,8 @@ export function AppShell({
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <div className="stamp text-xl text-ink">
-                {fmtPoints(mine?.points ?? 0)}
+              <div className="stamp text-xl">
+                <span className="accent-text">{fmtPoints(mine?.points ?? 0)}</span>
                 <span className="text-ink-3">/{fmtPoints(state.settings.weeklyGoal)}</span>
               </div>
               <div className="eyebrow text-ink-3">this week</div>
@@ -136,14 +136,14 @@ export function AppShell({
                 className="flex flex-1 flex-col items-center gap-1.5 py-1.5"
               >
                 <span
-                  className={`eyebrow ${on ? "text-ink" : "text-ink-3"}`}
+                  className={`eyebrow ${on ? "accent-text" : "text-ink-3"}`}
                 >
                   {t.label}
                 </span>
                 <span
                   aria-hidden
                   className={`h-1 w-7 rounded-full transition-colors ${
-                    on ? "bg-ink" : "bg-transparent"
+                    on ? "accent-fill" : "bg-transparent"
                   }`}
                 />
               </button>

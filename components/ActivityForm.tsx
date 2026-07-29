@@ -74,10 +74,10 @@ export function ActivityForm({
                 type="button"
                 aria-pressed={on}
                 onClick={() => selectSport(sport)}
-                className={`flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 transition-colors ${
+                className={`flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 transition-all ${ui.soft} ${ui.text} ${
                   on
-                    ? `${ui.border} ${ui.soft} ${ui.text}`
-                    : "border-line bg-tile text-ink-3"
+                    ? `${ui.border} scale-[1.03] shadow-sm`
+                    : "border-transparent opacity-75"
                 }`}
               >
                 <SportMark sport={sport} className="h-5 w-5" />
@@ -146,7 +146,9 @@ export function ActivityForm({
           onChange={(e) =>
             setDraft({ ...draft, occurredOn: e.target.value as DayKey })
           }
-          className="mt-2 w-full rounded-xl border-2 border-line bg-tile px-4 py-3 text-ink focus:outline-none"
+          // appearance-none stops iOS Safari from stripping the border off a
+          // native date control; min-h keeps it the same height as the others.
+          className="mt-2 block min-h-[52px] w-full appearance-none rounded-xl border-2 border-ink-3 bg-tile px-4 py-3 text-ink [color-scheme:light] focus:border-accent focus:outline-none"
         />
       </div>
 
@@ -160,7 +162,7 @@ export function ActivityForm({
           maxLength={MAX_NOTE}
           onChange={(e) => setDraft({ ...draft, note: e.target.value })}
           placeholder="Brick session, hills, leg day…"
-          className="mt-2 w-full rounded-xl border-2 border-line bg-tile px-4 py-3 text-ink placeholder:text-ink-3 focus:outline-none"
+          className="mt-2 w-full rounded-xl border-2 border-ink-3 bg-tile px-4 py-3 text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none"
         />
       </div>
 
@@ -183,7 +185,7 @@ export function ActivityForm({
         <button
           type="submit"
           disabled={busy || !valid}
-          className="eyebrow flex-1 rounded-xl bg-ink px-4 py-3.5 text-tile transition-opacity disabled:opacity-40"
+          className="accent-fill eyebrow flex-1 rounded-xl px-4 py-3.5 shadow-sm transition-opacity disabled:opacity-40"
         >
           {busy ? "Saving…" : submitLabel}
         </button>

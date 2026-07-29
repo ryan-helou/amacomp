@@ -79,7 +79,7 @@ export function ScoringSheet({
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-3" />
 
         <div className="flex items-baseline justify-between">
-          <h2 className="stamp text-2xl text-ink">SCORING</h2>
+          <h2 className="stamp accent-text text-2xl">SCORING</h2>
           <button onClick={onClose} className="eyebrow text-ink-2">
             Close
           </button>
@@ -159,7 +159,7 @@ export function ScoringSheet({
           <button
             onClick={save}
             disabled={busy}
-            className="eyebrow mt-5 w-full rounded-xl bg-ink px-4 py-4 text-tile disabled:opacity-40"
+            className="accent-fill eyebrow mt-5 w-full rounded-xl px-4 py-4 shadow-sm disabled:opacity-40"
           >
             {busy ? "Saving…" : "Save scoring"}
           </button>
