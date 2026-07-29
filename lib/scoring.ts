@@ -1,5 +1,5 @@
 import type { Activity, Athlete, Settings, Sport } from "./types";
-import { SPORTS } from "./types";
+import { SPORTS, SPORT_UNIT } from "./types";
 import { inRange, type DayKey, type Period, periodRange } from "./dates";
 
 /**
@@ -30,7 +30,7 @@ export interface Standing {
 }
 
 function emptySportMap(): Record<Sport, number> {
-  return { swim: 0, bike: 0, run: 0 };
+  return { swim: 0, bike: 0, run: 0, gym: 0 };
 }
 
 export function standingsFor(
@@ -62,7 +62,9 @@ export function standingsFor(
     if (!row) continue;
     const pts = activityPoints(a, settings);
     row.points += pts;
-    row.km += a.km;
+    // `km` is the distance total, so gym hours don't get summed into it — they
+    // live in kmBySport.gym and surface with their own unit.
+    if (SPORT_UNIT[a.sport] === "km") row.km += a.km;
     row.sessions += 1;
     row.bySport[a.sport] += pts;
     row.kmBySport[a.sport] += a.km;

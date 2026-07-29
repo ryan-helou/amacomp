@@ -55,6 +55,7 @@ function mergeSettings(raw: unknown): Settings {
       swim: num(m.swim, DEFAULT_SETTINGS.multipliers.swim),
       bike: num(m.bike, DEFAULT_SETTINGS.multipliers.bike),
       run: num(m.run, DEFAULT_SETTINGS.multipliers.run),
+      gym: num(m.gym, DEFAULT_SETTINGS.multipliers.gym),
     },
     weeklyGoal: num(value.weeklyGoal, DEFAULT_SETTINGS.weeklyGoal),
   };

@@ -4,7 +4,7 @@ import { SPORT_ORDER, fmtPoints, pointsFor } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { today, type DayKey } from "@/lib/dates";
 import { MAX_NOTE } from "@/lib/validate";
-import type { Settings, Sport } from "@/lib/types";
+import { SPORT_UNIT, UNIT_LABEL, UNIT_NOUN, type Settings, type Sport } from "@/lib/types";
 import { SportMark } from "./SportMark";
 
 export interface ActivityDraft {
@@ -42,6 +42,7 @@ export function ActivityForm({
   const km = Number(draft.km);
   const valid = Number.isFinite(km) && km > 0;
   const points = valid ? pointsFor(km, draft.sport, settings) : 0;
+  const unit = SPORT_UNIT[draft.sport];
 
   return (
     <form
@@ -53,7 +54,7 @@ export function ActivityForm({
     >
       <fieldset>
         <legend className="eyebrow text-ink-2">Discipline</legend>
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        <div className="mt-2 grid grid-cols-4 gap-2">
           {SPORT_ORDER.map((sport) => {
             const ui = SPORT_UI[sport];
             const on = draft.sport === sport;
@@ -63,7 +64,7 @@ export function ActivityForm({
                 type="button"
                 aria-pressed={on}
                 onClick={() => setDraft({ ...draft, sport })}
-                className={`flex flex-col items-center gap-1.5 rounded-xl border-2 py-3.5 transition-colors ${
+                className={`flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 transition-colors ${
                   on
                     ? `${ui.border} ${ui.soft} ${ui.text}`
                     : "border-line bg-tile text-ink-3"
@@ -71,8 +72,8 @@ export function ActivityForm({
               >
                 <SportMark sport={sport} className="h-5 w-5" />
                 <span className="eyebrow">{ui.label}</span>
-                <span className="font-mono text-[0.6875rem] leading-none">
-                  {settings.multipliers[sport]}/km
+                <span className="font-mono text-[0.625rem] leading-none">
+                  {settings.multipliers[sport]}/{SPORT_UNIT[sport]}
                 </span>
               </button>
             );
@@ -83,21 +84,21 @@ export function ActivityForm({
       <div className="grid grid-cols-[1fr_auto] items-end gap-3">
         <div>
           <label htmlFor="km" className="eyebrow block text-ink-2">
-            Distance
+            {UNIT_NOUN[unit]}
           </label>
           <div className="mt-2 flex items-baseline gap-2 rounded-xl border-2 border-ink bg-tile px-4 py-2.5">
             <input
               id="km"
               type="number"
               inputMode="decimal"
-              step="0.01"
+              step={unit === "hr" ? "0.25" : "0.01"}
               min="0"
               value={draft.km}
               onChange={(e) => setDraft({ ...draft, km: e.target.value })}
               placeholder="0"
               className="stamp w-full min-w-0 bg-transparent text-3xl text-ink placeholder:text-ink-3 focus:outline-none"
             />
-            <span className="eyebrow shrink-0 text-ink-2">km</span>
+            <span className="eyebrow shrink-0 text-ink-2">{UNIT_LABEL[unit]}</span>
           </div>
         </div>
 
@@ -139,7 +140,7 @@ export function ActivityForm({
           value={draft.note}
           maxLength={MAX_NOTE}
           onChange={(e) => setDraft({ ...draft, note: e.target.value })}
-          placeholder="Brick session, hills, open water…"
+          placeholder="Brick session, hills, leg day…"
           className="mt-2 w-full rounded-xl border-2 border-line bg-tile px-4 py-3 text-ink placeholder:text-ink-3 focus:outline-none"
         />
       </div>

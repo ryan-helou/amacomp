@@ -40,11 +40,21 @@ export function SportMark({
     );
   }
 
+  if (sport === "run") {
+    return (
+      <svg {...common}>
+        <circle cx="15" cy="4.5" r="2" />
+        <path d="M13.5 21l1.5-6-3.5-3 1-5 3 3 3 1" />
+        <path d="M11.5 12 8 14l-2 5" />
+      </svg>
+    );
+  }
+
+  // Gym — a dumbbell
   return (
     <svg {...common}>
-      <circle cx="15" cy="4.5" r="2" />
-      <path d="M13.5 21l1.5-6-3.5-3 1-5 3 3 3 1" />
-      <path d="M11.5 12 8 14l-2 5" />
+      <path d="M6.5 12h11" />
+      <path d="M4 9v6M7 7.5v9M17 7.5v9M20 9v6" />
     </svg>
   );
 }

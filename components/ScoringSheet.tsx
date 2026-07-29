@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { SPORT_ORDER } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import type { Settings } from "@/lib/types";
+import { SPORT_UNIT, type Settings } from "@/lib/types";
 import { SportMark } from "./SportMark";
 import type { League } from "./useLeague";
 
@@ -25,6 +25,7 @@ export function ScoringSheet({
     swim: String(state.settings.multipliers.swim),
     bike: String(state.settings.multipliers.bike),
     run: String(state.settings.multipliers.run),
+    gym: String(state.settings.multipliers.gym),
     weeklyGoal: String(state.settings.weeklyGoal),
   }));
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export function ScoringSheet({
         swim: Number(form.swim),
         bike: Number(form.bike),
         run: Number(form.run),
+        gym: Number(form.gym),
       },
       weeklyGoal: Number(form.weeklyGoal),
     };
@@ -116,7 +118,7 @@ export function ScoringSheet({
                     editable ? "border-ink bg-tile" : "border-transparent bg-transparent"
                   }`}
                 />
-                <span className="eyebrow w-12 text-ink-3">pts/km</span>
+                <span className="eyebrow w-12 text-ink-3">pts/{SPORT_UNIT[sport]}</span>
               </div>
             );
           })}

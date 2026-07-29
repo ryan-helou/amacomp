@@ -7,11 +7,11 @@ await mkdir(OUT, { recursive: true });
 
 const DECK = "#e6eef1";
 const INK = "#0d2231";
-const SPORTS = ["#0d93bd", "#d98217", "#d93b30"]; // swim, bike, run
+const SPORTS = ["#0d93bd", "#d98217", "#d93b30", "#6d4fc4"]; // swim, bike, run, gym
 
 const R = 205;
 const CIRC = 2 * Math.PI * R;
-const SEG = CIRC / 3 - 26; // three arcs with a gap between disciplines
+const SEG = CIRC / SPORTS.length - 26; // one arc per discipline, gaps between
 
 /**
  * The mark: a pace-clock ring cut into three discipline-coloured arcs, with a
@@ -24,11 +24,12 @@ function svg({ padded = false, rounded = true } = {}) {
   const scale = (s - 2 * inset * s) / s;
   const off = inset * s;
 
+  const step = 360 / SPORTS.length;
   const arcs = SPORTS.map(
     (color, i) => `<circle cx="256" cy="256" r="${R}" fill="none" stroke="${color}"
        stroke-width="30" stroke-linecap="butt"
        stroke-dasharray="${SEG.toFixed(2)} ${(CIRC - SEG).toFixed(2)}"
-       transform="rotate(${-90 + i * 120} 256 256)"/>`,
+       transform="rotate(${-90 + i * step} 256 256)"/>`,
   ).join("\n    ");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">

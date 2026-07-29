@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { activityPoints, fmtKm, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
-import type { Activity } from "@/lib/types";
+import { SPORT_UNIT, type Activity } from "@/lib/types";
 import { SportMark } from "./SportMark";
 import { ActivityForm, emptyDraft, type ActivityDraft } from "./ActivityForm";
 import type { League } from "./useLeague";
@@ -167,7 +167,7 @@ export function LogTab({
                         <span className="stamp text-lg text-ink">
                           {fmtKm(a.km)}
                         </span>
-                        <span className="eyebrow text-ink-3">km</span>
+                        <span className="eyebrow text-ink-3">{SPORT_UNIT[a.sport]}</span>
                         <span className="text-xs text-ink-3">·</span>
                         <span className="font-mono text-xs text-ink-2">
                           {formatDayRelative(a.occurredOn, refDay)}
