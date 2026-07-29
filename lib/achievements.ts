@@ -2,7 +2,11 @@ import type { Activity, Athlete, Settings, Sport } from "./types";
 import { SPORT_UNIT } from "./types";
 import {
   addDays,
+  formatMonth,
   formatRange,
+  monthEnd,
+  monthStart,
+  monthsBetween,
   today,
   weekEnd,
   weekStart,
@@ -214,6 +218,79 @@ export function championshipsByAthlete(
     }
   }
   return wins;
+}
+
+// ---------------------------------------------------------------------------
+// Week-wins leaderboard (ranked by number of weekly championships)
+// ---------------------------------------------------------------------------
+
+export interface WinRow {
+  athlete: Athlete;
+  wins: number;
+  rank: number;
+}
+
+export function weekWinsBoard(
+  athletes: Athlete[],
+  activities: Activity[],
+  settings: Settings,
+  refDay: DayKey = today(),
+): WinRow[] {
+  const wins = championshipsByAthlete(athletes, activities, settings, refDay);
+  const rows = athletes
+    .map((athlete) => ({ athlete, wins: wins.get(athlete.id) ?? 0, rank: 0 }))
+    .sort((a, b) => b.wins - a.wins || a.athlete.name.localeCompare(b.athlete.name));
+
+  let rank = 0;
+  let seen = 0;
+  let prev: number | null = null;
+  for (const row of rows) {
+    seen += 1;
+    if (prev === null || row.wins !== prev) {
+      rank = seen;
+      prev = row.wins;
+    }
+    row.rank = rank;
+  }
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Monthly champions (hall of fame)
+// ---------------------------------------------------------------------------
+
+export interface MonthChampion {
+  monthKey: DayKey;
+  label: string;
+  champion: Standing;
+  isCurrent: boolean;
+}
+
+export function monthlyChampions(
+  athletes: Athlete[],
+  activities: Activity[],
+  settings: Settings,
+  refDay: DayKey = today(),
+): MonthChampion[] {
+  if (activities.length === 0) return [];
+  let earliest = activities[0].occurredOn;
+  for (const a of activities) if (a.occurredOn < earliest) earliest = a.occurredOn;
+
+  const curMonth = monthStart(refDay);
+  const out: MonthChampion[] = [];
+  for (const mk of monthsBetween(earliest, refDay)) {
+    const range: [DayKey, DayKey] = [monthStart(mk), monthEnd(mk)];
+    const standings = standingsForRange(athletes, activities, settings, range);
+    const top = standings[0];
+    if (!top || top.points <= 0) continue;
+    out.push({
+      monthKey: mk,
+      label: formatMonth(mk),
+      champion: top,
+      isCurrent: mk === curMonth,
+    });
+  }
+  return out.reverse(); // newest month first
 }
 
 // ---------------------------------------------------------------------------
