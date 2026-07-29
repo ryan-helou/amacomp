@@ -30,7 +30,7 @@ export function AppShell({
 }) {
   const league = useLeague(initial);
   const { state, busy, send } = league;
-  const [tab, setTab] = useState<Tab>("log");
+  const [tab, setTab] = useState<Tab>("week");
   const [scoringOpen, setScoringOpen] = useState(false);
 
   // Start from the server's day so the first client render matches the markup,
