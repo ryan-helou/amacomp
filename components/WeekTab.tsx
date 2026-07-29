@@ -12,6 +12,7 @@ import {
   streakFor,
 } from "@/lib/achievements";
 import { PaceClock } from "./PaceClock";
+import { Glyph } from "./Glyph";
 
 export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const standings = useMemo(
@@ -52,13 +53,14 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           {streak.current > 0 && (
-            <span className="eyebrow rounded-full bg-run/10 px-3 py-1.5 text-run">
-              🔥 {streak.current}-week streak
+            <span className="eyebrow inline-flex items-center gap-1.5 rounded-full bg-run/10 px-3 py-1.5 text-run">
+              <Glyph name="flame" className="h-3.5 w-3.5" />
+              {streak.current}-week streak
             </span>
           )}
           {mine && mine.rank >= 1 && mine.points > 0 && (
             <span className="eyebrow rounded-full bg-tile px-3 py-1.5 text-ink-2 ring-1 ring-line">
-              {mine.rank === 1 ? "🥇 Leading" : `#${mine.rank} of ${standings.length}`}
+              {mine.rank === 1 ? "Leading" : `#${mine.rank} of ${standings.length}`}
             </span>
           )}
         </div>
@@ -183,7 +185,9 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
             <span className="font-mono text-xs text-ink-3">{recap.rangeLabel}</span>
           </div>
           <div className="mt-3 flex items-center gap-3">
-            <span className="text-2xl" aria-hidden>🏆</span>
+            <span className="text-gold" aria-hidden>
+              <Glyph name="trophy" className="h-7 w-7" />
+            </span>
             <div className="flex-1">
               <div className="text-sm text-ink-2">Champion</div>
               <div className="stamp text-xl text-ink">{recap.champion.athlete.name}</div>

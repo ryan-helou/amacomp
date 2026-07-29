@@ -46,13 +46,13 @@ export async function GET(req: Request) {
     for (const a of state.athletes) {
       let body: string;
       if (a.id === championId) {
-        body = `🏆 You won last week with ${fmtPoints(recap.champion.points)} pts. Champion.`;
+        body = `You won last week with ${fmtPoints(recap.champion.points)} pts. Champion.`;
       } else if (missedIds.has(a.id)) {
         body = `You missed quota last week — forfeit time. ${recap.champion.athlete.name} took the win.`;
       } else {
         body = `${recap.champion.athlete.name} won last week with ${fmtPoints(recap.champion.points)} pts. New week, fresh board.`;
       }
-      await sendToAthlete(a.id, { title: "🏁 Last week's results", body, url: "/", tag: "results" });
+      await sendToAthlete(a.id, { title: "Last week's results", body, url: "/", tag: "results" });
       sent += 1;
     }
     return NextResponse.json({ ok: true, sent });
@@ -72,7 +72,7 @@ export async function GET(req: Request) {
       if (s.points >= goal) continue;
       const togo = fmtPoints(goal - s.points);
       await sendToAthlete(s.athlete.id, {
-        title: "⏳ Quota closes Sunday",
+        title: "Quota closes Sunday",
         body: `You're ${togo} pts short of ${fmtPoints(goal)}. Get a session in before the week resets.`,
         url: "/",
         tag: "deadline",

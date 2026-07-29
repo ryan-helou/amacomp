@@ -7,6 +7,7 @@ import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { monthlyChampions, weekWinsBoard } from "@/lib/achievements";
 import { AthleteSheet } from "./AthleteSheet";
+import { Glyph } from "./Glyph";
 
 export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -67,11 +68,13 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
                       {row.athlete.name}
                       {isMe && <span className="ml-1.5 text-xs font-normal text-ink-2">you</span>}
                     </span>
-                    <span className="shrink-0 text-right">
-                      <span className="stamp text-xl text-gold">
-                        {row.wins > 0 ? "🏆".repeat(Math.min(row.wins, 3)) : ""}
-                      </span>
-                      <span className="ml-1 font-mono text-sm text-ink-2">
+                    <span className="flex shrink-0 items-center gap-1.5 text-right">
+                      {row.wins > 0 && (
+                        <span className="text-gold">
+                          <Glyph name="trophy" className="h-4 w-4" />
+                        </span>
+                      )}
+                      <span className="font-mono text-sm text-ink-2">
                         {row.wins} win{row.wins === 1 ? "" : "s"}
                       </span>
                     </span>
@@ -98,8 +101,8 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
                   m.isCurrent ? "border-accent/40 bg-accent/5" : "border-gold/40 bg-gold/5"
                 }`}
               >
-                <span className="text-2xl" aria-hidden>
-                  {m.isCurrent ? "🔥" : "👑"}
+                <span className={m.isCurrent ? "text-accent" : "text-gold"} aria-hidden>
+                  <Glyph name={m.isCurrent ? "flame" : "trophy"} className="h-6 w-6" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">

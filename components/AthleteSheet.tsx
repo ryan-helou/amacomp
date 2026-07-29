@@ -10,6 +10,7 @@ import {
   streakFor,
 } from "@/lib/achievements";
 import type { DayKey } from "@/lib/dates";
+import { Glyph, type GlyphName } from "./Glyph";
 
 export function AthleteSheet({
   state,
@@ -75,8 +76,13 @@ export function AthleteSheet({
           <div className="flex-1">
             <h2 className="stamp text-2xl text-ink">{athlete.name}</h2>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-xs text-ink-2">
-              {data.titles > 0 && <span className="text-gold">🏆 {data.titles} title{data.titles === 1 ? "" : "s"}</span>}
-              <span>🔥 {data.streak.current}-wk streak</span>
+              {data.titles > 0 && (
+                <span className="inline-flex items-center gap-1 text-gold">
+                  <Glyph name="trophy" className="h-3.5 w-3.5" />
+                  {data.titles} title{data.titles === 1 ? "" : "s"}
+                </span>
+              )}
+              <span>{data.streak.current}-wk streak</span>
               <span className="text-ink-3">best {data.streak.best}</span>
             </div>
           </div>
@@ -120,8 +126,8 @@ export function AthleteSheet({
                 b.earned ? "border-ink bg-tile" : "border-line bg-transparent opacity-55"
               }`}
             >
-              <span className={`text-xl ${b.earned ? "" : "grayscale"}`} aria-hidden>
-                {b.emoji}
+              <span className={b.earned ? "text-accent" : "text-ink-3"}>
+                <Glyph name={b.glyph as GlyphName} className="h-5 w-5" />
               </span>
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-ink">{b.name}</div>
