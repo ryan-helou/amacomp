@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+/*
+  Amagoh — a pool-deck palette. Pale chlorinated tile, deep navy ink, and one
+  colour per discipline so the sport is legible before you read a word.
+*/
+@theme {
+  --color-deck: #e6eef1;
+  --color-deck-2: #d5e3e8;
+  --color-tile: #ffffff;
+  --color-ink: #0d2231;
+  --color-ink-2: #4d6a7d;
+  --color-ink-3: #8aa3b1;
+  --color-line: #c3d5dc;
+
+  --color-swim: #0d93bd;
+  --color-bike: #d98217;
+  --color-run: #d93b30;
+  --color-gold: #b08307;
+  --color-good: #14806b;
+
+  --font-display: var(--font-archivo), "Arial Black", system-ui, sans-serif;
+  --font-body: var(--font-public-sans), system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: light;
+  --lane-h: 4.5rem;
+}
+
+html,
+body {
+  background: var(--color-deck);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-body);
+  /* Home-screen apps sit under the notch and over the home indicator. */
+  padding-top: env(safe-area-inset-top);
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Stamped numerals: wide, heavy, and tabular so ranks don't jitter. */
+.stamp {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-variation-settings: "wdth" 112;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 0.9;
+}
+
+.eyebrow {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+  The lane rope: the alternating discs strung between swimming lanes. It divides
+  athletes on the leaderboard the way a real rope divides swimmers.
+*/
+.lane-rope {
+  height: 6px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-ink-3) 0 10px,
+    var(--color-deck-2) 10px 20px
+  );
+  border-radius: 999px;
+  opacity: 0.5;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@keyframes sweep-in {
+  from {
+    stroke-dashoffset: var(--sweep-empty);
+  }
+}
+
+@keyframes lane-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.lane-enter {
+  animation: lane-in 380ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
