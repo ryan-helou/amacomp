@@ -39,6 +39,9 @@ export const metadata: Metadata = {
     apple: [{ url: "/icons/apple-icon.png", sizes: "180x180" }],
   },
   formatDetection: { telephone: false },
+  // Next 16 emits the modern `mobile-web-app-capable`, but older iOS still keys
+  // standalone launch off the legacy name — this is a home-screen app, so ship both.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {
