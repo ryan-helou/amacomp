@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Amagoh — Triathlon Standings",
-    short_name: "Amagoh",
+    name: "AmaComp — Triathlon Standings",
+    short_name: "AmaComp",
     description:
-      "Weekly points competition for swim, bike and run. Log your kilometres, watch the lanes reshuffle.",
+      "Weekly points competition for swim, bike, run and gym. Log your kilometres, watch the lanes reshuffle.",
     start_url: "/",
     scope: "/",
     display: "standalone",

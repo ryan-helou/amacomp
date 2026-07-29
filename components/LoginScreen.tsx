@@ -26,12 +26,12 @@ export function LoginScreen({
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
       <p className="eyebrow text-ink-2">Triathlon standings</p>
-      <h1 className="stamp mt-2 text-[4.25rem] leading-[0.85] text-ink">
-        AMAGOH
+      <h1 className="stamp mt-2 text-[clamp(2.75rem,15vw,3.75rem)] leading-[0.85] text-ink">
+        AMACOMP
       </h1>
       <p className="mt-4 max-w-xs text-[0.9375rem] leading-snug text-ink-2">
-        Log every kilometre you swim, ride and run. Points land on the board the
-        moment you save them.
+        Log every kilometre you swim, ride and run — and every hour in the gym.
+        Points land on the board the moment you save them.
       </p>
 
       <div className="mt-8 h-px w-full bg-line" />

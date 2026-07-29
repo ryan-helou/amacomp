@@ -78,7 +78,7 @@ export function AppShell({
       <header className="sticky top-0 z-30 border-b-2 border-ink bg-deck/95 px-5 pb-3 pt-4 backdrop-blur">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="stamp text-2xl leading-none text-ink">AMAGOH</h1>
+            <h1 className="stamp text-2xl leading-none text-ink">AMACOMP</h1>
             <p className="eyebrow mt-1 text-ink-3">
               {state.me.name}
               {state.isAdmin && " · admin"}

@@ -21,15 +21,15 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  applicationName: "Amagoh",
-  title: "Amagoh — Triathlon Standings",
+  applicationName: "AmaComp",
+  title: "AmaComp — Triathlon Standings",
   description:
-    "Weekly points competition for swim, bike and run. Log your kilometres, watch the lanes reshuffle.",
+    "Weekly points competition for swim, bike, run and gym. Log your kilometres, watch the lanes reshuffle.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Amagoh",
+    title: "AmaComp",
   },
   icons: {
     icon: [
