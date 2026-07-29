@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { SPORT_ORDER } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { SPORT_UNIT, type Settings } from "@/lib/types";
+import { SPORT_UNIT, UNIT_ABBR, type Settings } from "@/lib/types";
 import { SportMark } from "./SportMark";
 import type { League } from "./useLeague";
 
@@ -118,7 +118,7 @@ export function ScoringSheet({
                     editable ? "border-ink bg-tile" : "border-transparent bg-transparent"
                   }`}
                 />
-                <span className="eyebrow w-12 text-ink-3">pts/{SPORT_UNIT[sport]}</span>
+                <span className="eyebrow w-12 text-ink-3">pts/{UNIT_ABBR[SPORT_UNIT[sport]]}</span>
               </div>
             );
           })}

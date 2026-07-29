@@ -3,7 +3,7 @@ import { getStore } from "@/lib/db";
 import { currentAthlete } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { isDayKey } from "@/lib/dates";
-import { isSport } from "@/lib/types";
+import { isSport, SPORT_UNIT } from "@/lib/types";
 import { MAX_KM, parseKm, parseNote } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
@@ -15,14 +15,21 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
   if (!isSport(body.sport)) {
-    return NextResponse.json({ error: "Pick swim, bike or run." }, { status: 400 });
+    return NextResponse.json({ error: "Pick a discipline." }, { status: 400 });
   }
-  const km = parseKm(body.km);
-  if (km === null) {
-    return NextResponse.json(
-      { error: `Enter a distance between 0 and ${MAX_KM} km.` },
-      { status: 400 },
-    );
+  // A gym workout is flat — one logged session, worth its fixed points. The
+  // stored quantity is forced to 1 so the client can't inflate it.
+  let km: number | null;
+  if (SPORT_UNIT[body.sport] === "flat") {
+    km = 1;
+  } else {
+    km = parseKm(body.km);
+    if (km === null) {
+      return NextResponse.json(
+        { error: `Enter a distance between 0 and ${MAX_KM} km.` },
+        { status: 400 },
+      );
+    }
   }
   if (!isDayKey(body.occurredOn)) {
     return NextResponse.json({ error: "Pick a valid date." }, { status: 400 });

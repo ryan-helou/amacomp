@@ -69,7 +69,10 @@ export function FeedTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
                         {isMe && <span className="text-ink-3"> · you</span>}
                         <span className="text-ink-2">
                           {" "}
-                          — {fmtKm(a.km)} {SPORT_UNIT[a.sport]} {ui.label.toLowerCase()}
+                          —{" "}
+                          {SPORT_UNIT[a.sport] === "flat"
+                            ? `${ui.label.toLowerCase()} workout`
+                            : `${fmtKm(a.km)} ${SPORT_UNIT[a.sport]} ${ui.label.toLowerCase()}`}
                         </span>
                       </p>
                       {a.note && (

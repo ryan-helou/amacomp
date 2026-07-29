@@ -1,7 +1,7 @@
 # AmaComp
 
 A weekly points competition for a small group training triathlon. Log the
-kilometres you swim, bike and run — plus hours in the gym; each discipline is
+kilometres you swim, bike and run — plus every gym workout; each discipline is
 worth a different number of points; hit the weekly quota and stay ahead of your
 friends on the board.
 
@@ -13,7 +13,7 @@ an app, no App Store involved.
 - **Name-only login.** Five friends, no passwords. Type the same name each time
   and your history follows you.
 - **Points per unit**, set per discipline. Defaults: swim **25**/km, bike
-  **1**/km, run **5**/km, gym **30**/hr. Weekly quota **75 points**.
+  **1**/km, run **5**/km, gym **30**/workout. Weekly quota **75 points**.
 - **Four sections:** Log a session, your Week (quota pace-clock), the Board
   (leaderboard for today / week / month / all-time), and the Feed (everyone's
   sessions).
