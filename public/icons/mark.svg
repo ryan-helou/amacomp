@@ -1,25 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="104" fill="#e6eef1"/>
-  <g transform="translate(0,0) scale(1)">
-    <circle cx="256" cy="256" r="205" fill="none" stroke="#0d93bd"
-       stroke-width="30" stroke-linecap="butt"
-       stroke-dasharray="296.01 992.04"
-       transform="rotate(-90 256 256)"/>
-    <circle cx="256" cy="256" r="205" fill="none" stroke="#d98217"
-       stroke-width="30" stroke-linecap="butt"
-       stroke-dasharray="296.01 992.04"
-       transform="rotate(0 256 256)"/>
-    <circle cx="256" cy="256" r="205" fill="none" stroke="#d93b30"
-       stroke-width="30" stroke-linecap="butt"
-       stroke-dasharray="296.01 992.04"
-       transform="rotate(90 256 256)"/>
-    <circle cx="256" cy="256" r="205" fill="none" stroke="#6d4fc4"
-       stroke-width="30" stroke-linecap="butt"
-       stroke-dasharray="296.01 992.04"
-       transform="rotate(180 256 256)"/>
-    <g stroke="#0d2231" stroke-width="46" stroke-linecap="square" stroke-linejoin="miter" fill="none">
-      <path d="M156 368 L256 152 L356 368"/>
-      <path d="M196 296 L316 296"/>
-    </g>
-  </g>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3d5aff"/>
+      <stop offset="100%" stop-color="#8b3df5"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#e6eef1"/>
+  <path fill="url(#g)" fill-rule="evenodd" d="M256 96 L398 416 L326 416 L296 344 L216 344 L186 416 L114 416 Z M256 214 L292 300 L220 300 Z"/>
 </svg>
