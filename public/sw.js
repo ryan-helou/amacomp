@@ -1,6 +1,6 @@
-// Amagoh service worker — makes the app installable and keeps the shell usable
+// AmaComp service worker — makes the app installable and keeps the shell usable
 // when the signal drops. API traffic is never cached: standings must be live.
-const CACHE = "amagoh-v1";
+const CACHE = "amacomp-v1";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
