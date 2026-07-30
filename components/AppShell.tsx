@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { today, weekStart, type DayKey } from "@/lib/dates";
+import { todayWithReset, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
 import type { AppState } from "@/lib/types";
 import { useLeague } from "./useLeague";
@@ -39,21 +39,24 @@ export function AppShell({
   // Start from the server's day so the first client render matches the markup,
   // then hand over to the device's own calendar. A home-screen app is usually
   // resumed rather than loaded, so waking up re-reads both the date and the board.
+  // Each athlete's day can roll over later than midnight (their resetHour), so
+  // "today" is the device clock shifted back by that many hours.
+  const resetHour = state.me?.resetHour ?? 0;
   const [refDay, setRefDay] = useState<DayKey>(serverToday);
   useEffect(() => {
     // The device clock is the source of truth for "today". Reconcile the
     // server-rendered day with it on mount (the one legitimate setState here),
     // then re-sync the date and refetch whenever the home-screen app resumes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRefDay(today());
+    setRefDay(todayWithReset(resetHour));
     function onVisible() {
       if (document.visibilityState !== "visible") return;
-      setRefDay(today());
+      setRefDay(todayWithReset(resetHour));
       send("/api/session");
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [send]);
+  }, [send, resetHour]);
 
   // Week standing for the signed-in athlete — drives the header total and the
   // one-time "you hit quota" confetti.

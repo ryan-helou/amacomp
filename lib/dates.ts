@@ -18,6 +18,15 @@ export function today(): DayKey {
   return toDayKey(new Date());
 }
 
+/**
+ * The current day for an athlete whose day rolls over at `resetHour` (local).
+ * Shifting "now" back by that many hours means, e.g. with resetHour 3, anything
+ * before 3 AM still reads as the previous day.
+ */
+export function todayWithReset(resetHour: number): DayKey {
+  return toDayKey(new Date(Date.now() - resetHour * 3_600_000));
+}
+
 export function isDayKey(v: unknown): v is DayKey {
   if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
   const [y, m, d] = v.split("-").map(Number);

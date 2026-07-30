@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { normalizeName } from "@/lib/db";
-import { signIn, signOut } from "@/lib/session";
+import { getStore, normalizeName } from "@/lib/db";
+import { currentAthlete, signIn, signOut } from "@/lib/session";
 import { readState } from "@/lib/state";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,23 @@ export async function POST(req: Request) {
   }
 
   await signIn(name);
+  return NextResponse.json(await readState());
+}
+
+export async function PATCH(req: Request) {
+  const me = await currentAthlete();
+  if (!me) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+
+  const body = (await req.json().catch(() => ({}))) as { resetHour?: unknown };
+  const hour = Number(body.resetHour);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 11) {
+    return NextResponse.json(
+      { error: "Pick an hour between midnight and 11 AM." },
+      { status: 400 },
+    );
+  }
+
+  await getStore().setResetHour(me.id, hour);
   return NextResponse.json(await readState());
 }
 
