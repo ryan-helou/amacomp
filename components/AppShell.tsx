@@ -17,12 +17,16 @@ import { PullToRefresh } from "./PullToRefresh";
 
 type Tab = "log" | "week" | "board" | "titles" | "feed";
 
+// Log sits dead-centre so it's under the thumb — it's the primary action. Its
+// neighbours are the tabs you'd hop to right after logging: Week (am I hitting
+// quota?) and Board (where do I stand?). Feed and Titles bracket the edges as
+// the social and aspirational tabs.
 const TABS: { id: Tab; label: string }[] = [
-  { id: "log", label: "Log" },
+  { id: "feed", label: "Feed" },
   { id: "week", label: "Week" },
+  { id: "log", label: "Log" },
   { id: "board", label: "Board" },
   { id: "titles", label: "Titles" },
-  { id: "feed", label: "Feed" },
 ];
 
 export function AppShell({
