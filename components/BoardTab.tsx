@@ -12,6 +12,7 @@ import { SPORT_UI } from "@/lib/ui";
 import { PERIODS, formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
 import { SPORT_UNIT, rateLabel, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
+import { firstSeason, seasonFor } from "@/lib/season";
 import { AthleteSheet } from "./AthleteSheet";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
@@ -83,6 +84,9 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
     [state.athletes, state.activities, state.settings, refDay],
   );
 
+  const liveSeason = seasonFor(refDay, state.settings.seasonStart);
+  const season = liveSeason ?? firstSeason(state.settings.seasonStart);
+
   const range = periodRange(period, refDay);
   const top = standings[0]?.points ?? 0;
   const anyPoints = standings.some((s) => s.points > 0);
@@ -91,6 +95,13 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-center gap-2">
+        <span className="eyebrow text-gold">{season.label}</span>
+        <span className="font-mono text-xs text-ink-3">
+          {season.monthsLabel}
+          {liveSeason ? "" : " · opens soon"}
+        </span>
+      </div>
       <div>
         <div
           role="tablist"
