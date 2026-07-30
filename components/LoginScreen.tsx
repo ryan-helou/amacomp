@@ -56,10 +56,10 @@ export function LoginScreen({
         <span className="text-ink">{settings.weeklyGoal} pts</span>
       </p>
       <p className="mt-3 text-[0.8125rem] leading-snug text-ink-2">
-        Season opens{" "}
+        Log from today — it all counts. Kickoff{" "}
         <span className="font-semibold text-ink">{formatDay(settings.seasonStart)}</span>. Miss
-        your weekly quota and the forfeit is:{" "}
-        <span className="font-semibold text-run">{settings.forfeit}</span>
+        your weekly quota and the forfeit is{" "}
+        <span className="font-semibold text-run">{settings.forfeit}</span>.
       </p>
 
       <form onSubmit={submit} className="mt-9">

@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { SPORT_ORDER, fmtPoints, standingsFor } from "@/lib/scoring";
-import { initials, SPORT_UI } from "@/lib/ui";
-import { formatDay, formatRange, periodRange, type DayKey } from "@/lib/dates";
-import { SPORT_UNIT, rateLabel, type AppState } from "@/lib/types";
-import { daysUntilSeason } from "@/lib/season";
+import { fmtPoints, standingsFor } from "@/lib/scoring";
+import { initials } from "@/lib/ui";
+import { formatRange, periodRange, type DayKey } from "@/lib/dates";
+import type { AppState } from "@/lib/types";
 import {
   headToHead,
   lastWeekRecap,
@@ -15,20 +14,7 @@ import {
 import { PaceClock } from "./PaceClock";
 import { Glyph } from "./Glyph";
 
-export function WeekTab({
-  state,
-  refDay,
-  preSeason = false,
-}: {
-  state: AppState;
-  refDay: DayKey;
-  preSeason?: boolean;
-}) {
-  if (preSeason) return <PreSeason state={state} refDay={refDay} />;
-  return <LiveWeek state={state} refDay={refDay} />;
-}
-
-function LiveWeek({ state, refDay }: { state: AppState; refDay: DayKey }) {
+export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const standings = useMemo(
     () => standingsFor(state.athletes, state.activities, state.settings, "week", refDay),
     [state.athletes, state.activities, state.settings, refDay],
@@ -234,50 +220,4 @@ function listNames(names: string[]): string {
   if (names.length === 1) return names[0];
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
-
-function PreSeason({ state, refDay }: { state: AppState; refDay: DayKey }) {
-  const days = daysUntilSeason(state.settings, refDay);
-  const s = state.settings;
-
-  return (
-    <div className="space-y-6">
-      <section className="flex flex-col items-center rounded-2xl border-2 border-ink bg-tile px-5 py-8 text-center">
-        <p className="eyebrow text-ink-2">The season opens</p>
-        <h2 className="stamp mt-2 text-3xl text-ink">{formatDay(s.seasonStart)}</h2>
-        <div className="mt-5">
-          <span className="stamp accent-text text-[4rem] leading-none">{days}</span>
-        </div>
-        <p className="eyebrow mt-1 text-ink-3">
-          {days === 1 ? "day to kickoff" : "days to kickoff"}
-        </p>
-        <p className="mt-4 max-w-xs text-sm text-ink-2">
-          Log all you want to warm up — nothing counts on the board until the gun
-          goes off.
-        </p>
-      </section>
-
-      <section className="rounded-2xl border-2 border-line bg-deck-2/40 p-4">
-        <h3 className="eyebrow text-ink-2">The rules</h3>
-        <p className="mt-2 font-mono text-sm text-ink">
-          Hit <span className="accent-text font-bold">{fmtPoints(s.weeklyGoal)} pts</span> every week.
-        </p>
-        <p className="mt-2 font-mono text-xs text-ink-3">
-          {SPORT_ORDER.map(
-            (sp) => `${SPORT_UI[sp].label.toLowerCase()} ${rateLabel(s.multipliers[sp], SPORT_UNIT[sp])}`,
-          ).join("  ·  ")}
-        </p>
-      </section>
-
-      <section className="rounded-2xl border-2 border-run/40 bg-run/5 p-4">
-        <div className="flex items-center gap-2">
-          <span className="text-run">
-            <Glyph name="flame" className="h-4 w-4" />
-          </span>
-          <h3 className="eyebrow text-run">Miss quota, and…</h3>
-        </div>
-        <p className="mt-2 text-[0.9375rem] font-semibold text-ink">{s.forfeit}</p>
-      </section>
-    </div>
-  );
 }

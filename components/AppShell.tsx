@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { today, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
-import { daysUntilSeason, isPreSeason, seasonActivities } from "@/lib/season";
 import type { AppState } from "@/lib/types";
 import { useLeague } from "./useLeague";
 import { LoginScreen } from "./LoginScreen";
@@ -56,21 +55,12 @@ export function AppShell({
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [send]);
 
-  // The competition only counts sessions from the season start onward. Everything
-  // downstream (standings, achievements, feed) runs on this scoped view; only the
-  // personal "Log" list shows a person's full history.
-  const seasonState: AppState = {
-    ...state,
-    activities: seasonActivities(state.activities, state.settings),
-  };
-  const preSeason = isPreSeason(state.settings, refDay);
-
   // Week standing for the signed-in athlete — drives the header total and the
   // one-time "you hit quota" confetti.
   const week = standingsFor(
-    seasonState.athletes,
-    seasonState.activities,
-    seasonState.settings,
+    state.athletes,
+    state.activities,
+    state.settings,
     "week",
     refDay,
   );
@@ -80,7 +70,7 @@ export function AppShell({
   const [fireKey, setFireKey] = useState(0);
   useEffect(() => {
     const goal = state.settings.weeklyGoal;
-    if (!state.me || preSeason || goal <= 0 || myWeekPoints < goal) return;
+    if (!state.me || goal <= 0 || myWeekPoints < goal) return;
     // Celebrate crossing the quota once per athlete per week.
     const key = `amacomp-celebrated-${state.me.id}-${weekStart(refDay)}`;
     try {
@@ -91,7 +81,7 @@ export function AppShell({
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFireKey((k) => k + 1);
-  }, [state.me, preSeason, myWeekPoints, state.settings.weeklyGoal, refDay]);
+  }, [state.me, myWeekPoints, state.settings.weeklyGoal, refDay]);
 
   if (!state.me) {
     return (
@@ -118,22 +108,11 @@ export function AppShell({
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              {preSeason ? (
-                <>
-                  <div className="stamp text-xl accent-text">
-                    {daysUntilSeason(state.settings, refDay)}d
-                  </div>
-                  <div className="eyebrow text-ink-3">to kickoff</div>
-                </>
-              ) : (
-                <>
-                  <div className="stamp text-xl">
-                    <span className="accent-text">{fmtPoints(mine?.points ?? 0)}</span>
-                    <span className="text-ink-3">/{fmtPoints(state.settings.weeklyGoal)}</span>
-                  </div>
-                  <div className="eyebrow text-ink-3">this week</div>
-                </>
-              )}
+              <div className="stamp text-xl">
+                <span className="accent-text">{fmtPoints(mine?.points ?? 0)}</span>
+                <span className="text-ink-3">/{fmtPoints(state.settings.weeklyGoal)}</span>
+              </div>
+              <div className="eyebrow text-ink-3">this week</div>
             </div>
             <button
               onClick={() => setScoringOpen(true)}
@@ -159,10 +138,10 @@ export function AppShell({
 
       <main className="flex-1 px-5 pb-28 pt-5">
         {tab === "log" && <LogTab league={league} refDay={refDay} />}
-        {tab === "week" && <WeekTab state={seasonState} refDay={refDay} preSeason={preSeason} />}
-        {tab === "board" && <BoardTab state={seasonState} refDay={refDay} />}
-        {tab === "titles" && <TitlesTab state={seasonState} refDay={refDay} />}
-        {tab === "feed" && <FeedTab state={seasonState} refDay={refDay} />}
+        {tab === "week" && <WeekTab state={state} refDay={refDay} />}
+        {tab === "board" && <BoardTab state={state} refDay={refDay} />}
+        {tab === "titles" && <TitlesTab state={state} refDay={refDay} />}
+        {tab === "feed" && <FeedTab state={state} refDay={refDay} />}
       </main>
 
       <nav

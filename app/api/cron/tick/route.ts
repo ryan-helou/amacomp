@@ -5,7 +5,6 @@ import { pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, fmtPoints } from "@/lib/scoring";
 import { addDays, today, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
-import { isPreSeason, seasonActivities } from "@/lib/season";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +29,7 @@ export async function GET(req: Request) {
   const store = getStore();
   const state = await readState();
   const now = today();
-
-  // No nudges before the season is live.
-  if (isPreSeason(state.settings, now)) {
-    return NextResponse.json({ ok: true, skipped: "pre-season" });
-  }
-  const activities = seasonActivities(state.activities, state.settings);
+  const activities = state.activities;
 
   if (job === "results") {
     const recap = lastWeekRecap(state.athletes, activities, state.settings, now);
