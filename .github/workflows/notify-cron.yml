@@ -2,19 +2,21 @@ name: AmaComp cron
 
 # Scheduled push nudges + Strava polling. GitHub cron runs in UTC.
 #   - Strava sync:     every 30 min
+#   - Season roll:     daily 13:00 UTC (announces once per season via meta marker)
 #   - Weekly results:  Monday 12:00 UTC  (~08:00 America/Toronto)
 #   - Midweek nudge:   Thursday 22:00 UTC (~18:00 America/Toronto)
 #   - Quota deadline:  Sunday 22:00 UTC  (~18:00 America/Toronto)
 on:
   schedule:
     - cron: "*/30 * * * *"
+    - cron: "0 13 * * *"
     - cron: "0 12 * * 1"
     - cron: "0 22 * * 4"
     - cron: "0 22 * * 0"
   workflow_dispatch:
     inputs:
       job:
-        description: "Which job to run (strava | midweek | results | deadline)"
+        description: "Which job to run (strava | season | midweek | results | deadline)"
         required: true
         default: "strava"
 
@@ -27,6 +29,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "job=${{ github.event.inputs.job }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
+            echo "job=season" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "0 12 * * 1" ]; then
             echo "job=results" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "0 22 * * 4" ]; then

@@ -1,6 +1,7 @@
 import type { Activity, Settings, Sport } from "./types";
+import { SPORT_UNIT } from "./types";
 import { activityPoints, unscoredGymIds } from "./scoring";
-import { formatDay, formatRange, weekEnd, weekStart } from "./dates";
+import { addDays, formatDay, formatRange, weekEnd, weekStart } from "./dates";
 import type { GlyphName } from "@/components/Glyph";
 
 /**
@@ -19,7 +20,7 @@ export interface HallRecord {
   /** Athlete id who holds it, or null if nobody's posted a mark yet. */
   holderId: string | null;
   value: number;
-  unit: "pts" | "km";
+  unit: "pts" | "km" | "days" | "sessions";
   /** When it was set — a day, or a week range. */
   detail: string;
 }
@@ -42,6 +43,9 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
 
   const dayPts = new Map<string, number>(); // `athleteId|day` → points
   const weekPts = new Map<string, number>(); // `athleteId|weekStart` → points
+  const dayKm = new Map<string, number>(); // `athleteId|day` → distance km
+  const weekSessions = new Map<string, number>(); // `athleteId|weekStart` → session count
+  const athleteDays = new Map<string, Set<string>>(); // athleteId → set of active days
 
   for (const a of activities) {
     const p = pts(a);
@@ -63,6 +67,12 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     const wk = weekStart(a.occurredOn);
     const wkk = `${a.athleteId}|${wk}`;
     weekPts.set(wkk, (weekPts.get(wkk) ?? 0) + p);
+    // Distance only — a flat gym "1 km" shouldn't count toward a km record.
+    if (SPORT_UNIT[a.sport] === "km") dayKm.set(dk, (dayKm.get(dk) ?? 0) + a.km);
+    weekSessions.set(wkk, (weekSessions.get(wkk) ?? 0) + 1);
+    let days = athleteDays.get(a.athleteId);
+    if (!days) athleteDays.set(a.athleteId, (days = new Set()));
+    days.add(a.occurredOn);
   }
 
   let bestDay = emptyPeak();
@@ -79,11 +89,46 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
       bestWeek = { holderId, value: v, detail: formatRange([wk, weekEnd(wk)]) };
     }
   }
+  let bestKmDay = emptyPeak();
+  for (const [k, v] of dayKm) {
+    if (v > bestKmDay.value) {
+      const [holderId, day] = k.split("|");
+      bestKmDay = { holderId, value: v, detail: formatDay(day) };
+    }
+  }
+  let busiestWeek = emptyPeak();
+  for (const [k, v] of weekSessions) {
+    if (v > busiestWeek.value) {
+      const [holderId, wk] = k.split("|");
+      busiestWeek = { holderId, value: v, detail: formatRange([wk, weekEnd(wk)]) };
+    }
+  }
+  // Longest run of consecutive days with at least one session.
+  let longestStreak = emptyPeak();
+  for (const [holderId, daysSet] of athleteDays) {
+    const days = [...daysSet].sort();
+    let run = 0;
+    let best = 0;
+    let bestEnd = "";
+    for (let i = 0; i < days.length; i++) {
+      run = i > 0 && days[i] === addDays(days[i - 1], 1) ? run + 1 : 1;
+      if (run > best) {
+        best = run;
+        bestEnd = days[i];
+      }
+    }
+    if (best > longestStreak.value) {
+      longestStreak = { holderId, value: best, detail: `to ${formatDay(bestEnd)}` };
+    }
+  }
 
   return [
     { key: "week", label: "Biggest week", glyph: "trophy", unit: "pts", ...bestWeek },
     { key: "day", label: "Most points in a day", glyph: "bolt", unit: "pts", ...bestDay },
-    { key: "session", label: "Biggest single session", glyph: "flame", unit: "pts", ...bigDaySession },
+    { key: "session", label: "Biggest single session", glyph: "star", unit: "pts", ...bigDaySession },
+    { key: "kmday", label: "Most km in a day", glyph: "target", unit: "km", ...bestKmDay },
+    { key: "busiest", label: "Busiest week", glyph: "trio", unit: "sessions", ...busiestWeek },
+    { key: "streak", label: "Longest streak", glyph: "flame", unit: "days", ...longestStreak },
     { key: "run", label: "Longest run", sport: "run", unit: "km", ...longestRun },
     { key: "ride", label: "Longest ride", sport: "bike", unit: "km", ...longestRide },
     { key: "swim", label: "Longest swim", sport: "swim", unit: "km", ...longestSwim },

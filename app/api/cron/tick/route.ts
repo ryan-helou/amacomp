@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
 import { readState } from "@/lib/state";
 import { notifyOvertakes, pushEnabled, sendToAthlete } from "@/lib/push";
-import { standingsFor, fmtPoints } from "@/lib/scoring";
+import { standingsFor, standingsForRange, fmtPoints } from "@/lib/scoring";
 import { addDays, parseDayKey, today, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
 import { stravaConfigured, syncAthlete } from "@/lib/strava";
+import { seasonByNumber, seasonFor } from "@/lib/season";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
  * the `meta` store, so a double-fire never double-notifies.
  *   ?job=strava   — every 30 min: pull each linked athlete's new activities
  *   ?job=midweek  — Thursday: nudge whoever's last or off the quota pace
+ *   ?job=season   — daily: announce a new season + crown the last one's champion
  *   ?job=results  — Monday: last week's champion + forfeit list
  *   ?job=deadline — Sunday: who still hasn't hit quota
  */
@@ -170,6 +172,44 @@ export async function GET(req: Request) {
         continue; // on pace and not last — nothing to say
       }
       await sendToAthlete(s.athlete.id, { title, body, url: "/", tag: "midweek" });
+      sent += 1;
+    }
+    return NextResponse.json({ ok: true, sent });
+  }
+
+  if (job === "season") {
+    // Fires daily but only pushes once per season (meta marker). Announces the
+    // new season and crowns the previous one's champion in a single message.
+    const cur = seasonFor(now, state.settings.seasonStart);
+    if (!cur || now < state.settings.seasonStart) {
+      return NextResponse.json({ ok: true, skipped: "pre-season" });
+    }
+    const marker = `season-live-${cur.number}`;
+    if (await store.getMeta(marker)) {
+      return NextResponse.json({ ok: true, sent: 0, note: "already announced" });
+    }
+    await store.setMeta(marker, "1");
+
+    let crown = "";
+    if (cur.number > 1) {
+      const prev = seasonByNumber(cur.number - 1, state.settings.seasonStart);
+      const prevStandings = standingsForRange(state.athletes, activities, state.settings, [
+        prev.start,
+        prev.end,
+      ]);
+      const champ = prevStandings.find((s) => s.points > 0);
+      if (champ) {
+        crown = `${prev.label} winner: ${champ.athlete.name} (${fmtPoints(champ.points)} pts). `;
+      }
+    }
+    let sent = 0;
+    for (const a of state.athletes) {
+      await sendToAthlete(a.id, {
+        title: `${cur.label} is live`,
+        body: `${crown}Fresh board, two months on the line. ${cur.monthsLabel}.`,
+        url: "/",
+        tag: "season",
+      });
       sent += 1;
     }
     return NextResponse.json({ ok: true, sent });
