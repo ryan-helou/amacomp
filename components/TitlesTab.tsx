@@ -7,6 +7,7 @@ import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { monthlyChampions, weekWinsBoard } from "@/lib/achievements";
 import { hallOfFame } from "@/lib/records";
+import { seasonChampions } from "@/lib/season";
 import { teamTotals } from "@/lib/stats";
 import { AthleteSheet } from "./AthleteSheet";
 import { Glyph } from "./Glyph";
@@ -23,6 +24,17 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
   const records = useMemo(
     () => hallOfFame(state.activities, state.settings),
     [state.activities, state.settings],
+  );
+  const seasons = useMemo(
+    () =>
+      seasonChampions(
+        state.athletes,
+        state.activities,
+        state.settings,
+        refDay,
+        state.settings.seasonStart,
+      ),
+    [state.athletes, state.activities, state.settings, refDay],
   );
 
   const wins = useMemo(
@@ -181,6 +193,63 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
             })}
           </ol>
         )}
+      </section>
+
+      <section>
+        <h2 className="eyebrow text-ink-2">Seasons</h2>
+        <p className="mt-1 text-[0.8125rem] text-ink-2">
+          Every two months is a new season. Win it to take the crown.
+        </p>
+        <ul className="mt-3 space-y-2">
+          {seasons.map((s) => (
+            <li
+              key={s.season.number}
+              className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 ${
+                s.status === "live"
+                  ? "border-accent/40 bg-accent/5"
+                  : s.champion
+                    ? "border-gold/40 bg-gold/5"
+                    : "border-line bg-tile"
+              }`}
+            >
+              <span className={s.status === "live" ? "text-accent" : "text-gold"} aria-hidden>
+                <Glyph name={s.status === "live" ? "flame" : "trophy"} className="h-6 w-6" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="eyebrow text-ink-2">
+                    {s.season.label} · {s.season.monthsLabel}
+                  </span>
+                  {s.status === "live" && (
+                    <span className="eyebrow rounded bg-accent/12 px-1.5 py-0.5 text-[0.5625rem] accent-text">
+                      Live
+                    </span>
+                  )}
+                  {s.status === "upcoming" && (
+                    <span className="eyebrow rounded bg-deck-2 px-1.5 py-0.5 text-[0.5625rem] text-ink-3">
+                      Soon
+                    </span>
+                  )}
+                </div>
+                <div className="stamp text-lg text-ink">
+                  {s.champion
+                    ? s.champion.athlete.name
+                    : s.status === "upcoming"
+                      ? "Not open yet"
+                      : "Up for grabs"}
+                </div>
+              </div>
+              {s.champion && (
+                <div className="text-right">
+                  <div className={`stamp text-lg ${s.status === "live" ? "accent-text" : "text-gold"}`}>
+                    {fmtPoints(s.champion.points)}
+                  </div>
+                  <div className="eyebrow text-ink-3">pts</div>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section>
