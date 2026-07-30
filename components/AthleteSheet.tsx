@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SPORT_ORDER, fmtKm, fmtPoints, standingsFor } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
@@ -47,14 +47,17 @@ export function AthleteSheet({
     return { badges, streak, titles, allTime, trend };
   }, [athlete, athleteId, state, refDay]);
 
+  const [zoom, setZoom] = useState(false);
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && (zoom ? setZoom(false) : onClose());
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, zoom]);
 
   if (!athlete || !data) return null;
   const isMe = athlete.id === state.me?.id;
+  const hasPhoto = !!athlete.avatarUrl;
   const earned = data.badges.filter((b) => b.earned);
 
   return (
@@ -69,7 +72,18 @@ export function AthleteSheet({
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-3" />
 
         <div className="flex items-center gap-3">
-          <Avatar athlete={athlete} me={isMe} className="h-12 w-12 text-sm" />
+          {hasPhoto ? (
+            <button
+              type="button"
+              onClick={() => setZoom(true)}
+              aria-label={`View ${athlete.name}'s photo`}
+              className="shrink-0 rounded-full transition-transform active:scale-95"
+            >
+              <Avatar athlete={athlete} me={isMe} className="h-14 w-14 text-base" />
+            </button>
+          ) : (
+            <Avatar athlete={athlete} me={isMe} className="h-14 w-14 text-base" />
+          )}
           <div className="flex-1">
             <h2 className="stamp text-2xl text-ink">{athlete.name}</h2>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-xs text-ink-2">
@@ -170,6 +184,22 @@ export function AthleteSheet({
           ))}
         </div>
       </div>
+
+      {zoom && athlete.avatarUrl && (
+        <button
+          type="button"
+          aria-label="Close photo"
+          onClick={() => setZoom(false)}
+          className="absolute inset-0 z-10 flex items-center justify-center bg-ink/90 p-6"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- full-size profile photo viewer */}
+          <img
+            src={athlete.avatarUrl}
+            alt={athlete.name}
+            className="max-h-[82vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+          />
+        </button>
+      )}
     </div>
   );
 }
