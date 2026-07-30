@@ -8,12 +8,13 @@ import {
   standingsFor,
   type Standing,
 } from "@/lib/scoring";
-import { SPORT_UI, initials } from "@/lib/ui";
+import { SPORT_UI } from "@/lib/ui";
 import { PERIODS, formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
 import { SPORT_UNIT, rateLabel, type AppState } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { AthleteSheet } from "./AthleteSheet";
 import { Glyph } from "./Glyph";
+import { Avatar } from "./Avatar";
 
 /**
  * The leaderboard is a pool: one lane per athlete, lane 1 for the leader, and a
@@ -163,14 +164,7 @@ function Lane({
           )}
         </div>
 
-        <div
-          aria-hidden
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-[0.6875rem] font-bold ${
-            isMe ? "border-ink bg-ink text-tile" : "border-line bg-tile text-ink-2"
-          }`}
-        >
-          {initials(row.athlete.name)}
-        </div>
+        <Avatar athlete={row.athlete} me={isMe} />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">

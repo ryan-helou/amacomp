@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo } from "react";
 import { SPORT_ORDER, fmtKm, fmtPoints, standingsFor } from "@/lib/scoring";
-import { SPORT_UI, initials } from "@/lib/ui";
+import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
 import {
   badgesFor,
   championshipsByAthlete,
   streakFor,
 } from "@/lib/achievements";
+import { weeklyTrend } from "@/lib/stats";
 import type { DayKey } from "@/lib/dates";
 import { Glyph, type GlyphName } from "./Glyph";
+import { Avatar } from "./Avatar";
+import { TrendChart } from "./TrendChart";
 
 export function AthleteSheet({
   state,
@@ -40,7 +43,8 @@ export function AthleteSheet({
       "all",
       refDay,
     ).find((s) => s.athlete.id === athleteId);
-    return { badges, streak, titles, allTime };
+    const trend = weeklyTrend(athleteId, state.activities, state.settings, refDay, 8);
+    return { badges, streak, titles, allTime, trend };
   }, [athlete, athleteId, state, refDay]);
 
   useEffect(() => {
@@ -65,14 +69,7 @@ export function AthleteSheet({
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-3" />
 
         <div className="flex items-center gap-3">
-          <div
-            aria-hidden
-            className={`flex h-12 w-12 items-center justify-center rounded-full border-2 text-sm font-bold ${
-              isMe ? "border-ink bg-ink text-tile" : "border-line bg-tile text-ink-2"
-            }`}
-          >
-            {initials(athlete.name)}
-          </div>
+          <Avatar athlete={athlete} me={isMe} className="h-12 w-12 text-sm" />
           <div className="flex-1">
             <h2 className="stamp text-2xl text-ink">{athlete.name}</h2>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-xs text-ink-2">
@@ -109,6 +106,42 @@ export function AthleteSheet({
           {(data.allTime?.sessions ?? 0) === 0 && (
             <span className="text-ink-3">No sessions yet.</span>
           )}
+        </div>
+
+        {/* Discipline mix */}
+        {(data.allTime?.points ?? 0) > 0 && (
+          <div className="mt-4">
+            <h3 className="eyebrow text-ink-2">Discipline mix</h3>
+            <div className="mt-2 flex h-3 w-full overflow-hidden rounded-full bg-deck-2">
+              {SPORT_ORDER.map((s) => {
+                const share = (data.allTime!.bySport[s] ?? 0) / data.allTime!.points;
+                if (share <= 0) return null;
+                return (
+                  <div
+                    key={s}
+                    className={SPORT_UI[s].bg}
+                    style={{ width: `${share * 100}%` }}
+                    title={`${SPORT_UI[s].label}: ${fmtPoints(data.allTime!.bySport[s])} pts`}
+                  />
+                );
+              })}
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[0.625rem]">
+              {SPORT_ORDER.filter((s) => (data.allTime?.bySport[s] ?? 0) > 0).map((s) => (
+                <span key={s} className={SPORT_UI[s].text}>
+                  {SPORT_UI[s].label} {fmtPoints(data.allTime!.bySport[s])}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Weekly form */}
+        <div className="mt-5">
+          <h3 className="eyebrow text-ink-2">Last 8 weeks</h3>
+          <div className="mt-2">
+            <TrendChart weeks={data.trend} goal={state.settings.weeklyGoal} />
+          </div>
         </div>
 
         {/* Badges */}

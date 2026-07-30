@@ -1,0 +1,94 @@
+import type { Activity, Athlete, Settings, Sport } from "./types";
+import { SPORT_UNIT } from "./types";
+import { activityPoints, standingsForRange } from "./scoring";
+import { addDays, today, weekEnd, weekStart, type DayKey } from "./dates";
+
+export interface TrendWeek {
+  weekKey: DayKey;
+  label: string;
+  points: number;
+  hit: boolean;
+}
+
+/** The athlete's points for each of the last `weeks` weeks (oldest → newest). */
+export function weeklyTrend(
+  athleteId: string,
+  activities: Activity[],
+  settings: Settings,
+  refDay: DayKey = today(),
+  weeks = 8,
+): TrendWeek[] {
+  const keys: DayKey[] = [];
+  let wk = weekStart(refDay);
+  for (let i = 0; i < weeks; i++) {
+    keys.unshift(wk);
+    wk = addDays(wk, -7);
+  }
+  return keys.map((w) => {
+    const end = weekEnd(w);
+    let points = 0;
+    for (const a of activities) {
+      if (a.athleteId === athleteId && a.occurredOn >= w && a.occurredOn <= end) {
+        points += activityPoints(a, settings);
+      }
+    }
+    const [, m, d] = w.split("-");
+    return {
+      weekKey: w,
+      label: `${Number(d)}/${Number(m)}`,
+      points,
+      hit: settings.weeklyGoal > 0 && points >= settings.weeklyGoal,
+    };
+  });
+}
+
+export interface TeamTotals {
+  points: number;
+  sessions: number;
+  athletes: number;
+  kmBySport: Record<Sport, number>;
+  gymWorkouts: number;
+  distanceKm: number;
+}
+
+/** Everyone's numbers added together — the "look what we've done" card. */
+export function teamTotals(
+  athletes: Athlete[],
+  activities: Activity[],
+  settings: Settings,
+): TeamTotals {
+  const kmBySport: Record<Sport, number> = { swim: 0, bike: 0, run: 0, gym: 0 };
+  let points = 0;
+  let gymWorkouts = 0;
+  let distanceKm = 0;
+
+  for (const a of activities) {
+    points += activityPoints(a, settings);
+    kmBySport[a.sport] += a.km;
+    if (a.sport === "gym") gymWorkouts += 1;
+    if (SPORT_UNIT[a.sport] === "km") distanceKm += a.km;
+  }
+
+  return {
+    points,
+    sessions: activities.length,
+    athletes: athletes.length,
+    kmBySport,
+    gymWorkouts,
+    distanceKm,
+  };
+}
+
+/** An athlete's all-time points split by discipline (for the mix bar). */
+export function disciplineMix(
+  athleteId: string,
+  athletes: Athlete[],
+  activities: Activity[],
+  settings: Settings,
+) {
+  const row = standingsForRange(athletes, activities, settings, [
+    "0000-01-01",
+    "9999-12-31",
+  ]).find((s) => s.athlete.id === athleteId);
+  return row ?? null;
+}

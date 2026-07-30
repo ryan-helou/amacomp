@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { fmtPoints } from "@/lib/scoring";
-import { initials } from "@/lib/ui";
-import type { AppState } from "@/lib/types";
+import { SPORT_ORDER, fmtKm, fmtPoints } from "@/lib/scoring";
+import { SPORT_UI } from "@/lib/ui";
+import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { monthlyChampions, weekWinsBoard } from "@/lib/achievements";
+import { teamTotals } from "@/lib/stats";
 import { AthleteSheet } from "./AthleteSheet";
 import { Glyph } from "./Glyph";
+import { Avatar } from "./Avatar";
 
 export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -20,11 +22,41 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
     () => monthlyChampions(state.athletes, state.activities, state.settings, refDay),
     [state.athletes, state.activities, state.settings, refDay],
   );
+  const team = useMemo(
+    () => teamTotals(state.athletes, state.activities, state.settings),
+    [state.athletes, state.activities, state.settings],
+  );
 
   const anyWins = wins.some((w) => w.wins > 0);
 
   return (
     <div className="space-y-8">
+      <section>
+        <h2 className="eyebrow text-ink-2">Together so far</h2>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-xl border-2 border-ink bg-tile px-4 py-3">
+            <div className="stamp accent-text text-2xl">{fmtKm(team.distanceKm)}</div>
+            <div className="eyebrow mt-0.5 text-ink-3">km on the move</div>
+          </div>
+          <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+            <div className="stamp text-2xl text-ink">{team.sessions}</div>
+            <div className="eyebrow mt-0.5 text-ink-3">sessions logged</div>
+          </div>
+        </div>
+        {team.sessions > 0 && (
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl border-2 border-line bg-tile px-4 py-3 font-mono text-xs">
+            {SPORT_ORDER.map((s) => {
+              const amt = team.kmBySport[s];
+              if (amt <= 0) return null;
+              return (
+                <span key={s} className={SPORT_UI[s].text}>
+                  {SPORT_UI[s].label} {fmtKm(amt)} {UNIT_LABEL[SPORT_UNIT[s]]}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </section>
       <section>
         <h2 className="eyebrow text-ink-2">Most week wins</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">
@@ -56,14 +88,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
                     >
                       {has ? row.rank : "—"}
                     </span>
-                    <span
-                      aria-hidden
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-[0.6875rem] font-bold ${
-                        isMe ? "border-ink bg-ink text-tile" : "border-line text-ink-2"
-                      }`}
-                    >
-                      {initials(row.athlete.name)}
-                    </span>
+                    <Avatar athlete={row.athlete} me={isMe} />
                     <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold text-ink">
                       {row.athlete.name}
                       {isMe && <span className="ml-1.5 text-xs font-normal text-ink-2">you</span>}
