@@ -150,7 +150,7 @@ export function ScoringSheet({
 
           <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
             <label htmlFor="season" className="eyebrow block text-ink-2">
-              Season starts
+              Kickoff date
             </label>
             <input
               id="season"
@@ -163,7 +163,7 @@ export function ScoringSheet({
               }`}
             />
             <p className="mt-1.5 text-[0.6875rem] text-ink-3">
-              Nothing counts before this day.
+              Shown on the sign-in screen. Logging counts from day one.
             </p>
           </div>
 

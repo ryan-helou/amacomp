@@ -89,13 +89,10 @@ export async function notifyOvertakes(
   const range = periodRange("week", today());
   const fresh = allActivities.find((a) => a.id === newActivityId);
   if (!fresh || fresh.occurredOn < range[0] || fresh.occurredOn > range[1]) return;
-  // Pre-season logs don't move the competition board.
-  if (fresh.occurredOn < settings.seasonStart) return;
 
-  const season = allActivities.filter((a) => a.occurredOn >= settings.seasonStart);
-  const before = season.filter((a) => a.id !== newActivityId);
+  const before = allActivities.filter((a) => a.id !== newActivityId);
   const aRank = new Map(
-    standingsForRange(athletes, season, settings, range).map((s) => [s.athlete.id, s.rank]),
+    standingsForRange(athletes, allActivities, settings, range).map((s) => [s.athlete.id, s.rank]),
   );
   const bRank = new Map(
     standingsForRange(athletes, before, settings, range).map((s) => [s.athlete.id, s.rank]),
