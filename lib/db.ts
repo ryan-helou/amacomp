@@ -39,6 +39,7 @@ export interface Store {
   findOrCreateAthlete(name: string): Promise<Athlete>;
   getAthlete(id: string): Promise<Athlete | null>;
   listAthletes(): Promise<Athlete[]>;
+  setResetHour(athleteId: string, hour: number): Promise<void>;
   listActivities(): Promise<Activity[]>;
   getActivity(id: string): Promise<Activity | null>;
   createActivity(input: NewActivity): Promise<Activity>;
@@ -118,6 +119,10 @@ function toActivity(r: ActivityRow): Activity {
   };
 }
 
+function toAthlete(r: { id: string; name: string; reset_hour?: number }): Athlete {
+  return { id: r.id, name: r.name, resetHour: Number(r.reset_hour ?? 0) };
+}
+
 class PgStore implements Store {
   private pool: PgPool;
   private ready: Promise<void> | null = null;
@@ -136,6 +141,9 @@ class PgStore implements Store {
             name_lower TEXT UNIQUE NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
+        await this.pool.query(
+          `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS reset_hour INT NOT NULL DEFAULT 0`,
+        );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS activities (
             id TEXT PRIMARY KEY,
@@ -190,29 +198,42 @@ class PgStore implements Store {
     const clean = normalizeName(name);
     const lower = clean.toLowerCase();
     const existing = await this.pool.query(
-      "SELECT id, name FROM athletes WHERE name_lower = $1",
+      "SELECT id, name, reset_hour FROM athletes WHERE name_lower = $1",
       [lower],
     );
-    if (existing.rows[0]) return existing.rows[0] as Athlete;
+    if (existing.rows[0]) return toAthlete(existing.rows[0]);
     const inserted = await this.pool.query(
       `INSERT INTO athletes (id, name, name_lower) VALUES ($1, $2, $3)
        ON CONFLICT (name_lower) DO UPDATE SET name = athletes.name
-       RETURNING id, name`,
+       RETURNING id, name, reset_hour`,
       [newId(), clean, lower],
     );
-    return inserted.rows[0] as Athlete;
+    return toAthlete(inserted.rows[0]);
   }
 
   async getAthlete(id: string): Promise<Athlete | null> {
     await this.init();
-    const r = await this.pool.query("SELECT id, name FROM athletes WHERE id = $1", [id]);
-    return (r.rows[0] as Athlete) ?? null;
+    const r = await this.pool.query(
+      "SELECT id, name, reset_hour FROM athletes WHERE id = $1",
+      [id],
+    );
+    return r.rows[0] ? toAthlete(r.rows[0]) : null;
   }
 
   async listAthletes(): Promise<Athlete[]> {
     await this.init();
-    const r = await this.pool.query("SELECT id, name FROM athletes ORDER BY name");
-    return r.rows as Athlete[];
+    const r = await this.pool.query(
+      "SELECT id, name, reset_hour FROM athletes ORDER BY name",
+    );
+    return r.rows.map(toAthlete);
+  }
+
+  async setResetHour(athleteId: string, hour: number): Promise<void> {
+    await this.init();
+    await this.pool.query("UPDATE athletes SET reset_hour = $2 WHERE id = $1", [
+      athleteId,
+      hour,
+    ]);
   }
 
   async listActivities(): Promise<Activity[]> {
@@ -351,7 +372,7 @@ class MemoryStore implements Store {
       (a) => a.name.toLowerCase() === clean.toLowerCase(),
     );
     if (found) return found;
-    const created = { id: newId(), name: clean };
+    const created = { id: newId(), name: clean, resetHour: 0 };
     this.athletes.push(created);
     return created;
   }
@@ -362,6 +383,11 @@ class MemoryStore implements Store {
 
   async listAthletes() {
     return [...this.athletes].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async setResetHour(athleteId: string, hour: number) {
+    const a = this.athletes.find((x) => x.id === athleteId);
+    if (a) a.resetHour = hour;
   }
 
   async listActivities() {

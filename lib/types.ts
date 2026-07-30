@@ -31,6 +31,12 @@ export function rateLabel(multiplier: number, unit: Unit): string {
 export interface Athlete {
   id: string;
   name: string;
+  /**
+   * Hour (0–11, local) at which this athlete's day — and so their week — rolls
+   * over. 0 = midnight. Set to 3 for the night owls, so a 2 AM session still
+   * counts toward the day/week that's ending.
+   */
+  resetHour: number;
 }
 
 export interface Activity {

@@ -211,6 +211,37 @@ export function ScoringSheet({
           <NotificationSetup />
         </div>
 
+        <div className="mt-4 rounded-xl border-2 border-line bg-tile px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="reset" className="eyebrow block text-ink">
+                Your day starts at
+              </label>
+              <p className="mt-0.5 text-[0.8125rem] text-ink-2">
+                Late-night sessions before this count for the day before.
+              </p>
+            </div>
+            <select
+              id="reset"
+              value={String(state.me?.resetHour ?? 0)}
+              disabled={busy}
+              onChange={(e) =>
+                send("/api/session", {
+                  method: "PATCH",
+                  body: JSON.stringify({ resetHour: Number(e.target.value) }),
+                })
+              }
+              className="shrink-0 rounded-lg border-2 border-ink-3 bg-tile px-2 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+            >
+              {[0, 1, 2, 3, 4, 5, 6].map((h) => (
+                <option key={h} value={h}>
+                  {h === 0 ? "12 AM" : `${h} AM`}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div className="mt-4">
           <p className="text-xs text-ink-3">
             Signed in as{" "}
