@@ -11,7 +11,9 @@ export type GlyphName =
   | "medal"
   | "star"
   | "rings"
-  | "dumbbell";
+  | "dumbbell"
+  | "bolt"
+  | "chat";
 
 export function Glyph({
   name,
@@ -97,6 +99,18 @@ export function Glyph({
         <svg {...common}>
           <path d="M6.5 12h11" />
           <path d="M4 9v6M7 7.5v9M17 7.5v9M20 9v6" />
+        </svg>
+      );
+    case "bolt":
+      return (
+        <svg {...common}>
+          <path d="M13 2.5 4.5 13.5H11l-1 8 8.5-11H12l1-7.5Z" />
+        </svg>
+      );
+    case "chat":
+      return (
+        <svg {...common}>
+          <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
         </svg>
       );
   }

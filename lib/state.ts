@@ -11,10 +11,12 @@ import type { AppState } from "./types";
 export async function readState(): Promise<AppState> {
   const store = getStore();
   const me = await currentAthlete();
-  const [athletes, activities, settings] = await Promise.all([
+  const [athletes, activities, settings, reactions, comments] = await Promise.all([
     store.listAthletes(),
     store.listActivities(),
     store.getSettings(),
+    store.listReactions(),
+    store.listComments(),
   ]);
-  return { me, isAdmin: isAdmin(me), athletes, activities, settings };
+  return { me, isAdmin: isAdmin(me), athletes, activities, settings, reactions, comments };
 }
