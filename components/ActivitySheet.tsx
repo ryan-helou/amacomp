@@ -21,6 +21,7 @@ import {
 import { Avatar } from "./Avatar";
 import { Glyph } from "./Glyph";
 import { SportMark } from "./SportMark";
+import { ActivityForm, emptyDraft, type ActivityDraft } from "./ActivityForm";
 import type { League } from "./useLeague";
 
 export function ActivitySheet({
@@ -39,9 +40,39 @@ export function ActivitySheet({
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [delErr, setDelErr] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editErr, setEditErr] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<ActivityDraft>(() => emptyDraft(refDay));
 
-  // You can bin your own session; the admin can bin anyone's.
+  // You can edit/bin your own session; the admin can edit/bin anyone's.
   const canManage = activity.athleteId === state.me?.id || state.isAdmin;
+
+  function startEdit() {
+    setEditErr(null);
+    setConfirmDelete(false);
+    setEditDraft({
+      sport: activity.sport,
+      km: SPORT_UNIT[activity.sport] === "flat" ? "1" : String(activity.km),
+      occurredOn: activity.occurredOn,
+      note: activity.note ?? "",
+    });
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    setEditErr(null);
+    const err = await send(`/api/activities/${activity.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        sport: editDraft.sport,
+        km: Number(editDraft.km),
+        occurredOn: editDraft.occurredOn,
+        note: editDraft.note,
+      }),
+    });
+    if (err) setEditErr(err);
+    else setEditing(false); // fresh state flows in; the sheet shows the edits
+  }
 
   const nameOf = useMemo(
     () => new Map(state.athletes.map((a) => [a.id, a.name])),
@@ -105,6 +136,24 @@ export function ActivitySheet({
         aria-label="Session"
         className="relative flex max-h-[88dvh] flex-col rounded-t-3xl border-t-2 border-ink bg-deck"
       >
+        {editing ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-3" />
+            <h3 className="stamp accent-text mb-4 text-xl">EDIT SESSION</h3>
+            <ActivityForm
+              settings={state.settings}
+              draft={editDraft}
+              setDraft={setEditDraft}
+              busy={busy}
+              error={editErr}
+              submitLabel="Save changes"
+              onSubmit={saveEdit}
+              onCancel={() => setEditing(false)}
+              maxDate={refDay}
+            />
+          </div>
+        ) : (
+          <>
         <div className="shrink-0 px-5 pt-3">
           <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-3" />
           {/* Session header */}
@@ -152,17 +201,39 @@ export function ActivitySheet({
               <div className="eyebrow text-ink-3">pts</div>
             </div>
             {canManage && !confirmDelete && (
-              <button
-                onClick={() => {
-                  setDelErr(null);
-                  setConfirmDelete(true);
-                }}
-                disabled={busy}
-                aria-label="Delete session"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-line bg-tile text-ink-3 disabled:opacity-40"
-              >
-                <Glyph name="trash" className="h-[18px] w-[18px]" />
-              </button>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  onClick={startEdit}
+                  disabled={busy}
+                  aria-label="Edit session"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-line bg-tile text-ink-3 disabled:opacity-40"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-[18px] w-[18px]"
+                    aria-hidden
+                  >
+                    <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3Z" />
+                    <path d="M13.5 6.5l3 3" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    setDelErr(null);
+                    setConfirmDelete(true);
+                  }}
+                  disabled={busy}
+                  aria-label="Delete session"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-line bg-tile text-ink-3 disabled:opacity-40"
+                >
+                  <Glyph name="trash" className="h-[18px] w-[18px]" />
+                </button>
+              </div>
             )}
           </div>
 
@@ -291,6 +362,8 @@ export function ActivitySheet({
             </button>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
