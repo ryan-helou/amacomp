@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Public_Sans, JetBrains_Mono, Chakra_Petch } from "next/font/google";
+import { Archivo, Public_Sans, JetBrains_Mono, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import { ServiceWorker } from "@/components/ServiceWorker";
 
@@ -9,11 +9,11 @@ const display = Archivo({
   axes: ["wdth"],
 });
 
-// A techy, angular scoreboard face — used for the big hero stat (the weekly ring).
-const stat = Chakra_Petch({
-  variable: "--font-chakra",
+// A tall, athletic scoreboard face — used for the big hero stat (the weekly ring).
+const stat = Bebas_Neue({
+  variable: "--font-bebas",
   subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: "400",
 });
 
 const body = Public_Sans({

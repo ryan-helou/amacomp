@@ -27,7 +27,7 @@
   --font-display: var(--font-archivo), "Arial Black", system-ui, sans-serif;
   --font-body: var(--font-public-sans), system-ui, sans-serif;
   --font-mono: var(--font-mono-face), ui-monospace, monospace;
-  --font-stat: var(--font-chakra), var(--font-archivo), system-ui, sans-serif;
+  --font-stat: var(--font-bebas), var(--font-archivo), system-ui, sans-serif;
 }
 
 :root {
@@ -106,12 +106,13 @@ body {
   line-height: 0.9;
 }
 
-/* The hero stat — a techy, angular scoreboard face for the weekly ring number. */
+/* The hero stat — a tall, athletic scoreboard face for the weekly ring number.
+   Bebas Neue ships a single weight, so keep 400 to avoid synthetic bolding. */
 .stat {
   font-family: var(--font-stat);
-  font-weight: 700;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.005em;
+  letter-spacing: 0.02em;
   line-height: 0.9;
 }
 
