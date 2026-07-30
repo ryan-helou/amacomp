@@ -199,7 +199,7 @@ function Lane({
               })}
           </div>
 
-          <div className="mt-1 flex gap-3 font-mono text-[0.6875rem] text-ink-3">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[0.6875rem] text-ink-3">
             {row.km > 0 && <span>{fmtKm(row.km)} km</span>}
             <span>
               {row.sessions} session{row.sessions === 1 ? "" : "s"}

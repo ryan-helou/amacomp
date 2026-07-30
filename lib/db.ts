@@ -73,6 +73,14 @@ export interface Store {
   setResetHour(athleteId: string, hour: number): Promise<void>;
   /** Persist an athlete's avatar picks. Either field may be null to clear it. */
   setAvatar(athleteId: string, color: string | null, glyph: string | null): Promise<void>;
+  /** Store an uploaded profile photo (base64, no data: prefix). `version` cache-busts. */
+  setAvatarImage(athleteId: string, dataBase64: string, contentType: string, version: number): Promise<void>;
+  /** Drop the uploaded photo, reverting to the Strava photo / initials. */
+  clearAvatarImage(athleteId: string): Promise<void>;
+  /** The raw uploaded photo for the serving endpoint, or null if none. */
+  getAvatarImage(athleteId: string): Promise<{ data: string; contentType: string } | null>;
+  /** Remember the athlete's Strava profile-photo URL (the default avatar). */
+  setStravaPhoto(athleteId: string, url: string | null): Promise<void>;
   listActivities(): Promise<Activity[]>;
   getActivity(id: string): Promise<Activity | null>;
   createActivity(input: NewActivity, source?: ActivitySource): Promise<Activity>;
@@ -197,15 +205,27 @@ function toAthlete(r: {
   reset_hour?: number;
   avatar_color?: string | null;
   avatar_glyph?: string | null;
+  strava_photo_url?: string | null;
+  avatar_image_type?: string | null;
+  avatar_image_v?: string | number | null;
 }): Athlete {
+  // An uploaded image wins; otherwise the Strava photo; otherwise null (initials).
+  // The `?v=` busts the immutable image cache whenever a new one is uploaded.
+  const avatarUrl = r.avatar_image_type
+    ? `/api/avatar/${r.id}?v=${r.avatar_image_v ?? 0}`
+    : (r.strava_photo_url ?? null);
   return {
     id: r.id,
     name: r.name,
     resetHour: Number(r.reset_hour ?? 0),
     avatarColor: r.avatar_color ?? null,
     avatarGlyph: r.avatar_glyph ?? null,
+    avatarUrl,
   };
 }
+
+const ATHLETE_COLS =
+  "id, name, reset_hour, avatar_color, avatar_glyph, strava_photo_url, avatar_image_type, avatar_image_v";
 
 function toComment(r: {
   id: string;
@@ -251,6 +271,24 @@ class PgStore implements Store {
         await this.pool.query(
           `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS avatar_glyph TEXT`,
         );
+        // Photo avatars: the Strava profile URL (the default), plus metadata for an
+        // uploaded image. The image bytes live in a side table so athlete SELECTs
+        // stay light. `avatar_image_v` is a version stamp for cache-busting.
+        await this.pool.query(
+          `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS strava_photo_url TEXT`,
+        );
+        await this.pool.query(
+          `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS avatar_image_type TEXT`,
+        );
+        await this.pool.query(
+          `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS avatar_image_v BIGINT`,
+        );
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS avatar_images (
+            athlete_id TEXT PRIMARY KEY REFERENCES athletes(id) ON DELETE CASCADE,
+            data TEXT NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS activities (
             id TEXT PRIMARY KEY,
@@ -348,14 +386,14 @@ class PgStore implements Store {
     const clean = normalizeName(name);
     const lower = clean.toLowerCase();
     const existing = await this.pool.query(
-      "SELECT id, name, reset_hour, avatar_color, avatar_glyph FROM athletes WHERE name_lower = $1",
+      `SELECT ${ATHLETE_COLS} FROM athletes WHERE name_lower = $1`,
       [lower],
     );
     if (existing.rows[0]) return toAthlete(existing.rows[0]);
     const inserted = await this.pool.query(
       `INSERT INTO athletes (id, name, name_lower) VALUES ($1, $2, $3)
        ON CONFLICT (name_lower) DO UPDATE SET name = athletes.name
-       RETURNING id, name, reset_hour, avatar_color, avatar_glyph`,
+       RETURNING ${ATHLETE_COLS}`,
       [newId(), clean, lower],
     );
     return toAthlete(inserted.rows[0]);
@@ -364,7 +402,7 @@ class PgStore implements Store {
   async getAthlete(id: string): Promise<Athlete | null> {
     await this.init();
     const r = await this.pool.query(
-      "SELECT id, name, reset_hour, avatar_color, avatar_glyph FROM athletes WHERE id = $1",
+      `SELECT ${ATHLETE_COLS} FROM athletes WHERE id = $1`,
       [id],
     );
     return r.rows[0] ? toAthlete(r.rows[0]) : null;
@@ -373,7 +411,7 @@ class PgStore implements Store {
   async listAthletes(): Promise<Athlete[]> {
     await this.init();
     const r = await this.pool.query(
-      "SELECT id, name, reset_hour, avatar_color, avatar_glyph FROM athletes ORDER BY name",
+      `SELECT ${ATHLETE_COLS} FROM athletes ORDER BY name`,
     );
     return r.rows.map(toAthlete);
   }
@@ -395,6 +433,49 @@ class PgStore implements Store {
     await this.pool.query(
       "UPDATE athletes SET avatar_color = $2, avatar_glyph = $3 WHERE id = $1",
       [athleteId, color, glyph],
+    );
+  }
+
+  async setAvatarImage(athleteId: string, dataBase64: string, contentType: string, version: number): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `INSERT INTO avatar_images (athlete_id, data, updated_at) VALUES ($1, $2, now())
+       ON CONFLICT (athlete_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
+      [athleteId, dataBase64],
+    );
+    await this.pool.query(
+      "UPDATE athletes SET avatar_image_type = $2, avatar_image_v = $3 WHERE id = $1",
+      [athleteId, contentType, version],
+    );
+  }
+
+  async clearAvatarImage(athleteId: string): Promise<void> {
+    await this.init();
+    await this.pool.query("DELETE FROM avatar_images WHERE athlete_id = $1", [athleteId]);
+    await this.pool.query(
+      "UPDATE athletes SET avatar_image_type = NULL WHERE id = $1",
+      [athleteId],
+    );
+  }
+
+  async getAvatarImage(athleteId: string): Promise<{ data: string; contentType: string } | null> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT ai.data, a.avatar_image_type
+       FROM avatar_images ai JOIN athletes a ON a.id = ai.athlete_id
+       WHERE ai.athlete_id = $1`,
+      [athleteId],
+    );
+    const row = r.rows[0];
+    if (!row || !row.avatar_image_type) return null;
+    return { data: row.data as string, contentType: row.avatar_image_type as string };
+  }
+
+  async setStravaPhoto(athleteId: string, url: string | null): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      "UPDATE athletes SET strava_photo_url = $2 WHERE id = $1",
+      [athleteId, url],
     );
   }
 
@@ -669,8 +750,19 @@ class MemoryStore implements Store {
   private athletes: Athlete[] = [];
   private activities: Activity[] = [];
   private settings: Settings = { ...DEFAULT_SETTINGS };
+  private avatarImages = new Map<string, { data: string; contentType: string; v: number }>();
+  private stravaPhotos = new Map<string, string>();
 
   async init() {}
+
+  private recomputeAvatarUrl(athleteId: string) {
+    const a = this.athletes.find((x) => x.id === athleteId);
+    if (!a) return;
+    const img = this.avatarImages.get(athleteId);
+    a.avatarUrl = img
+      ? `/api/avatar/${athleteId}?v=${img.v}`
+      : (this.stravaPhotos.get(athleteId) ?? null);
+  }
 
   async findOrCreateAthlete(name: string): Promise<Athlete> {
     const clean = normalizeName(name);
@@ -684,6 +776,7 @@ class MemoryStore implements Store {
       resetHour: 0,
       avatarColor: null,
       avatarGlyph: null,
+      avatarUrl: null,
     };
     this.athletes.push(created);
     return created;
@@ -708,6 +801,37 @@ class MemoryStore implements Store {
       a.avatarColor = color;
       a.avatarGlyph = glyph;
     }
+  }
+
+  private avatarImages = new Map<string, { data: string; contentType: string; version: number }>();
+  private stravaPhotos = new Map<string, string | null>();
+
+  private refreshAvatarUrl(athleteId: string) {
+    const a = this.athletes.find((x) => x.id === athleteId);
+    if (!a) return;
+    const img = this.avatarImages.get(athleteId);
+    if (img) a.avatarUrl = `/api/avatar/${athleteId}?v=${img.version}`;
+    else a.avatarUrl = this.stravaPhotos.get(athleteId) ?? null;
+  }
+
+  async setAvatarImage(athleteId: string, dataBase64: string, contentType: string, version: number) {
+    this.avatarImages.set(athleteId, { data: dataBase64, contentType, version });
+    this.refreshAvatarUrl(athleteId);
+  }
+
+  async clearAvatarImage(athleteId: string) {
+    this.avatarImages.delete(athleteId);
+    this.refreshAvatarUrl(athleteId);
+  }
+
+  async getAvatarImage(athleteId: string) {
+    const img = this.avatarImages.get(athleteId);
+    return img ? { data: img.data, contentType: img.contentType } : null;
+  }
+
+  async setStravaPhoto(athleteId: string, url: string | null) {
+    this.stravaPhotos.set(athleteId, url);
+    this.refreshAvatarUrl(athleteId);
   }
 
   async listActivities() {
