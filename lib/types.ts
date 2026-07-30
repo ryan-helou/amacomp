@@ -105,7 +105,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   multipliers: { swim: 25, bike: 1, run: 5, gym: 30 },
   weeklyGoal: 75,
-  seasonStart: "2026-08-10",
+  seasonStart: "2026-08-03",
   forfeit: "Cook the boys a meal + run a marathon",
 };
 
