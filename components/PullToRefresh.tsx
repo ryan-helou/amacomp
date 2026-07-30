@@ -106,29 +106,51 @@ export function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<unknown>
   const y = refreshing ? TRIGGER : pull;
   const visible = pull > 0 || refreshing;
 
+  // Ring geometry. The arc fills as you pull; once refreshing it becomes a
+  // fixed sweep and the whole SVG spins — echoing the pace-clock quota ring.
+  const R = 16;
+  const C = 2 * Math.PI * R;
+  const sweep = refreshing ? 0.28 : progress;
+
   return (
     <div
       aria-hidden
       className="pointer-events-none fixed inset-x-0 top-0 z-40 mx-auto flex w-full max-w-md justify-center"
       style={{
-        transform: `translateY(${y}px)`,
-        opacity: visible ? 1 : 0,
-        transition: dragging ? "none" : "transform 220ms ease, opacity 220ms ease",
+        transform: `translateY(${y}px) scale(${refreshing ? 1 : 0.55 + 0.45 * progress})`,
+        opacity: visible ? (refreshing ? 1 : Math.max(0.3, progress)) : 0,
+        transition: dragging
+          ? "none"
+          : "transform 240ms cubic-bezier(0.22,1,0.36,1), opacity 200ms ease",
       }}
     >
-      <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-ink bg-deck shadow-md">
+      <div className="mt-2 flex h-12 w-12 items-center justify-center rounded-full bg-tile shadow-[0_8px_22px_-6px_rgba(13,34,49,0.4)] ring-1 ring-ink/5">
         <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2.2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`h-[18px] w-[18px] text-ink ${refreshing ? "animate-spin" : ""}`}
-          style={refreshing ? undefined : { transform: `rotate(${progress * 270}deg)` }}
+          viewBox="0 0 40 40"
+          className={`h-8 w-8 ${refreshing ? "animate-spin" : ""}`}
+          style={{ transformOrigin: "center" }}
         >
-          <path d="M20 12a8 8 0 1 1-2.3-5.6" />
-          <path d="M20 4v4.5h-4.5" />
+          <defs>
+            <linearGradient id="ptr-grad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="var(--color-accent)" />
+              <stop offset="100%" stopColor="var(--color-accent-2)" />
+            </linearGradient>
+          </defs>
+          {/* faint track */}
+          <circle cx="20" cy="20" r={R} fill="none" stroke="var(--color-line)" strokeWidth="4" opacity="0.5" />
+          {/* gradient arc — fills with the pull, sweeps while refreshing */}
+          <circle
+            cx="20"
+            cy="20"
+            r={R}
+            fill="none"
+            stroke="url(#ptr-grad)"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={C}
+            strokeDashoffset={C * (1 - sweep)}
+            transform="rotate(-90 20 20)"
+          />
         </svg>
       </div>
     </div>
