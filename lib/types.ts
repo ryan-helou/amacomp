@@ -37,6 +37,35 @@ export interface Athlete {
    * counts toward the day/week that's ending.
    */
   resetHour: number;
+  /** Chosen lane colour (hex from AVATAR_PALETTE), or null to use the default hash. */
+  avatarColor: string | null;
+  /** Chosen monochrome glyph, or null to fall back to initials. */
+  avatarGlyph: string | null;
+}
+
+// Twelve colours the athlete can pick from — deliberately kept apart from the
+// sport hues so a lane doesn't read as "the swim lane". Server + client both
+// validate against this list so a spoofed request can't inject arbitrary CSS.
+export const AVATAR_PALETTE = [
+  "#3d5aff", "#e0398a", "#0f9d8f", "#d9761a",
+  "#7b3fe4", "#2aa5d6", "#c2384a", "#4b7a2e",
+  "#f0a300", "#0aa672", "#e5385f", "#5563a8",
+] as const;
+export type AvatarColor = (typeof AVATAR_PALETTE)[number];
+
+export function isAvatarColor(v: unknown): v is AvatarColor {
+  return typeof v === "string" && (AVATAR_PALETTE as readonly string[]).includes(v);
+}
+
+// Subset of GlyphName that reads well at avatar size. Keep this in sync with
+// components/Glyph.tsx's GlyphName. Validated server-side.
+export const AVATAR_GLYPHS = [
+  "bolt", "flame", "star", "drop", "target", "dumbbell", "trophy", "medal",
+] as const;
+export type AvatarGlyph = (typeof AVATAR_GLYPHS)[number];
+
+export function isAvatarGlyph(v: unknown): v is AvatarGlyph {
+  return typeof v === "string" && (AVATAR_GLYPHS as readonly string[]).includes(v);
 }
 
 /** Where an activity came from — hand-logged or pulled in from Strava. */

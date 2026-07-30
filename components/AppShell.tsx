@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { todayWithReset, weekStart, type DayKey } from "@/lib/dates";
+import { parseDayKey, todayWithReset, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
 import type { AppState } from "@/lib/types";
 import { useLeague } from "./useLeague";
@@ -16,6 +16,17 @@ import { Confetti } from "./Confetti";
 import { PullToRefresh } from "./PullToRefresh";
 
 type Tab = "log" | "week" | "board" | "titles" | "feed";
+
+const MONTHS_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** "August 10" — used in the pre-kickoff warm-up banner. */
+function formatKickoff(key: DayKey): string {
+  const d = parseDayKey(key);
+  return `${MONTHS_LONG[d.getMonth()]} ${d.getDate()}`;
+}
 
 // Log sits dead-centre so it's under the thumb — it's the primary action. Its
 // neighbours are the tabs you'd hop to right after logging: Week (am I hitting
@@ -172,6 +183,15 @@ export function AppShell({
           </div>
         </div>
       </header>
+
+      {refDay < state.settings.seasonStart && (
+        <div className="border-b-2 border-gold/40 bg-gold/10 px-5 py-2.5 text-center">
+          <p className="eyebrow text-gold">Warm-up mode</p>
+          <p className="mt-0.5 text-xs text-ink-2">
+            Log freely — every board resets when the season kicks off {formatKickoff(state.settings.seasonStart)}.
+          </p>
+        </div>
+      )}
 
       <main className="flex-1 px-5 pb-28 pt-5">
         {tab === "log" && <LogTab league={league} refDay={refDay} />}

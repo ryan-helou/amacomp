@@ -71,6 +71,8 @@ export interface Store {
   getAthlete(id: string): Promise<Athlete | null>;
   listAthletes(): Promise<Athlete[]>;
   setResetHour(athleteId: string, hour: number): Promise<void>;
+  /** Persist an athlete's avatar picks. Either field may be null to clear it. */
+  setAvatar(athleteId: string, color: string | null, glyph: string | null): Promise<void>;
   listActivities(): Promise<Activity[]>;
   getActivity(id: string): Promise<Activity | null>;
   createActivity(input: NewActivity, source?: ActivitySource): Promise<Activity>;
@@ -189,8 +191,20 @@ function toStravaConn(r: {
   };
 }
 
-function toAthlete(r: { id: string; name: string; reset_hour?: number }): Athlete {
-  return { id: r.id, name: r.name, resetHour: Number(r.reset_hour ?? 0) };
+function toAthlete(r: {
+  id: string;
+  name: string;
+  reset_hour?: number;
+  avatar_color?: string | null;
+  avatar_glyph?: string | null;
+}): Athlete {
+  return {
+    id: r.id,
+    name: r.name,
+    resetHour: Number(r.reset_hour ?? 0),
+    avatarColor: r.avatar_color ?? null,
+    avatarGlyph: r.avatar_glyph ?? null,
+  };
 }
 
 function toComment(r: {
@@ -229,6 +243,13 @@ class PgStore implements Store {
           )`);
         await this.pool.query(
           `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS reset_hour INT NOT NULL DEFAULT 0`,
+        );
+        // Nullable — a null value means "fall back to the default hash".
+        await this.pool.query(
+          `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS avatar_color TEXT`,
+        );
+        await this.pool.query(
+          `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS avatar_glyph TEXT`,
         );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS activities (
@@ -327,14 +348,14 @@ class PgStore implements Store {
     const clean = normalizeName(name);
     const lower = clean.toLowerCase();
     const existing = await this.pool.query(
-      "SELECT id, name, reset_hour FROM athletes WHERE name_lower = $1",
+      "SELECT id, name, reset_hour, avatar_color, avatar_glyph FROM athletes WHERE name_lower = $1",
       [lower],
     );
     if (existing.rows[0]) return toAthlete(existing.rows[0]);
     const inserted = await this.pool.query(
       `INSERT INTO athletes (id, name, name_lower) VALUES ($1, $2, $3)
        ON CONFLICT (name_lower) DO UPDATE SET name = athletes.name
-       RETURNING id, name, reset_hour`,
+       RETURNING id, name, reset_hour, avatar_color, avatar_glyph`,
       [newId(), clean, lower],
     );
     return toAthlete(inserted.rows[0]);
@@ -343,7 +364,7 @@ class PgStore implements Store {
   async getAthlete(id: string): Promise<Athlete | null> {
     await this.init();
     const r = await this.pool.query(
-      "SELECT id, name, reset_hour FROM athletes WHERE id = $1",
+      "SELECT id, name, reset_hour, avatar_color, avatar_glyph FROM athletes WHERE id = $1",
       [id],
     );
     return r.rows[0] ? toAthlete(r.rows[0]) : null;
@@ -352,7 +373,7 @@ class PgStore implements Store {
   async listAthletes(): Promise<Athlete[]> {
     await this.init();
     const r = await this.pool.query(
-      "SELECT id, name, reset_hour FROM athletes ORDER BY name",
+      "SELECT id, name, reset_hour, avatar_color, avatar_glyph FROM athletes ORDER BY name",
     );
     return r.rows.map(toAthlete);
   }
@@ -363,6 +384,18 @@ class PgStore implements Store {
       athleteId,
       hour,
     ]);
+  }
+
+  async setAvatar(
+    athleteId: string,
+    color: string | null,
+    glyph: string | null,
+  ): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      "UPDATE athletes SET avatar_color = $2, avatar_glyph = $3 WHERE id = $1",
+      [athleteId, color, glyph],
+    );
   }
 
   async listActivities(): Promise<Activity[]> {
@@ -645,7 +678,13 @@ class MemoryStore implements Store {
       (a) => a.name.toLowerCase() === clean.toLowerCase(),
     );
     if (found) return found;
-    const created = { id: newId(), name: clean, resetHour: 0 };
+    const created: Athlete = {
+      id: newId(),
+      name: clean,
+      resetHour: 0,
+      avatarColor: null,
+      avatarGlyph: null,
+    };
     this.athletes.push(created);
     return created;
   }
@@ -661,6 +700,14 @@ class MemoryStore implements Store {
   async setResetHour(athleteId: string, hour: number) {
     const a = this.athletes.find((x) => x.id === athleteId);
     if (a) a.resetHour = hour;
+  }
+
+  async setAvatar(athleteId: string, color: string | null, glyph: string | null) {
+    const a = this.athletes.find((x) => x.id === athleteId);
+    if (a) {
+      a.avatarColor = color;
+      a.avatarGlyph = glyph;
+    }
   }
 
   async listActivities() {
