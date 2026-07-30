@@ -13,7 +13,7 @@ import { formatRange, periodRange, type DayKey, type Period } from "@/lib/dates"
 import { SPORT_UNIT, rateLabel, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { firstSeason, seasonFor } from "@/lib/season";
-import { useOpenProfile } from "./ProfileContext";
+import { useOpenProfile, useReigningChampion } from "./ProfileContext";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
@@ -49,6 +49,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
   const [period, setPeriod] = useState<BoardPeriod>("week");
   const [sport, setSport] = useState<SportFilter>("all");
   const openProfile = useOpenProfile();
+  const reigning = useReigningChampion();
 
   const liveSeason = seasonFor(refDay, state.settings.seasonStart);
   const season = liveSeason ?? firstSeason(state.settings.seasonStart);
@@ -195,6 +196,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                   index={i}
                   titles={titles.get(row.athlete.id) ?? 0}
                   delta={period === "week" ? movement.get(row.athlete.id)?.delta ?? 0 : 0}
+                  champion={reigning === row.athlete.id}
                   onSelect={() => openProfile(row.athlete.id)}
                 />
               </li>
@@ -216,6 +218,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                 sport={sport}
                 isMe={row.athlete.id === state.me?.id}
                 index={i}
+                champion={reigning === row.athlete.id}
                 onSelect={() => openProfile(row.athlete.id)}
               />
             </li>
@@ -241,6 +244,7 @@ function Lane({
   index,
   titles,
   delta,
+  champion,
   onSelect,
 }: {
   row: Standing;
@@ -249,6 +253,7 @@ function Lane({
   index: number;
   titles: number;
   delta: number;
+  champion?: boolean;
   onSelect: () => void;
 }) {
   const width = top > 0 ? Math.max(row.points / top, 0) : 0;
@@ -288,7 +293,12 @@ function Lane({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="truncate text-[0.9375rem] font-semibold text-ink">
+            <span
+              className={`truncate text-[0.9375rem] font-semibold ${champion ? "text-gold" : "text-ink"}`}
+            >
+              {champion && (
+                <Glyph name="crown" className="mr-1 inline h-3.5 w-3.5 -translate-y-px align-baseline" />
+              )}
               {row.athlete.name}
               {titles > 0 && (
                 <span className="ml-1.5 inline-flex items-baseline gap-0.5 align-baseline text-xs font-normal text-gold">
@@ -349,6 +359,7 @@ function SportLane({
   sport,
   isMe,
   index,
+  champion,
   onSelect,
 }: {
   row: SportRow;
@@ -356,6 +367,7 @@ function SportLane({
   sport: Sport;
   isMe: boolean;
   index: number;
+  champion?: boolean;
   onSelect: () => void;
 }) {
   const ui = SPORT_UI[sport];
@@ -385,7 +397,12 @@ function SportLane({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="truncate text-[0.9375rem] font-semibold text-ink">
+            <span
+              className={`truncate text-[0.9375rem] font-semibold ${champion ? "text-gold" : "text-ink"}`}
+            >
+              {champion && (
+                <Glyph name="crown" className="mr-1 inline h-3.5 w-3.5 -translate-y-px align-baseline" />
+              )}
               {row.athlete.name}
               {isMe && <span className="ml-1.5 text-xs font-normal text-ink-2">you</span>}
             </span>
