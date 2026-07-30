@@ -3,10 +3,19 @@
 import { useEffect, useState } from "react";
 import { SPORT_ORDER } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { SPORT_UNIT, UNIT_ABBR, type Settings } from "@/lib/types";
+import {
+  AVATAR_GLYPHS,
+  AVATAR_PALETTE,
+  SPORT_UNIT,
+  UNIT_ABBR,
+  type AvatarGlyph,
+  type Settings,
+} from "@/lib/types";
 import { SportMark } from "./SportMark";
 import { NotificationSetup } from "./NotificationSetup";
 import { StravaSetup } from "./StravaSetup";
+import { Avatar } from "./Avatar";
+import { Glyph } from "./Glyph";
 import type { League } from "./useLeague";
 
 /**
@@ -216,6 +225,10 @@ export function ScoringSheet({
           <StravaSetup league={league} />
         </div>
 
+        <div className="mt-4">
+          <AvatarPicker league={league} />
+        </div>
+
         <div className="mt-4 rounded-xl border-2 border-line bg-tile px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -262,6 +275,109 @@ export function ScoringSheet({
           >
             Sign out
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Pick a lane colour + optional monochrome symbol. Selections update
+ * optimistically via the shared league.send flow — no separate loading state
+ * needed. "None" for glyph falls back to the athlete's initials.
+ */
+function AvatarPicker({ league }: { league: League }) {
+  const { state, busy, send } = league;
+  const me = state.me;
+  if (!me) return null;
+  const previewAthlete = {
+    id: me.id,
+    name: me.name,
+    avatarColor: me.avatarColor,
+    avatarGlyph: me.avatarGlyph,
+  };
+
+  function saveColor(color: string) {
+    send("/api/session", {
+      method: "PATCH",
+      body: JSON.stringify({ avatarColor: color }),
+    });
+  }
+  function saveGlyph(glyph: AvatarGlyph | null) {
+    send("/api/session", {
+      method: "PATCH",
+      body: JSON.stringify({ avatarGlyph: glyph }),
+    });
+  }
+
+  return (
+    <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+      <div className="flex items-center gap-3">
+        <Avatar athlete={previewAthlete} me className="h-11 w-11 text-xs" />
+        <div className="min-w-0">
+          <div className="eyebrow text-ink">Your avatar</div>
+          <p className="mt-0.5 text-[0.8125rem] text-ink-2">
+            Your lane on the board. Pick a colour and a symbol.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <div className="eyebrow mb-1.5 text-ink-3">Colour</div>
+        <div className="grid grid-cols-6 gap-2">
+          {AVATAR_PALETTE.map((c) => {
+            const active = me.avatarColor === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                aria-label={`Colour ${c}`}
+                aria-pressed={active}
+                disabled={busy}
+                onClick={() => saveColor(c)}
+                style={{ backgroundColor: c }}
+                className={`h-9 w-full rounded-lg border-2 transition-transform active:scale-95 disabled:opacity-40 ${
+                  active ? "border-ink" : "border-transparent"
+                }`}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <div className="eyebrow mb-1.5 text-ink-3">Symbol</div>
+        <div className="grid grid-cols-5 gap-2">
+          <button
+            type="button"
+            aria-label="Use initials"
+            aria-pressed={me.avatarGlyph === null}
+            disabled={busy}
+            onClick={() => saveGlyph(null)}
+            className={`stamp flex h-10 items-center justify-center rounded-lg border-2 bg-deck-2/40 text-sm text-ink-2 disabled:opacity-40 ${
+              me.avatarGlyph === null ? "border-ink" : "border-line"
+            }`}
+          >
+            Aa
+          </button>
+          {AVATAR_GLYPHS.map((g) => {
+            const active = me.avatarGlyph === g;
+            return (
+              <button
+                key={g}
+                type="button"
+                aria-label={`Symbol ${g}`}
+                aria-pressed={active}
+                disabled={busy}
+                onClick={() => saveGlyph(g)}
+                className={`flex h-10 items-center justify-center rounded-lg border-2 bg-deck-2/40 text-ink-2 disabled:opacity-40 ${
+                  active ? "border-ink text-ink" : "border-line"
+                }`}
+              >
+                <Glyph name={g} className="h-5 w-5" />
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getStore, normalizeName } from "@/lib/db";
 import { currentAthlete, signIn, signOut } from "@/lib/session";
 import { readState } from "@/lib/state";
+import { isAvatarColor, isAvatarGlyph } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,16 +35,55 @@ export async function PATCH(req: Request) {
   const me = await currentAthlete();
   if (!me) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { resetHour?: unknown };
-  const hour = Number(body.resetHour);
-  if (!Number.isInteger(hour) || hour < 0 || hour > 11) {
-    return NextResponse.json(
-      { error: "Pick an hour between midnight and 11 AM." },
-      { status: 400 },
-    );
+  const body = (await req.json().catch(() => ({}))) as {
+    resetHour?: unknown;
+    avatarColor?: unknown;
+    avatarGlyph?: unknown;
+  };
+  const store = getStore();
+
+  // Avatar and resetHour come through the same endpoint so the settings sheet
+  // can dispatch either without a second route. Each field is optional; whichever
+  // was sent gets applied, and unknown/null values fall back to the default hash.
+  const hasAvatar =
+    Object.prototype.hasOwnProperty.call(body, "avatarColor") ||
+    Object.prototype.hasOwnProperty.call(body, "avatarGlyph");
+
+  if (hasAvatar) {
+    // Each field is optional and falls back to the athlete's current value —
+    // callers can send just a colour change or just a glyph change. `null`
+    // explicitly clears the pick and reverts to the default hash / initials.
+    const color = Object.prototype.hasOwnProperty.call(body, "avatarColor")
+      ? body.avatarColor === null
+        ? null
+        : isAvatarColor(body.avatarColor)
+          ? body.avatarColor
+          : "invalid"
+      : me.avatarColor;
+    const glyph = Object.prototype.hasOwnProperty.call(body, "avatarGlyph")
+      ? body.avatarGlyph === null
+        ? null
+        : isAvatarGlyph(body.avatarGlyph)
+          ? body.avatarGlyph
+          : "invalid"
+      : me.avatarGlyph;
+    if (color === "invalid" || glyph === "invalid") {
+      return NextResponse.json({ error: "Pick a valid colour and symbol." }, { status: 400 });
+    }
+    await store.setAvatar(me.id, color, glyph);
   }
 
-  await getStore().setResetHour(me.id, hour);
+  if (Object.prototype.hasOwnProperty.call(body, "resetHour")) {
+    const hour = Number(body.resetHour);
+    if (!Number.isInteger(hour) || hour < 0 || hour > 11) {
+      return NextResponse.json(
+        { error: "Pick an hour between midnight and 11 AM." },
+        { status: 400 },
+      );
+    }
+    await store.setResetHour(me.id, hour);
+  }
+
   return NextResponse.json(await readState());
 }
 
