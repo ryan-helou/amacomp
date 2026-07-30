@@ -6,13 +6,24 @@ import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { monthlyChampions, weekWinsBoard } from "@/lib/achievements";
+import { hallOfFame } from "@/lib/records";
 import { teamTotals } from "@/lib/stats";
 import { AthleteSheet } from "./AthleteSheet";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
+import { SportMark } from "./SportMark";
 
 export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const [selected, setSelected] = useState<string | null>(null);
+
+  const athleteById = useMemo(
+    () => new Map(state.athletes.map((a) => [a.id, a])),
+    [state.athletes],
+  );
+  const records = useMemo(
+    () => hallOfFame(state.activities, state.settings),
+    [state.activities, state.settings],
+  );
 
   const wins = useMemo(
     () => weekWinsBoard(state.athletes, state.activities, state.settings, refDay),
@@ -31,6 +42,67 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
 
   return (
     <div className="space-y-8">
+      <section>
+        <div className="flex items-center gap-2">
+          <span className="text-gold" aria-hidden>
+            <Glyph name="medal" className="h-5 w-5" />
+          </span>
+          <h2 className="stamp text-xl text-gold">HALL OF FAME</h2>
+        </div>
+        <p className="mt-1 text-[0.8125rem] text-ink-2">
+          All-time records. Beat one and your name goes up.
+        </p>
+        <ul className="mt-3 space-y-2">
+          {records.map((r) => {
+            const holder = r.holderId ? athleteById.get(r.holderId) : null;
+            const shown = r.unit === "km" ? fmtKm(r.value) : fmtPoints(r.value);
+            const body = (
+              <>
+                <span className="shrink-0 text-gold">
+                  {r.sport ? (
+                    <SportMark sport={r.sport} className="h-6 w-6" />
+                  ) : r.glyph ? (
+                    <Glyph name={r.glyph} className="h-6 w-6" />
+                  ) : null}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="eyebrow text-ink-2">{r.label}</div>
+                  {holder ? (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <Avatar athlete={holder} className="h-5 w-5 text-[0.5rem]" />
+                      <span className="truncate text-[0.8125rem] font-semibold text-ink">
+                        {holder.name}
+                      </span>
+                      <span className="shrink-0 font-mono text-[0.625rem] text-ink-3">
+                        {r.detail}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-[0.8125rem] text-ink-3">Unclaimed — go get it.</div>
+                  )}
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="stamp text-xl text-gold">{holder ? shown : "—"}</div>
+                  <div className="eyebrow text-ink-3">{r.unit}</div>
+                </div>
+              </>
+            );
+            const cls =
+              "flex w-full items-center gap-3 rounded-xl border-2 border-gold/40 bg-gold/5 px-4 py-3 text-left";
+            return (
+              <li key={r.key}>
+                {holder ? (
+                  <button onClick={() => setSelected(holder.id)} className={cls}>
+                    {body}
+                  </button>
+                ) : (
+                  <div className={cls}>{body}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
       <section>
         <h2 className="eyebrow text-ink-2">Together so far</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
