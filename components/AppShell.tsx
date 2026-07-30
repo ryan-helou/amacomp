@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { parseDayKey, todayWithReset, weekStart, type DayKey } from "@/lib/dates";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { addDays, parseDayKey, todayWithReset, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
+import { seasonChampions, seasonFor } from "@/lib/season";
 import type { AppState } from "@/lib/types";
 import { useLeague } from "./useLeague";
 import { LoginScreen } from "./LoginScreen";
@@ -14,6 +15,7 @@ import { TitlesTab } from "./TitlesTab";
 import { ScoringSheet } from "./ScoringSheet";
 import { Confetti } from "./Confetti";
 import { PullToRefresh } from "./PullToRefresh";
+import { Glyph } from "./Glyph";
 
 type Tab = "log" | "week" | "board" | "titles" | "feed";
 
@@ -130,6 +132,69 @@ export function AppShell({
     setFireKey((k) => k + 1);
   }, [state.me, myWeekPoints, state.settings.weeklyGoal, refDay]);
 
+  // Seasons — a kickoff banner for the first week a season is live, and a
+  // one-time "season champion" celebration once a season has finished.
+  const curSeason = seasonFor(refDay, state.settings.seasonStart);
+  const seasonLiveDay = curSeason
+    ? curSeason.number === 1
+      ? state.settings.seasonStart // Season 1 goes live at the configured kickoff
+      : curSeason.start
+    : null;
+  const inKickoffWeek =
+    !!curSeason && !!seasonLiveDay && refDay >= seasonLiveDay && refDay <= addDays(seasonLiveDay, 6);
+
+  const seasons = useMemo(
+    () =>
+      seasonChampions(
+        state.athletes,
+        state.activities,
+        state.settings,
+        refDay,
+        state.settings.seasonStart,
+      ),
+    [state.athletes, state.activities, state.settings, refDay],
+  );
+  const crownedRef = useRef(false);
+  const [crownMsg, setCrownMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (crownedRef.current || !state.me) return;
+    // The most recently finished season that actually crowned someone.
+    const ended = seasons.find((s) => s.status === "past" && s.champion);
+    if (!ended?.champion) return;
+    const key = `amacomp-crowned-${ended.season.number}`;
+    let already: boolean;
+    try {
+      already = localStorage.getItem(key) !== null;
+    } catch {
+      return;
+    }
+    // Claim it synchronously so React's dev double-invoke can't re-run past here.
+    crownedRef.current = true;
+    if (already) return;
+    try {
+      localStorage.setItem(key, "1");
+    } catch {
+      /* private mode — the ref still dedupes this session */
+    }
+    const champ = ended.champion;
+    const iWon = champ.athlete.id === state.me.id;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot per season, gated by ref + localStorage
+    setCrownMsg(
+      iWon
+        ? `You won ${ended.season.label} — ${fmtPoints(champ.points)} pts. Champion.`
+        : `${ended.season.label} champion: ${champ.athlete.name} — ${fmtPoints(champ.points)} pts.`,
+    );
+    setFireKey((k) => k + 1);
+  }, [seasons, state.me]);
+
+  // Auto-dismiss the crown banner from its own effect, so the timer can't race
+  // the one-shot celebration effect's dev double-invoke.
+  useEffect(() => {
+    if (!crownMsg) return;
+    const timer = setTimeout(() => setCrownMsg(null), 6500);
+    return () => clearTimeout(timer);
+  }, [crownMsg]);
+
   if (!state.me) {
     return (
       <LoginScreen
@@ -185,14 +250,21 @@ export function AppShell({
         </div>
       </header>
 
-      {refDay < state.settings.seasonStart && (
+      {refDay < state.settings.seasonStart ? (
         <div className="border-b-2 border-gold/40 bg-gold/10 px-5 py-2.5 text-center">
           <p className="eyebrow text-gold">Warm-up mode</p>
           <p className="mt-0.5 text-xs text-ink-2">
             Log freely — every board resets when the season kicks off {formatKickoff(state.settings.seasonStart)}.
           </p>
         </div>
-      )}
+      ) : inKickoffWeek && curSeason ? (
+        <div className="border-b-2 border-accent/30 bg-accent/5 px-5 py-2.5 text-center">
+          <p className="eyebrow accent-text">{curSeason.label} is live</p>
+          <p className="mt-0.5 text-xs text-ink-2">
+            {curSeason.monthsLabel} · fresh board, two months to prove it.
+          </p>
+        </div>
+      ) : null}
 
       <main className="flex-1 px-5 pb-28 pt-5">
         {tab === "log" && <LogTab league={league} refDay={refDay} />}
@@ -240,6 +312,17 @@ export function AppShell({
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 mx-auto w-full max-w-md px-5">
           <div className="rounded-xl border-2 border-ink bg-deck px-4 py-3 text-sm font-medium text-ink shadow-lg">
             {stravaMsg}
+          </div>
+        </div>
+      )}
+
+      {crownMsg && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 mx-auto w-full max-w-md px-5">
+          <div className="flex items-center gap-2 rounded-xl border-2 border-gold bg-deck px-4 py-3 text-sm font-medium text-ink shadow-lg">
+            <span className="text-gold">
+              <Glyph name="trophy" className="h-5 w-5" />
+            </span>
+            {crownMsg}
           </div>
         </div>
       )}
