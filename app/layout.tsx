@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Public_Sans, JetBrains_Mono } from "next/font/google";
+import { Archivo, Public_Sans, JetBrains_Mono, Chakra_Petch } from "next/font/google";
 import "./globals.css";
 import { ServiceWorker } from "@/components/ServiceWorker";
 
@@ -7,6 +7,13 @@ const display = Archivo({
   variable: "--font-archivo",
   subsets: ["latin"],
   axes: ["wdth"],
+});
+
+// A techy, angular scoreboard face — used for the big hero stat (the weekly ring).
+const stat = Chakra_Petch({
+  variable: "--font-chakra",
+  subsets: ["latin"],
+  weight: ["600", "700"],
 });
 
 const body = Public_Sans({
@@ -59,7 +66,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
+      className={`${display.variable} ${body.variable} ${mono.variable} ${stat.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         {children}

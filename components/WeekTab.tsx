@@ -89,7 +89,7 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
         </div>
 
         <div className="mt-5">
-          <PaceClock points={mine?.points ?? 0} goal={goal} size={216} />
+          <PaceClock bySport={mine?.bySport} goal={goal} size={216} />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
