@@ -204,6 +204,12 @@ function Lane({
             <span>
               {row.sessions} session{row.sessions === 1 ? "" : "s"}
             </span>
+            {/* Auto-imported sessions are the ones nobody had to be trusted on.
+                Only shown when there are some — silence isn't an accusation for
+                athletes who simply never linked Strava. */}
+            {row.stravaSessions > 0 && (
+              <span className="text-ink-3">{row.stravaSessions} via Strava</span>
+            )}
             {SPORT_ORDER.filter((s) => row.kmBySport[s] > 0).map((s) => (
               <span key={s} className={SPORT_UI[s].text}>
                 {SPORT_UI[s].label[0]}

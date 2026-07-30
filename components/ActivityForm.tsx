@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { SPORT_ORDER, fmtPoints, pointsFor } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { today, type DayKey } from "@/lib/dates";
-import { MAX_NOTE } from "@/lib/validate";
+import { BIG_SESSION_KM, MAX_NOTE } from "@/lib/validate";
 import { SPORT_UNIT, UNIT_LABEL, rateLabel, type Settings, type Sport } from "@/lib/types";
 import { SportMark } from "./SportMark";
 
@@ -16,6 +17,12 @@ export interface ActivityDraft {
 
 export function emptyDraft(ref: DayKey = today()): ActivityDraft {
   return { sport: "run", km: "", occurredOn: ref, note: "" };
+}
+
+/** Trim float noise off a typed distance for the confirm copy. */
+function fmtKmish(n: number): string {
+  const rounded = Math.round(n * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
 }
 
 export function ActivityForm({
@@ -46,6 +53,25 @@ export function ActivityForm({
   const valid = isFlat || (Number.isFinite(km) && km > 0);
   const points = valid ? pointsFor(km, draft.sport, settings) : 0;
 
+  // A distance well past what one session plausibly holds is far more often a
+  // typo (100 typed as 1000) than a real ride. One extra tap to confirm — the
+  // log still goes through exactly as entered if that's what they meant.
+  const isBig = valid && km > BIG_SESSION_KM[draft.sport];
+  // The confirm is pinned to the exact entry it was raised for, so editing the
+  // distance retracts it on its own — a corrected number can never ride through
+  // on a tap that was meant for the old one.
+  const bigKey = `${draft.sport}|${km}`;
+  const [confirmedKey, setConfirmedKey] = useState<string | null>(null);
+  const confirmingBig = isBig && confirmedKey === bigKey;
+
+  function submit() {
+    if (isBig && !confirmingBig) {
+      setConfirmedKey(bigKey);
+      return;
+    }
+    onSubmit();
+  }
+
   // Switching disciplines normalizes the amount: gym carries a fixed "1", and
   // leaving gym clears that sentinel so the next distance is typed fresh.
   function selectSport(sport: Sport) {
@@ -58,7 +84,7 @@ export function ActivityForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit();
+        submit();
       }}
       className="space-y-5"
     >
@@ -172,6 +198,20 @@ export function ActivityForm({
         </p>
       )}
 
+      {confirmingBig && (
+        <div
+          role="status"
+          className="rounded-xl border-2 border-gold/50 bg-gold/10 px-4 py-3"
+        >
+          <p className="eyebrow text-gold">That&apos;s a big one</p>
+          <p className="mt-1 text-[0.8125rem] text-ink-2">
+            {fmtKmish(km)} {UNIT_LABEL[unit]} of {SPORT_UI[draft.sport].label.toLowerCase()} in one
+            session, worth {fmtPoints(points)} pts. Tap {submitLabel.toLowerCase()} again if
+            that&apos;s right.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-2">
         {onCancel && (
           <button
@@ -185,9 +225,11 @@ export function ActivityForm({
         <button
           type="submit"
           disabled={busy || !valid}
-          className="accent-fill eyebrow flex-1 rounded-xl px-4 py-3.5 shadow-sm transition-opacity disabled:opacity-40"
+          className={`eyebrow flex-1 rounded-xl px-4 py-3.5 shadow-sm transition-opacity disabled:opacity-40 ${
+            confirmingBig ? "bg-gold text-white" : "accent-fill"
+          }`}
         >
-          {busy ? "Saving…" : submitLabel}
+          {busy ? "Saving…" : confirmingBig ? `Yes — ${submitLabel}` : submitLabel}
         </button>
       </div>
     </form>

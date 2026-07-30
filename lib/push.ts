@@ -74,23 +74,32 @@ export async function sendToAthletes(
 }
 
 /**
- * When `actor` logs a session this week, notify anyone they leapfrogged on the
+ * When `actor` logs sessions this week, notify anyone they leapfrogged on the
  * weekly board — the drama that pulls people back in. Compares the standings
- * with and without the new activity.
+ * with and without the new activities.
+ *
+ * Takes a batch because a Strava poll can import several rides at once: one
+ * before/after comparison across the whole batch means the person who got
+ * passed hears about it once, not once per ride.
  */
 export async function notifyOvertakes(
   actorId: string,
   athletes: Athlete[],
   allActivities: Activity[],
-  newActivityId: string,
+  newActivityIds: string[],
   settings: Settings,
 ): Promise<void> {
   if (!ensureConfigured()) return;
+  if (newActivityIds.length === 0) return;
   const range = periodRange("week", today());
-  const fresh = allActivities.find((a) => a.id === newActivityId);
-  if (!fresh || fresh.occurredOn < range[0] || fresh.occurredOn > range[1]) return;
+  const fresh = new Set(newActivityIds);
+  // Only an activity inside the current week can move the weekly board.
+  const movesThisWeek = allActivities.some(
+    (a) => fresh.has(a.id) && a.occurredOn >= range[0] && a.occurredOn <= range[1],
+  );
+  if (!movesThisWeek) return;
 
-  const before = allActivities.filter((a) => a.id !== newActivityId);
+  const before = allActivities.filter((a) => !fresh.has(a.id));
   const aRank = new Map(
     standingsForRange(athletes, allActivities, settings, range).map((s) => [s.athlete.id, s.rank]),
   );

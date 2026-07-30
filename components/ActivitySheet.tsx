@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { activityPoints, fmtKm, fmtPoints } from "@/lib/scoring";
+import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
+import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { SPORT_UI } from "@/lib/ui";
 import {
   MAX_COMMENT,
@@ -56,6 +57,8 @@ export function ActivitySheet({
   const comments = commentsFor(activity.id, state.comments);
   const ui = SPORT_UI[activity.sport];
   const isFlat = SPORT_UNIT[activity.sport] === "flat";
+  const unscored = useMemo(() => unscoredGymIds(state.activities), [state.activities]);
+  const isUnscored = unscored.has(activity.id);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
