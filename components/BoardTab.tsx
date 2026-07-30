@@ -5,11 +5,11 @@ import {
   SPORT_ORDER,
   fmtKm,
   fmtPoints,
-  standingsFor,
+  standingsForRange,
   type Standing,
 } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { PERIODS, formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
+import { formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
 import { SPORT_UNIT, rateLabel, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { firstSeason, seasonFor } from "@/lib/season";
@@ -19,6 +19,17 @@ import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
 
 type SportFilter = Sport | "all";
+type BoardPeriod = Period | "season";
+
+// Season sits between Month and the all-time view; "All" is shortened so five
+// tabs fit the row.
+const PERIOD_TABS: { id: BoardPeriod; label: string }[] = [
+  { id: "today", label: "Today" },
+  { id: "week", label: "Week" },
+  { id: "month", label: "Month" },
+  { id: "season", label: "Season" },
+  { id: "all", label: "All" },
+];
 
 interface SportRow {
   athlete: Athlete;
@@ -35,13 +46,23 @@ interface SportRow {
  * for the gym — instead of points.
  */
 export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
-  const [period, setPeriod] = useState<Period>("week");
+  const [period, setPeriod] = useState<BoardPeriod>("week");
   const [sport, setSport] = useState<SportFilter>("all");
   const [selected, setSelected] = useState<string | null>(null);
 
+  const liveSeason = seasonFor(refDay, state.settings.seasonStart);
+  const season = liveSeason ?? firstSeason(state.settings.seasonStart);
+
+  // One date window drives everything, so the Season tab reuses the same
+  // range-based standings as the calendar periods.
+  const range = useMemo<[DayKey, DayKey]>(
+    () => (period === "season" ? [season.start, season.end] : periodRange(period, refDay)),
+    [period, refDay, season.start, season.end],
+  );
+
   const standings = useMemo(
-    () => standingsFor(state.athletes, state.activities, state.settings, period, refDay),
-    [state.athletes, state.activities, state.settings, period, refDay],
+    () => standingsForRange(state.athletes, state.activities, state.settings, range),
+    [state.athletes, state.activities, state.settings, range],
   );
 
   // Single-sport ranking by raw volume, computed straight from the activities so
@@ -49,7 +70,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
   // the flat gym discipline.
   const sportRanked = useMemo<SportRow[] | null>(() => {
     if (sport === "all") return null;
-    const [from, to] = periodRange(period, refDay);
+    const [from, to] = range;
     const agg = new Map<string, { athlete: Athlete; value: number; sessions: number }>();
     for (const a of state.athletes) agg.set(a.id, { athlete: a, value: 0, sessions: 0 });
     for (const act of state.activities) {
@@ -73,7 +94,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
       }
       return { ...r, rank };
     });
-  }, [sport, period, refDay, state.athletes, state.activities]);
+  }, [sport, range, state.athletes, state.activities]);
 
   const titles = useMemo(
     () => championshipsByAthlete(state.athletes, state.activities, state.settings, refDay),
@@ -84,10 +105,6 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
     [state.athletes, state.activities, state.settings, refDay],
   );
 
-  const liveSeason = seasonFor(refDay, state.settings.seasonStart);
-  const season = liveSeason ?? firstSeason(state.settings.seasonStart);
-
-  const range = periodRange(period, refDay);
   const top = standings[0]?.points ?? 0;
   const anyPoints = standings.some((s) => s.points > 0);
   const sportTop = sportRanked?.[0]?.value ?? 0;
@@ -108,7 +125,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           aria-label="Leaderboard period"
           className="flex gap-1 rounded-xl border-2 border-line bg-tile p-1"
         >
-          {PERIODS.map((p) => (
+          {PERIOD_TABS.map((p) => (
             <button
               key={p.id}
               role="tab"
