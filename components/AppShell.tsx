@@ -145,7 +145,7 @@ export function AppShell({
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
-      <header className="sticky top-0 z-30 border-b-2 border-ink bg-deck/95 px-5 pb-3 pt-4 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b-2 border-ink bg-deck px-5 pb-3 pt-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="stamp text-2xl leading-none text-ink">AMACOMP</h1>
@@ -202,9 +202,12 @@ export function AppShell({
         {tab === "feed" && <FeedTab league={league} refDay={refDay} />}
       </main>
 
+      {/* Solid background + its own compositing layer: iOS WebKit mis-repaints a
+          fixed bar that has backdrop-blur during momentum scroll (it detaches
+          mid-screen); translateZ(0) keeps it pinned. */}
       <nav
         aria-label="Sections"
-        className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md border-t-2 border-ink bg-deck/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md border-t-2 border-ink bg-deck px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 [transform:translateZ(0)]"
       >
         <div className="flex">
           {TABS.map((t) => {
