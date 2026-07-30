@@ -205,32 +205,33 @@ export function toImport(
   return { input: { athleteId, sport, km, occurredOn: day, note }, stravaId: a.id };
 }
 
-/** Import a batch for one athlete. Returns how many were newly logged. */
+/** Import a batch for one athlete. Returns the ids of the activities newly logged. */
 export async function importActivities(
   store: Store,
   athleteId: string,
   acts: StravaActivity[],
-): Promise<number> {
-  let n = 0;
+): Promise<string[]> {
+  const created: string[] = [];
   for (const a of acts) {
     const mapped = toImport(athleteId, a);
     if (!mapped) continue;
-    const created = await store.importStravaActivity(mapped.input, mapped.stravaId);
-    if (created) n += 1;
+    const row = await store.importStravaActivity(mapped.input, mapped.stravaId);
+    if (row) created.push(row.id);
   }
-  return n;
+  return created;
 }
 
-/** Pull one athlete's recent activities and import the new ones. */
+/** Pull one athlete's recent activities and import the new ones. Returns the
+ *  new activity ids so the caller can fire overtake notifications. */
 export async function syncAthlete(
   store: Store,
   conn: StravaConn,
   sinceDays = 3,
-): Promise<number> {
+): Promise<string[]> {
   const token = await validAccessToken(store, conn);
   const after = Math.floor(Date.now() / 1000) - sinceDays * 86400;
   const acts = await fetchRecentActivities(token, after, 40);
-  const n = await importActivities(store, conn.athleteId, acts);
+  const created = await importActivities(store, conn.athleteId, acts);
   await store.touchStravaSync(conn.athleteId);
-  return n;
+  return created;
 }

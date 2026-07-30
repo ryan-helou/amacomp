@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     me.id,
     state.athletes,
     state.activities,
-    created.id,
+    [created.id],
     state.settings,
   ).catch(() => {});
 

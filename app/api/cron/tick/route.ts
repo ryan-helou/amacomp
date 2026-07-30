@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
 import { readState } from "@/lib/state";
-import { pushEnabled, sendToAthlete } from "@/lib/push";
+import { notifyOvertakes, pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, fmtPoints } from "@/lib/scoring";
 import { addDays, today, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
@@ -35,13 +35,32 @@ export async function GET(req: Request) {
     }
     const conns = await store.listStravaConns();
     let athletes = 0;
-    let imported = 0;
+    const importedBy = new Map<string, string[]>();
     for (const conn of conns) {
       try {
-        imported += await syncAthlete(store, conn, 3);
+        const created = await syncAthlete(store, conn, 3);
+        if (created.length) importedBy.set(conn.athleteId, created);
         athletes += 1;
       } catch {
         // One dead connection (revoked, rate-limited) shouldn't stop the rest.
+      }
+    }
+
+    // Most sessions arrive here rather than through the log form, so this is
+    // where the "you just got passed" nudge actually earns its keep. Read state
+    // once, after every athlete has synced, so the standings reflect the full tick.
+    let imported = 0;
+    if (importedBy.size > 0) {
+      const state = await readState();
+      for (const [athleteId, ids] of importedBy) {
+        imported += ids.length;
+        await notifyOvertakes(
+          athleteId,
+          state.athletes,
+          state.activities,
+          ids,
+          state.settings,
+        ).catch(() => {});
       }
     }
     return NextResponse.json({ ok: true, athletes, imported });
