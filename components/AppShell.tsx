@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { todayWithReset, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
 import type { AppState } from "@/lib/types";
@@ -13,6 +13,7 @@ import { FeedTab } from "./FeedTab";
 import { TitlesTab } from "./TitlesTab";
 import { ScoringSheet } from "./ScoringSheet";
 import { Confetti } from "./Confetti";
+import { PullToRefresh } from "./PullToRefresh";
 
 type Tab = "log" | "week" | "board" | "titles" | "feed";
 
@@ -56,6 +57,13 @@ export function AppShell({
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [send, resetHour]);
+
+  // Pull-to-refresh + resume both do the same thing: re-read the calendar day
+  // and refetch the whole board.
+  const refresh = useCallback(async () => {
+    setRefDay(todayWithReset(resetHour));
+    await send("/api/session");
   }, [send, resetHour]);
 
   // Week standing for the signed-in athlete — drives the header total and the
@@ -121,6 +129,7 @@ export function AppShell({
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
+      <PullToRefresh onRefresh={refresh} />
       <header className="sticky top-0 z-30 border-b-2 border-ink bg-deck/95 px-5 pb-3 pt-4 backdrop-blur">
         <div className="flex items-center justify-between">
           <div>
