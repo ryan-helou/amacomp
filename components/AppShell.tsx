@@ -13,6 +13,7 @@ import { BoardTab } from "./BoardTab";
 import { FeedTab } from "./FeedTab";
 import { TitlesTab } from "./TitlesTab";
 import { ScoringSheet } from "./ScoringSheet";
+import { HouseRulesSheet } from "./HouseRulesSheet";
 import { Confetti } from "./Confetti";
 import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
@@ -54,6 +55,7 @@ export function AppShell({
   const { state, busy, send } = league;
   const [tab, setTab] = useState<Tab>("week");
   const [scoringOpen, setScoringOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   // Start from the server's day so the first client render matches the markup,
   // then hand over to the device's own calendar. A home-screen app is usually
@@ -219,10 +221,25 @@ export function AppShell({
       <header className="sticky top-0 z-30 border-b-2 border-ink bg-deck px-5 pb-3 pt-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="stamp text-2xl leading-none text-ink">AMACOMP</h1>
+            <button
+              type="button"
+              onClick={() => setRulesOpen(true)}
+              aria-label="House rules"
+              className="block text-left"
+            >
+              <h1 className="stamp text-2xl leading-none text-ink">AMACOMP</h1>
+            </button>
             <p className="eyebrow mt-1 text-ink-3">
               <AthleteName id={state.me.id} name={state.me.name} />
               {state.isAdmin && " · admin"}
+              <button
+                type="button"
+                onClick={() => setRulesOpen(true)}
+                aria-label="House rules"
+                className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded-full border border-ink-3 align-middle text-[0.5625rem] font-bold leading-none text-ink-3"
+              >
+                ?
+              </button>
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -331,6 +348,10 @@ export function AppShell({
             {crownMsg}
           </div>
         </div>
+      )}
+
+      {rulesOpen && (
+        <HouseRulesSheet settings={state.settings} onClose={() => setRulesOpen(false)} />
       )}
 
       {scoringOpen && (
