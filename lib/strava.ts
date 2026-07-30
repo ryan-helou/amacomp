@@ -51,6 +51,8 @@ export interface TokenExchange {
   accessToken: string;
   refreshToken: string;
   expiresAt: number; // unix seconds
+  /** The athlete's Strava profile photo, or null if they use Strava's default. */
+  photoUrl: string | null;
 }
 
 export async function exchangeCode(code: string): Promise<TokenExchange> {
@@ -66,11 +68,16 @@ export async function exchangeCode(code: string): Promise<TokenExchange> {
   });
   if (!res.ok) throw new Error(`Strava token exchange failed: ${res.status}`);
   const j = await res.json();
+  // Strava serves a generic silhouette URL when the athlete has no photo — treat
+  // that as "no photo" so they fall back to coloured initials, not a stock avatar.
+  const profile = typeof j.athlete?.profile === "string" ? j.athlete.profile : null;
+  const photoUrl = profile && !/avatar\/athlete\//.test(profile) ? profile : null;
   return {
     stravaAthleteId: Number(j.athlete?.id),
     accessToken: j.access_token,
     refreshToken: j.refresh_token,
     expiresAt: Number(j.expires_at),
+    photoUrl,
   };
 }
 
