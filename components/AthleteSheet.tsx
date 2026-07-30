@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { SPORT_ORDER, fmtKm, fmtPoints, standingsFor } from "@/lib/scoring";
+import {
+  SPORT_ORDER,
+  activityPoints,
+  fmtKm,
+  fmtPoints,
+  standingsFor,
+  standingsForRange,
+  unscoredGymIds,
+} from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
 import {
@@ -10,7 +18,8 @@ import {
   streakFor,
 } from "@/lib/achievements";
 import { weeklyTrend } from "@/lib/stats";
-import type { DayKey } from "@/lib/dates";
+import { firstSeason, seasonFor } from "@/lib/season";
+import { formatDay, weekStart, type DayKey } from "@/lib/dates";
 import { Glyph, type GlyphName } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { TrendChart } from "./TrendChart";
@@ -30,21 +39,73 @@ export function AthleteSheet({
 
   const data = useMemo(() => {
     if (!athlete) return null;
-    const badges = badgesFor(athleteId, state.activities, state.settings, refDay);
-    const streak = streakFor(athleteId, state.activities, state.settings, refDay);
+    const { athletes, activities, settings } = state;
+    const badges = badgesFor(athleteId, activities, settings, refDay);
+    const streak = streakFor(athleteId, activities, settings, refDay);
     const titles =
-      championshipsByAthlete(state.athletes, state.activities, state.settings, refDay).get(
-        athleteId,
-      ) ?? 0;
-    const allTime = standingsFor(
-      state.athletes,
-      state.activities,
-      state.settings,
-      "all",
-      refDay,
-    ).find((s) => s.athlete.id === athleteId);
-    const trend = weeklyTrend(athleteId, state.activities, state.settings, refDay, 8);
-    return { badges, streak, titles, allTime, trend };
+      championshipsByAthlete(athletes, activities, settings, refDay).get(athleteId) ?? 0;
+
+    const rowIn = (period: "week" | "month" | "all") =>
+      standingsFor(athletes, activities, settings, period, refDay).find(
+        (s) => s.athlete.id === athleteId,
+      );
+    const week = rowIn("week");
+    const month = rowIn("month");
+    const allTime = rowIn("all");
+
+    const season = seasonFor(refDay, settings.seasonStart) ?? firstSeason(settings.seasonStart);
+    const seasonRow = standingsForRange(athletes, activities, settings, [
+      season.start,
+      season.end,
+    ]).find((s) => s.athlete.id === athleteId);
+
+    const trend = weeklyTrend(athleteId, activities, settings, refDay, 8);
+
+    // Personal bests + lifetime totals from this athlete's own log.
+    const unscored = unscoredGymIds(activities);
+    const mine = activities.filter((a) => a.athleteId === athleteId);
+    let longestRun = 0,
+      longestRide = 0,
+      longestSwim = 0,
+      biggestSession = 0;
+    const dayPts = new Map<string, number>();
+    const weekPts = new Map<string, number>();
+    const daySet = new Set<string>();
+    let firstDay: string | null = null;
+    for (const a of mine) {
+      const p = activityPoints(a, settings, unscored);
+      if (a.sport === "run") longestRun = Math.max(longestRun, a.km);
+      else if (a.sport === "bike") longestRide = Math.max(longestRide, a.km);
+      else if (a.sport === "swim") longestSwim = Math.max(longestSwim, a.km);
+      if (p > biggestSession) biggestSession = p;
+      dayPts.set(a.occurredOn, (dayPts.get(a.occurredOn) ?? 0) + p);
+      const wk = weekStart(a.occurredOn as DayKey);
+      weekPts.set(wk, (weekPts.get(wk) ?? 0) + p);
+      daySet.add(a.occurredOn);
+      if (!firstDay || a.occurredOn < firstDay) firstDay = a.occurredOn;
+    }
+    const biggestDay = dayPts.size ? Math.max(...dayPts.values()) : 0;
+    const biggestWeek = weekPts.size ? Math.max(...weekPts.values()) : 0;
+
+    return {
+      badges,
+      streak,
+      titles,
+      week,
+      month,
+      allTime,
+      season,
+      seasonRow,
+      trend,
+      longestRun,
+      longestRide,
+      longestSwim,
+      biggestSession,
+      biggestDay,
+      biggestWeek,
+      activeDays: daySet.size,
+      firstDay,
+    };
   }, [athlete, athleteId, state, refDay]);
 
   const [zoom, setZoom] = useState(false);
@@ -102,10 +163,29 @@ export function AthleteSheet({
           </button>
         </div>
 
-        {/* All-time totals by discipline */}
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <Stat label="All-time points" value={fmtPoints(data.allTime?.points ?? 0)} />
+        {/* Where they rank, across every timeframe */}
+        <div className="mt-5">
+          <h3 className="eyebrow text-ink-2">Standings</h3>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <RankTile label="This week" rank={data.week?.rank} points={data.week?.points ?? 0} />
+            <RankTile
+              label={data.season.monthsLabel}
+              rank={data.seasonRow?.rank}
+              points={data.seasonRow?.points ?? 0}
+            />
+            <RankTile
+              label="All-time"
+              rank={data.allTime?.rank}
+              points={data.allTime?.points ?? 0}
+            />
+          </div>
+        </div>
+
+        {/* Lifetime totals */}
+        <div className="mt-2 grid grid-cols-3 gap-2">
           <Stat label="Sessions" value={String(data.allTime?.sessions ?? 0)} />
+          <Stat label="Total km" value={fmtKm(data.allTime?.km ?? 0)} />
+          <Stat label="Active days" value={String(data.activeDays)} />
         </div>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl border-2 border-line bg-tile px-4 py-3 font-mono text-xs">
           {SPORT_ORDER.map((s) => {
@@ -150,6 +230,28 @@ export function AthleteSheet({
           </div>
         )}
 
+        {/* Personal bests */}
+        {(data.allTime?.sessions ?? 0) > 0 && (
+          <div className="mt-5">
+            <h3 className="eyebrow text-ink-2">Personal bests</h3>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <PB label="Best week" value={fmtPoints(data.biggestWeek)} unit="pts" />
+              <PB label="Best day" value={fmtPoints(data.biggestDay)} unit="pts" />
+              <PB label="Biggest session" value={fmtPoints(data.biggestSession)} unit="pts" />
+              <PB label="Longest streak" value={String(data.streak.best)} unit="wks" />
+              {data.longestRun > 0 && (
+                <PB label="Longest run" value={fmtKm(data.longestRun)} unit="km" sport="run" />
+              )}
+              {data.longestRide > 0 && (
+                <PB label="Longest ride" value={fmtKm(data.longestRide)} unit="km" sport="bike" />
+              )}
+              {data.longestSwim > 0 && (
+                <PB label="Longest swim" value={fmtKm(data.longestSwim)} unit="km" sport="swim" />
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Weekly form */}
         <div className="mt-5">
           <h3 className="eyebrow text-ink-2">Last 8 weeks</h3>
@@ -183,6 +285,12 @@ export function AthleteSheet({
             </div>
           ))}
         </div>
+
+        {data.firstDay && (
+          <p className="mt-4 text-center font-mono text-[0.6875rem] text-ink-3">
+            Logging since {formatDay(data.firstDay as DayKey)}
+          </p>
+        )}
       </div>
 
       {zoom && athlete.avatarUrl && (
@@ -209,6 +317,51 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
       <div className="stamp text-2xl text-ink">{value}</div>
       <div className="eyebrow mt-0.5 text-ink-3">{label}</div>
+    </div>
+  );
+}
+
+function RankTile({
+  label,
+  rank,
+  points,
+}: {
+  label: string;
+  rank?: number;
+  points: number;
+}) {
+  const ranked = points > 0 && rank != null;
+  return (
+    <div className="rounded-xl border-2 border-line bg-tile px-3 py-3">
+      <div className={`stamp text-2xl ${ranked ? "text-ink" : "text-ink-3"}`}>
+        {ranked ? `#${rank}` : "—"}
+      </div>
+      <div className="mt-0.5 font-mono text-[0.625rem] text-ink-2">
+        {ranked ? `${fmtPoints(points)} pts` : "no pts"}
+      </div>
+      <div className="eyebrow mt-1 text-ink-3">{label}</div>
+    </div>
+  );
+}
+
+function PB({
+  label,
+  value,
+  unit,
+  sport,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  sport?: "run" | "bike" | "swim";
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-xl border-2 border-line bg-tile px-3.5 py-2.5">
+      <span className="eyebrow text-ink-3">{label}</span>
+      <span className="whitespace-nowrap">
+        <span className={`stamp text-lg ${sport ? SPORT_UI[sport].text : "text-ink"}`}>{value}</span>
+        <span className="ml-1 font-mono text-[0.625rem] text-ink-3">{unit}</span>
+      </span>
     </div>
   );
 }
