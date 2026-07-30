@@ -144,7 +144,7 @@ export function AppShell({
         {tab === "week" && <WeekTab state={state} refDay={refDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
         {tab === "titles" && <TitlesTab state={state} refDay={refDay} />}
-        {tab === "feed" && <FeedTab state={state} refDay={refDay} />}
+        {tab === "feed" && <FeedTab league={league} refDay={refDay} />}
       </main>
 
       <nav

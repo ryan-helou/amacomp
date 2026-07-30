@@ -3,6 +3,9 @@ import {
   DEFAULT_SETTINGS,
   type Activity,
   type Athlete,
+  type Comment,
+  type Reaction,
+  type ReactionType,
   type Settings,
   type Sport,
 } from "./types";
@@ -47,6 +50,14 @@ export interface Store {
   deleteActivity(id: string): Promise<boolean>;
   getSettings(): Promise<Settings>;
   setSettings(settings: Settings): Promise<Settings>;
+  // Banter
+  setReaction(activityId: string, athleteId: string, type: ReactionType): Promise<void>;
+  removeReaction(activityId: string, athleteId: string): Promise<void>;
+  listReactions(): Promise<Reaction[]>;
+  addComment(activityId: string, athleteId: string, body: string): Promise<Comment>;
+  getComment(id: string): Promise<Comment | null>;
+  deleteComment(id: string): Promise<void>;
+  listComments(): Promise<Comment[]>;
   // Push
   savePushSub(athleteId: string, sub: PushSub): Promise<void>;
   deletePushSub(endpoint: string): Promise<void>;
@@ -123,6 +134,22 @@ function toAthlete(r: { id: string; name: string; reset_hour?: number }): Athlet
   return { id: r.id, name: r.name, resetHour: Number(r.reset_hour ?? 0) };
 }
 
+function toComment(r: {
+  id: string;
+  activity_id: string;
+  athlete_id: string;
+  body: string;
+  created_at: string;
+}): Comment {
+  return {
+    id: r.id,
+    activityId: r.activity_id,
+    athleteId: r.athlete_id,
+    body: r.body,
+    createdAt: r.created_at,
+  };
+}
+
 class PgStore implements Store {
   private pool: PgPool;
   private ready: Promise<void> | null = null;
@@ -181,6 +208,25 @@ class PgStore implements Store {
           )`);
         await this.pool.query(
           `CREATE INDEX IF NOT EXISTS push_subs_athlete_idx ON push_subs (athlete_id)`,
+        );
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS reactions (
+            activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+            athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            type TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            PRIMARY KEY (activity_id, athlete_id)
+          )`);
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS comments (
+            id TEXT PRIMARY KEY,
+            activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+            athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            body TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
+        await this.pool.query(
+          `CREATE INDEX IF NOT EXISTS comments_activity_idx ON comments (activity_id)`,
         );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS meta (
@@ -308,6 +354,70 @@ class PgStore implements Store {
       [JSON.stringify(settings)],
     );
     return mergeSettings(r.rows[0]?.data);
+  }
+
+  async setReaction(activityId: string, athleteId: string, type: ReactionType): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `INSERT INTO reactions (activity_id, athlete_id, type) VALUES ($1, $2, $3)
+       ON CONFLICT (activity_id, athlete_id) DO UPDATE SET type = EXCLUDED.type`,
+      [activityId, athleteId, type],
+    );
+  }
+
+  async removeReaction(activityId: string, athleteId: string): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      "DELETE FROM reactions WHERE activity_id = $1 AND athlete_id = $2",
+      [activityId, athleteId],
+    );
+  }
+
+  async listReactions(): Promise<Reaction[]> {
+    await this.init();
+    const r = await this.pool.query("SELECT activity_id, athlete_id, type FROM reactions");
+    return r.rows.map((row) => ({
+      activityId: row.activity_id,
+      athleteId: row.athlete_id,
+      type: row.type as ReactionType,
+    }));
+  }
+
+  async addComment(activityId: string, athleteId: string, body: string): Promise<Comment> {
+    await this.init();
+    const r = await this.pool.query(
+      `INSERT INTO comments (id, activity_id, athlete_id, body) VALUES ($1, $2, $3, $4)
+       RETURNING id, activity_id, athlete_id, body,
+         to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at`,
+      [newId(), activityId, athleteId, body],
+    );
+    return toComment(r.rows[0]);
+  }
+
+  async getComment(id: string): Promise<Comment | null> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT id, activity_id, athlete_id, body,
+         to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
+       FROM comments WHERE id = $1`,
+      [id],
+    );
+    return r.rows[0] ? toComment(r.rows[0]) : null;
+  }
+
+  async deleteComment(id: string): Promise<void> {
+    await this.init();
+    await this.pool.query("DELETE FROM comments WHERE id = $1", [id]);
+  }
+
+  async listComments(): Promise<Comment[]> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT id, activity_id, athlete_id, body,
+         to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
+       FROM comments ORDER BY created_at ASC`,
+    );
+    return r.rows.map(toComment);
   }
 
   async savePushSub(athleteId: string, sub: PushSub): Promise<void> {
@@ -444,8 +554,46 @@ class MemoryStore implements Store {
     return this.settings;
   }
 
+  private reactions: Reaction[] = [];
+  private comments: Comment[] = [];
   private subs = new Map<string, StoredSub>(); // endpoint → sub
   private meta = new Map<string, string>();
+
+  async setReaction(activityId: string, athleteId: string, type: ReactionType) {
+    const found = this.reactions.find(
+      (r) => r.activityId === activityId && r.athleteId === athleteId,
+    );
+    if (found) found.type = type;
+    else this.reactions.push({ activityId, athleteId, type });
+  }
+  async removeReaction(activityId: string, athleteId: string) {
+    this.reactions = this.reactions.filter(
+      (r) => !(r.activityId === activityId && r.athleteId === athleteId),
+    );
+  }
+  async listReactions() {
+    return [...this.reactions];
+  }
+  async addComment(activityId: string, athleteId: string, body: string): Promise<Comment> {
+    const c: Comment = {
+      id: newId(),
+      activityId,
+      athleteId,
+      body,
+      createdAt: new Date().toISOString(),
+    };
+    this.comments.push(c);
+    return c;
+  }
+  async getComment(id: string) {
+    return this.comments.find((c) => c.id === id) ?? null;
+  }
+  async deleteComment(id: string) {
+    this.comments = this.comments.filter((c) => c.id !== id);
+  }
+  async listComments() {
+    return [...this.comments].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
 
   async savePushSub(athleteId: string, sub: PushSub) {
     this.subs.set(sub.endpoint, { athleteId, sub });
