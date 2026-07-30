@@ -39,6 +39,9 @@ export interface Athlete {
   resetHour: number;
 }
 
+/** Where an activity came from — hand-logged or pulled in from Strava. */
+export type ActivitySource = "manual" | "strava";
+
 export interface Activity {
   id: string;
   athleteId: string;
@@ -48,6 +51,7 @@ export interface Activity {
   /** Local calendar date, `YYYY-MM-DD`. Deliberately date-only: no timezone maths. */
   occurredOn: string;
   note: string | null;
+  source: ActivitySource;
   createdAt: string;
 }
 
@@ -98,6 +102,16 @@ export interface Comment {
 
 export const MAX_COMMENT = 280;
 
+/** The signed-in athlete's Strava link, surfaced to the client for the settings card. */
+export interface StravaStatus {
+  /** The server has Strava API credentials — if false, the feature stays hidden. */
+  configured: boolean;
+  /** This athlete has linked their Strava account. */
+  connected: boolean;
+  /** ISO timestamp of the last successful pull, or null if never synced. */
+  lastSyncAtISO: string | null;
+}
+
 export interface AppState {
   me: Athlete | null;
   isAdmin: boolean;
@@ -106,6 +120,7 @@ export interface AppState {
   settings: Settings;
   reactions: Reaction[];
   comments: Comment[];
+  strava: StravaStatus;
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {

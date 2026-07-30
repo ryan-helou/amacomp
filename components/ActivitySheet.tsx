@@ -105,6 +105,14 @@ export function ActivitySheet({
                 <span className="font-mono text-xs text-ink-3">
                   {formatDayRelative(activity.occurredOn, refDay)}
                 </span>
+                {activity.source === "strava" && (
+                  <span
+                    style={{ color: "#FC5200" }}
+                    className="eyebrow text-[0.625rem]"
+                  >
+                    Strava
+                  </span>
+                )}
               </div>
               <div className="text-[0.9375rem] text-ink-2">
                 {isFlat

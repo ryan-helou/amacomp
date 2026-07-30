@@ -2,6 +2,7 @@ import type { Pool as PgPool } from "pg";
 import {
   DEFAULT_SETTINGS,
   type Activity,
+  type ActivitySource,
   type Athlete,
   type Comment,
   type Reaction,
@@ -25,6 +26,33 @@ export interface NewActivity {
 
 export type ActivityPatch = Partial<Omit<NewActivity, "athleteId">>;
 
+/** A linked Strava account. Tokens live server-side only; never sent to the client. */
+export interface StravaConn {
+  athleteId: string;
+  stravaAthleteId: number;
+  accessToken: string;
+  refreshToken: string;
+  /** Unix seconds — when the access token stops working. */
+  expiresAt: number;
+  scope: string | null;
+  lastSyncAtISO: string | null;
+}
+
+export interface StravaTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+}
+
+export interface StravaUpsert {
+  athleteId: string;
+  stravaAthleteId: number;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  scope: string;
+}
+
 /** A browser Web Push subscription (from PushSubscription.toJSON()). */
 export interface PushSub {
   endpoint: string;
@@ -45,11 +73,20 @@ export interface Store {
   setResetHour(athleteId: string, hour: number): Promise<void>;
   listActivities(): Promise<Activity[]>;
   getActivity(id: string): Promise<Activity | null>;
-  createActivity(input: NewActivity): Promise<Activity>;
+  createActivity(input: NewActivity, source?: ActivitySource): Promise<Activity>;
   updateActivity(id: string, patch: ActivityPatch): Promise<Activity | null>;
   deleteActivity(id: string): Promise<boolean>;
   getSettings(): Promise<Settings>;
   setSettings(settings: Settings): Promise<Settings>;
+  // Strava
+  upsertStrava(input: StravaUpsert): Promise<void>;
+  getStravaByAthlete(athleteId: string): Promise<StravaConn | null>;
+  listStravaConns(): Promise<StravaConn[]>;
+  updateStravaTokens(athleteId: string, t: StravaTokens): Promise<void>;
+  touchStravaSync(athleteId: string): Promise<void>;
+  deleteStrava(athleteId: string): Promise<void>;
+  /** Log a Strava activity once. Returns the new row, or null if already imported. */
+  importStravaActivity(input: NewActivity, stravaId: number): Promise<Activity | null>;
   // Banter
   setReaction(activityId: string, athleteId: string, type: ReactionType): Promise<void>;
   removeReaction(activityId: string, athleteId: string): Promise<void>;
@@ -105,7 +142,7 @@ function mergeSettings(raw: unknown): Settings {
 // ---------------------------------------------------------------------------
 
 const ACTIVITY_COLS = `id, athlete_id, sport, km::float8 AS km,
-   to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, note,
+   to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, note, source,
    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at`;
 
 type ActivityRow = {
@@ -115,6 +152,7 @@ type ActivityRow = {
   km: number;
   occurred_on: string;
   note: string | null;
+  source: string | null;
   created_at: string;
 };
 
@@ -126,7 +164,28 @@ function toActivity(r: ActivityRow): Activity {
     km: Number(r.km),
     occurredOn: r.occurred_on,
     note: r.note,
+    source: (r.source as ActivitySource) ?? "manual",
     createdAt: r.created_at,
+  };
+}
+
+function toStravaConn(r: {
+  athlete_id: string;
+  strava_athlete_id: string | number;
+  access_token: string;
+  refresh_token: string;
+  expires_at: string | number;
+  scope: string | null;
+  last_sync_at: string | null;
+}): StravaConn {
+  return {
+    athleteId: r.athlete_id,
+    stravaAthleteId: Number(r.strava_athlete_id),
+    accessToken: r.access_token,
+    refreshToken: r.refresh_token,
+    expiresAt: Number(r.expires_at),
+    scope: r.scope ?? null,
+    lastSyncAtISO: r.last_sync_at ?? null,
   };
 }
 
@@ -188,6 +247,9 @@ class PgStore implements Store {
         await this.pool.query(
           `CREATE INDEX IF NOT EXISTS activities_athlete_idx ON activities (athlete_id)`,
         );
+        await this.pool.query(
+          `ALTER TABLE activities ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual'`,
+        );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS settings (
             id INT PRIMARY KEY,
@@ -233,6 +295,27 @@ class PgStore implements Store {
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
+        // One Strava link per athlete. Tokens stay here, server-side only.
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS strava_connections (
+            athlete_id TEXT PRIMARY KEY REFERENCES athletes(id) ON DELETE CASCADE,
+            strava_athlete_id BIGINT NOT NULL,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT NOT NULL,
+            expires_at BIGINT NOT NULL,
+            scope TEXT,
+            connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            last_sync_at TIMESTAMPTZ
+          )`);
+        // Ledger of every Strava activity we've already imported. Kept separate
+        // from `activities` so deleting an imported log doesn't make the poller
+        // re-create it on the next tick.
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS strava_imports (
+            strava_id BIGINT PRIMARY KEY,
+            athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            imported_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
       })();
     }
@@ -299,13 +382,13 @@ class PgStore implements Store {
     return r.rows[0] ? toActivity(r.rows[0] as ActivityRow) : null;
   }
 
-  async createActivity(input: NewActivity): Promise<Activity> {
+  async createActivity(input: NewActivity, source: ActivitySource = "manual"): Promise<Activity> {
     await this.init();
     const r = await this.pool.query(
-      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING ${ACTIVITY_COLS}`,
-      [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note],
+      [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note, source],
     );
     return toActivity(r.rows[0] as ActivityRow);
   }
@@ -354,6 +437,86 @@ class PgStore implements Store {
       [JSON.stringify(settings)],
     );
     return mergeSettings(r.rows[0]?.data);
+  }
+
+  async upsertStrava(input: StravaUpsert): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `INSERT INTO strava_connections
+         (athlete_id, strava_athlete_id, access_token, refresh_token, expires_at, scope)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (athlete_id) DO UPDATE SET
+         strava_athlete_id = EXCLUDED.strava_athlete_id,
+         access_token = EXCLUDED.access_token,
+         refresh_token = EXCLUDED.refresh_token,
+         expires_at = EXCLUDED.expires_at,
+         scope = EXCLUDED.scope`,
+      [
+        input.athleteId,
+        input.stravaAthleteId,
+        input.accessToken,
+        input.refreshToken,
+        input.expiresAt,
+        input.scope,
+      ],
+    );
+  }
+
+  private readonly stravaCols = `athlete_id, strava_athlete_id, access_token, refresh_token,
+    expires_at, scope,
+    to_char(last_sync_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_sync_at`;
+
+  async getStravaByAthlete(athleteId: string): Promise<StravaConn | null> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT ${this.stravaCols} FROM strava_connections WHERE athlete_id = $1`,
+      [athleteId],
+    );
+    return r.rows[0] ? toStravaConn(r.rows[0]) : null;
+  }
+
+  async listStravaConns(): Promise<StravaConn[]> {
+    await this.init();
+    const r = await this.pool.query(`SELECT ${this.stravaCols} FROM strava_connections`);
+    return r.rows.map(toStravaConn);
+  }
+
+  async updateStravaTokens(athleteId: string, t: StravaTokens): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `UPDATE strava_connections
+         SET access_token = $2, refresh_token = $3, expires_at = $4
+       WHERE athlete_id = $1`,
+      [athleteId, t.accessToken, t.refreshToken, t.expiresAt],
+    );
+  }
+
+  async touchStravaSync(athleteId: string): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      "UPDATE strava_connections SET last_sync_at = now() WHERE athlete_id = $1",
+      [athleteId],
+    );
+  }
+
+  async deleteStrava(athleteId: string): Promise<void> {
+    await this.init();
+    await this.pool.query("DELETE FROM strava_connections WHERE athlete_id = $1", [
+      athleteId,
+    ]);
+  }
+
+  async importStravaActivity(input: NewActivity, stravaId: number): Promise<Activity | null> {
+    await this.init();
+    // Claim the id first; if another tick already imported it, back off.
+    const ledger = await this.pool.query(
+      `INSERT INTO strava_imports (strava_id, athlete_id) VALUES ($1, $2)
+       ON CONFLICT (strava_id) DO NOTHING
+       RETURNING strava_id`,
+      [stravaId, input.athleteId],
+    );
+    if ((ledger.rowCount ?? 0) === 0) return null;
+    return this.createActivity(input, "strava");
   }
 
   async setReaction(activityId: string, athleteId: string, type: ReactionType): Promise<void> {
@@ -512,7 +675,7 @@ class MemoryStore implements Store {
     return this.activities.find((a) => a.id === id) ?? null;
   }
 
-  async createActivity(input: NewActivity): Promise<Activity> {
+  async createActivity(input: NewActivity, source: ActivitySource = "manual"): Promise<Activity> {
     const created: Activity = {
       id: newId(),
       athleteId: input.athleteId,
@@ -520,6 +683,7 @@ class MemoryStore implements Store {
       km: input.km,
       occurredOn: input.occurredOn,
       note: input.note,
+      source,
       createdAt: new Date().toISOString(),
     };
     this.activities.push(created);
@@ -552,6 +716,47 @@ class MemoryStore implements Store {
   async setSettings(settings: Settings) {
     this.settings = mergeSettings(settings);
     return this.settings;
+  }
+
+  private stravaConns = new Map<string, StravaConn>(); // athleteId → conn
+  private stravaImports = new Set<number>(); // strava activity ids already logged
+
+  async upsertStrava(input: StravaUpsert) {
+    this.stravaConns.set(input.athleteId, {
+      athleteId: input.athleteId,
+      stravaAthleteId: input.stravaAthleteId,
+      accessToken: input.accessToken,
+      refreshToken: input.refreshToken,
+      expiresAt: input.expiresAt,
+      scope: input.scope,
+      lastSyncAtISO: this.stravaConns.get(input.athleteId)?.lastSyncAtISO ?? null,
+    });
+  }
+  async getStravaByAthlete(athleteId: string) {
+    return this.stravaConns.get(athleteId) ?? null;
+  }
+  async listStravaConns() {
+    return [...this.stravaConns.values()];
+  }
+  async updateStravaTokens(athleteId: string, t: StravaTokens) {
+    const c = this.stravaConns.get(athleteId);
+    if (c) {
+      c.accessToken = t.accessToken;
+      c.refreshToken = t.refreshToken;
+      c.expiresAt = t.expiresAt;
+    }
+  }
+  async touchStravaSync(athleteId: string) {
+    const c = this.stravaConns.get(athleteId);
+    if (c) c.lastSyncAtISO = new Date().toISOString();
+  }
+  async deleteStrava(athleteId: string) {
+    this.stravaConns.delete(athleteId);
+  }
+  async importStravaActivity(input: NewActivity, stravaId: number): Promise<Activity | null> {
+    if (this.stravaImports.has(stravaId)) return null;
+    this.stravaImports.add(stravaId);
+    return this.createActivity(input, "strava");
   }
 
   private reactions: Reaction[] = [];

@@ -6,6 +6,7 @@ import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_ABBR, type Settings } from "@/lib/types";
 import { SportMark } from "./SportMark";
 import { NotificationSetup } from "./NotificationSetup";
+import { StravaSetup } from "./StravaSetup";
 import type { League } from "./useLeague";
 
 /**
@@ -209,6 +210,10 @@ export function ScoringSheet({
 
         <div className="mt-6 border-t border-line pt-4">
           <NotificationSetup />
+        </div>
+
+        <div className="mt-4">
+          <StravaSetup league={league} />
         </div>
 
         <div className="mt-4 rounded-xl border-2 border-line bg-tile px-4 py-3">
