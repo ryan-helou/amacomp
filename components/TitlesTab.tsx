@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { SPORT_ORDER, fmtKm, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
@@ -9,13 +9,13 @@ import { monthlyChampions, weekWinsBoard } from "@/lib/achievements";
 import { hallOfFame } from "@/lib/records";
 import { seasonChampions } from "@/lib/season";
 import { teamTotals } from "@/lib/stats";
-import { AthleteSheet } from "./AthleteSheet";
+import { AthleteName, useOpenProfile } from "./ProfileContext";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
 
 export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
-  const [selected, setSelected] = useState<string | null>(null);
+  const openProfile = useOpenProfile();
 
   const athleteById = useMemo(
     () => new Map(state.athletes.map((a) => [a.id, a])),
@@ -104,7 +104,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
             return (
               <li key={r.key}>
                 {holder ? (
-                  <button onClick={() => setSelected(holder.id)} className={cls}>
+                  <button onClick={() => openProfile(holder.id)} className={cls}>
                     {body}
                   </button>
                 ) : (
@@ -160,7 +160,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
               return (
                 <li key={row.athlete.id}>
                   <button
-                    onClick={() => setSelected(row.athlete.id)}
+                    onClick={() => openProfile(row.athlete.id)}
                     className={`flex w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left ${
                       isMe ? "border-ink bg-tile" : "border-line bg-tile"
                     }`}
@@ -232,11 +232,13 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
                   )}
                 </div>
                 <div className="stamp text-lg text-ink">
-                  {s.champion
-                    ? s.champion.athlete.name
-                    : s.status === "upcoming"
-                      ? "Not open yet"
-                      : "Up for grabs"}
+                  {s.champion ? (
+                    <AthleteName id={s.champion.athlete.id} name={s.champion.athlete.name} />
+                  ) : s.status === "upcoming" ? (
+                    "Not open yet"
+                  ) : (
+                    "Up for grabs"
+                  )}
                 </div>
               </div>
               {s.champion && (
@@ -279,7 +281,9 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
                       </span>
                     )}
                   </div>
-                  <div className="stamp text-lg text-ink">{m.champion.athlete.name}</div>
+                  <div className="stamp text-lg text-ink">
+                    <AthleteName id={m.champion.athlete.id} name={m.champion.athlete.name} />
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className={`stamp text-lg ${m.isCurrent ? "accent-text" : "text-gold"}`}>
@@ -293,14 +297,6 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
         )}
       </section>
 
-      {selected && (
-        <AthleteSheet
-          state={state}
-          athleteId={selected}
-          refDay={refDay}
-          onClose={() => setSelected(null)}
-        />
-      )}
     </div>
   );
 }

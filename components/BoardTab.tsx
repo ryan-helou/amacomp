@@ -13,7 +13,7 @@ import { formatRange, periodRange, type DayKey, type Period } from "@/lib/dates"
 import { SPORT_UNIT, rateLabel, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { firstSeason, seasonFor } from "@/lib/season";
-import { AthleteSheet } from "./AthleteSheet";
+import { useOpenProfile } from "./ProfileContext";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
@@ -48,7 +48,7 @@ interface SportRow {
 export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const [period, setPeriod] = useState<BoardPeriod>("week");
   const [sport, setSport] = useState<SportFilter>("all");
-  const [selected, setSelected] = useState<string | null>(null);
+  const openProfile = useOpenProfile();
 
   const liveSeason = seasonFor(refDay, state.settings.seasonStart);
   const season = liveSeason ?? firstSeason(state.settings.seasonStart);
@@ -195,7 +195,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                   index={i}
                   titles={titles.get(row.athlete.id) ?? 0}
                   delta={period === "week" ? movement.get(row.athlete.id)?.delta ?? 0 : 0}
-                  onSelect={() => setSelected(row.athlete.id)}
+                  onSelect={() => openProfile(row.athlete.id)}
                 />
               </li>
             ))}
@@ -216,7 +216,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                 sport={sport}
                 isMe={row.athlete.id === state.me?.id}
                 index={i}
-                onSelect={() => setSelected(row.athlete.id)}
+                onSelect={() => openProfile(row.athlete.id)}
               />
             </li>
           ))}
@@ -230,15 +230,6 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
         ).join("  ·  ")}
       </p>
       <p className="text-center text-[0.6875rem] text-ink-3">Tap a lane for badges &amp; stats</p>
-
-      {selected && (
-        <AthleteSheet
-          state={state}
-          athleteId={selected}
-          refDay={refDay}
-          onClose={() => setSelected(null)}
-        />
-      )}
     </div>
   );
 }

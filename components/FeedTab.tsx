@@ -10,6 +10,7 @@ import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { athleteColor } from "@/lib/avatar";
 import { SportMark } from "./SportMark";
 import { Glyph } from "./Glyph";
+import { AthleteName } from "./ProfileContext";
 import { ActivitySheet } from "./ActivitySheet";
 import type { League } from "./useLeague";
 
@@ -104,9 +105,11 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm text-ink">
-                          <span className="font-semibold">
-                            {author?.name ?? "Unknown"}
-                          </span>
+                          {author ? (
+                            <AthleteName id={author.id} name={author.name} className="font-semibold" />
+                          ) : (
+                            <span className="font-semibold">Unknown</span>
+                          )}
                           {isMe && <span className="text-ink-3"> · you</span>}
                           <span className="text-ink-2">
                             {" "}

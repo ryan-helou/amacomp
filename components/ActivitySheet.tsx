@@ -21,6 +21,7 @@ import {
 import { Avatar } from "./Avatar";
 import { Glyph } from "./Glyph";
 import { SportMark } from "./SportMark";
+import { AthleteName } from "./ProfileContext";
 import { ActivityForm, emptyDraft, type ActivityDraft } from "./ActivityForm";
 import type { League } from "./useLeague";
 
@@ -163,9 +164,15 @@ export function ActivitySheet({
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
-                <span className="text-sm font-semibold text-ink">
-                  {nameOf.get(activity.athleteId) ?? "Unknown"}
-                </span>
+                {athleteOf.get(activity.athleteId) ? (
+                  <AthleteName
+                    id={activity.athleteId}
+                    name={nameOf.get(activity.athleteId) ?? "Unknown"}
+                    className="text-sm font-semibold text-ink"
+                  />
+                ) : (
+                  <span className="text-sm font-semibold text-ink">Unknown</span>
+                )}
                 <span className="font-mono text-xs text-ink-3">
                   {formatDayRelative(activity.occurredOn, refDay)}
                 </span>
@@ -309,9 +316,15 @@ export function ActivitySheet({
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-semibold text-ink">
-                          {nameOf.get(c.athleteId) ?? "Unknown"}
-                        </span>
+                        {author ? (
+                          <AthleteName
+                            id={author.id}
+                            name={author.name}
+                            className="text-sm font-semibold text-ink"
+                          />
+                        ) : (
+                          <span className="text-sm font-semibold text-ink">Unknown</span>
+                        )}
                         <span className="font-mono text-[0.625rem] text-ink-3">
                           {timeAgo(c.createdAt)}
                         </span>
