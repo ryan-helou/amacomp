@@ -61,6 +61,8 @@ export function isAvatarColor(v: unknown): v is AvatarColor {
 // components/Glyph.tsx's GlyphName. Validated server-side.
 export const AVATAR_GLYPHS = [
   "bolt", "flame", "star", "drop", "target", "dumbbell", "trophy", "medal",
+  "mountain", "flag", "crown", "compass", "moon", "shield", "diamond", "wave",
+  "heart", "rocket",
 ] as const;
 export type AvatarGlyph = (typeof AVATAR_GLYPHS)[number];
 

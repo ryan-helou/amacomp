@@ -309,17 +309,31 @@ function AvatarPicker({ league }: { league: League }) {
       body: JSON.stringify({ avatarGlyph: glyph }),
     });
   }
+  function surprise() {
+    const color = AVATAR_PALETTE[Math.floor(Math.random() * AVATAR_PALETTE.length)];
+    const glyph = AVATAR_GLYPHS[Math.floor(Math.random() * AVATAR_GLYPHS.length)];
+    send("/api/session", {
+      method: "PATCH",
+      body: JSON.stringify({ avatarColor: color, avatarGlyph: glyph }),
+    });
+  }
 
   return (
     <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
       <div className="flex items-center gap-3">
-        <Avatar athlete={previewAthlete} me className="h-11 w-11 text-xs" />
-        <div className="min-w-0">
+        <Avatar athlete={previewAthlete} me className="h-12 w-12 text-sm" />
+        <div className="min-w-0 flex-1">
           <div className="eyebrow text-ink">Your avatar</div>
-          <p className="mt-0.5 text-[0.8125rem] text-ink-2">
-            Your lane on the board. Pick a colour and a symbol.
-          </p>
+          <p className="mt-0.5 text-[0.8125rem] text-ink-2">Your lane on the board.</p>
         </div>
+        <button
+          type="button"
+          onClick={surprise}
+          disabled={busy}
+          className="eyebrow shrink-0 rounded-lg border-2 border-line px-3 py-2 text-ink-2 transition-transform active:scale-95 disabled:opacity-40"
+        >
+          Surprise me
+        </button>
       </div>
 
       <div className="mt-3">
@@ -347,7 +361,7 @@ function AvatarPicker({ league }: { league: League }) {
 
       <div className="mt-3">
         <div className="eyebrow mb-1.5 text-ink-3">Symbol</div>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           <button
             type="button"
             aria-label="Use initials"
