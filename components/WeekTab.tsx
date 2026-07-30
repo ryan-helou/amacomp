@@ -1,9 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { fmtPoints, standingsFor } from "@/lib/scoring";
+import {
+  SPORT_ORDER,
+  activityPoints,
+  fmtKm,
+  fmtPoints,
+  standingsFor,
+  unscoredGymIds,
+} from "@/lib/scoring";
 import { addDays, formatRange, periodRange, weekStart, type DayKey } from "@/lib/dates";
-import type { AppState } from "@/lib/types";
+import { SPORT_UNIT, type AppState } from "@/lib/types";
+import { SPORT_UI } from "@/lib/ui";
 import {
   headToHead,
   lastWeekRecap,
@@ -13,7 +21,8 @@ import {
 import { PaceClock } from "./PaceClock";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
-import { AthleteName } from "./ProfileContext";
+import { SportMark } from "./SportMark";
+import { AthleteName, useReigningChampion } from "./ProfileContext";
 
 export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   // Athletes want to look at where they finished a past week — a leaderboard's
@@ -40,6 +49,26 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
   const goal = state.settings.weeklyGoal;
   const range = periodRange("week", weekRef);
   const met = standings.filter((s) => s.points >= goal).length;
+  const champ = useReigningChampion();
+
+  // Tap a name to decompose that person's points for the viewed week.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const unscored = useMemo(() => unscoredGymIds(state.activities), [state.activities]);
+  const weekSessions = (athleteId: string) =>
+    state.activities
+      .filter(
+        (a) => a.athleteId === athleteId && a.occurredOn >= range[0] && a.occurredOn <= range[1],
+      )
+      .map((a) => ({ activity: a, points: activityPoints(a, state.settings, unscored) }))
+      .sort((x, y) => y.points - x.points || x.activity.occurredOn.localeCompare(y.activity.occurredOn));
 
   const streak = useMemo(
     () => streakFor(meId, state.activities, state.settings, refDay),
@@ -192,22 +221,36 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
             const pct = Math.min(row.goalProgress, 1) * 100;
             const done = row.points >= goal;
             const isMe = row.athlete.id === meId;
+            const isOpen = expanded.has(row.athlete.id);
+            const gold = champ === row.athlete.id;
+            const sessions = isOpen ? weekSessions(row.athlete.id) : [];
             return (
               <li
                 key={row.athlete.id}
-                className={`rounded-xl border-2 bg-tile px-3 py-2.5 ${
+                className={`overflow-hidden rounded-xl border-2 bg-tile ${
                   isMe ? "border-ink" : "border-line"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggle(row.athlete.id)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+                >
                   <Avatar athlete={row.athlete} me={isMe} className="h-8 w-8 text-[0.625rem]" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
-                      <AthleteName
-                        id={row.athlete.id}
-                        name={row.athlete.name}
-                        className="truncate text-sm font-semibold text-ink"
-                      />
+                      <span
+                        className={`truncate text-sm font-semibold ${gold ? "text-gold" : "text-ink"}`}
+                      >
+                        {gold && (
+                          <Glyph
+                            name="crown"
+                            className="mr-1 inline h-3.5 w-3.5 -translate-y-px align-baseline"
+                          />
+                        )}
+                        {row.athlete.name}
+                      </span>
                       <span className="font-mono text-xs text-ink-2">
                         <span className="text-ink">{fmtPoints(row.points)}</span>
                         <span className="text-ink-3">/{fmtPoints(goal)}</span>
@@ -225,7 +268,66 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
                       Met
                     </span>
                   )}
-                </div>
+                  <svg
+                    viewBox="0 0 24 24"
+                    className={`h-4 w-4 shrink-0 text-ink-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+
+                {isOpen && (
+                  <div className="border-t-2 border-line px-3 py-2.5">
+                    {sessions.length === 0 ? (
+                      <p className="py-1 text-center text-[0.8125rem] text-ink-3">
+                        No sessions this week.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[0.6875rem]">
+                          {SPORT_ORDER.filter((s) => (row.bySport[s] ?? 0) > 0).map((s) => (
+                            <span key={s} className={SPORT_UI[s].text}>
+                              {SPORT_UI[s].label} {fmtPoints(row.bySport[s])}
+                            </span>
+                          ))}
+                        </div>
+                        <ul className="space-y-1.5">
+                          {sessions.map(({ activity: a, points }) => {
+                            const ui = SPORT_UI[a.sport];
+                            const flat = SPORT_UNIT[a.sport] === "flat";
+                            const isUnscored = unscored.has(a.id);
+                            return (
+                              <li key={a.id} className="flex items-center gap-2.5">
+                                <span className={`shrink-0 ${ui.text}`} aria-hidden>
+                                  <SportMark sport={a.sport} className="h-4 w-4" />
+                                </span>
+                                <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-2">
+                                  {flat
+                                    ? `${ui.label} workout`
+                                    : `${fmtKm(a.km)} km ${ui.label.toLowerCase()}`}
+                                  {a.note && <span className="text-ink-3"> · {a.note}</span>}
+                                </span>
+                                <span
+                                  className={`shrink-0 font-mono text-xs ${
+                                    isUnscored ? "text-ink-3 line-through" : "text-ink"
+                                  }`}
+                                >
+                                  {fmtPoints(points)}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                )}
               </li>
             );
           })}
