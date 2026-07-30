@@ -14,6 +14,7 @@ import {
 } from "./dates";
 import {
   activityPoints,
+  unscoredGymIds,
   standingsForRange,
   type Standing,
 } from "./scoring";
@@ -34,11 +35,12 @@ function weeklyPoints(
   settings: Settings,
 ): Map<string, Map<DayKey, number>> {
   const out = new Map<string, Map<DayKey, number>>();
+  const unscored = unscoredGymIds(activities);
   for (const a of activities) {
     const wk = weekStart(a.occurredOn);
     let weeks = out.get(a.athleteId);
     if (!weeks) out.set(a.athleteId, (weeks = new Map()));
-    weeks.set(wk, (weeks.get(wk) ?? 0) + activityPoints(a, settings));
+    weeks.set(wk, (weeks.get(wk) ?? 0) + activityPoints(a, settings, unscored));
   }
   return out;
 }
@@ -122,6 +124,7 @@ export function badgesFor(
   const dayPoints = new Map<DayKey, number>();
   const weekSports = new Map<DayKey, Set<Sport>>();
 
+  const unscored = unscoredGymIds(activities);
   for (const a of mine) {
     sessions += 1;
     sportsEver.add(a.sport);
@@ -129,7 +132,7 @@ export function badgesFor(
     if (a.sport === "gym") gymCount += 1;
     dayPoints.set(
       a.occurredOn,
-      (dayPoints.get(a.occurredOn) ?? 0) + activityPoints(a, settings),
+      (dayPoints.get(a.occurredOn) ?? 0) + activityPoints(a, settings, unscored),
     );
     const wk = weekStart(a.occurredOn);
     let s = weekSports.get(wk);
