@@ -5,6 +5,7 @@ import { pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, fmtPoints } from "@/lib/scoring";
 import { addDays, today, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
+import { isPreSeason, seasonActivities } from "@/lib/season";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +31,14 @@ export async function GET(req: Request) {
   const state = await readState();
   const now = today();
 
+  // No nudges before the season is live.
+  if (isPreSeason(state.settings, now)) {
+    return NextResponse.json({ ok: true, skipped: "pre-season" });
+  }
+  const activities = seasonActivities(state.activities, state.settings);
+
   if (job === "results") {
-    const recap = lastWeekRecap(state.athletes, state.activities, state.settings, now);
+    const recap = lastWeekRecap(state.athletes, activities, state.settings, now);
     if (!recap) return NextResponse.json({ ok: true, sent: 0, note: "no activity last week" });
     const lastWeek = weekStart(addDays(weekStart(now), -1));
     const marker = `results-${lastWeek}`;
@@ -48,7 +55,7 @@ export async function GET(req: Request) {
       if (a.id === championId) {
         body = `You won last week with ${fmtPoints(recap.champion.points)} pts. Champion.`;
       } else if (missedIds.has(a.id)) {
-        body = `You missed quota last week — forfeit time. ${recap.champion.athlete.name} took the win.`;
+        body = `You missed quota last week. Forfeit: ${state.settings.forfeit}. ${recap.champion.athlete.name} took the win.`;
       } else {
         body = `${recap.champion.athlete.name} won last week with ${fmtPoints(recap.champion.points)} pts. New week, fresh board.`;
       }
@@ -66,7 +73,7 @@ export async function GET(req: Request) {
     await store.setMeta(marker, "1");
 
     const goal = state.settings.weeklyGoal;
-    const standings = standingsFor(state.athletes, state.activities, state.settings, "week", now);
+    const standings = standingsFor(state.athletes, activities, state.settings, "week", now);
     let sent = 0;
     for (const s of standings) {
       if (s.points >= goal) continue;

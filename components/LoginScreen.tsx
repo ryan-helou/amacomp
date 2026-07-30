@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SPORT_ORDER } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, type Settings } from "@/lib/types";
+import { formatDay } from "@/lib/dates";
 import { SportMark } from "./SportMark";
 
 export function LoginScreen({
@@ -53,6 +54,12 @@ export function LoginScreen({
       <p className="mt-4 font-mono text-sm text-ink-2">
         Weekly quota&nbsp;·&nbsp;
         <span className="text-ink">{settings.weeklyGoal} pts</span>
+      </p>
+      <p className="mt-3 text-[0.8125rem] leading-snug text-ink-2">
+        Season opens{" "}
+        <span className="font-semibold text-ink">{formatDay(settings.seasonStart)}</span>. Miss
+        your weekly quota and the forfeit is:{" "}
+        <span className="font-semibold text-run">{settings.forfeit}</span>
       </p>
 
       <form onSubmit={submit} className="mt-9">

@@ -70,6 +70,8 @@ function mergeSettings(raw: unknown): Settings {
   const m = (value.multipliers ?? {}) as Partial<Record<Sport, number>>;
   const num = (v: unknown, fallback: number) =>
     typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback;
+  const isDay = (v: unknown): v is string =>
+    typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
   return {
     multipliers: {
       swim: num(m.swim, DEFAULT_SETTINGS.multipliers.swim),
@@ -78,6 +80,11 @@ function mergeSettings(raw: unknown): Settings {
       gym: num(m.gym, DEFAULT_SETTINGS.multipliers.gym),
     },
     weeklyGoal: num(value.weeklyGoal, DEFAULT_SETTINGS.weeklyGoal),
+    seasonStart: isDay(value.seasonStart) ? value.seasonStart : DEFAULT_SETTINGS.seasonStart,
+    forfeit:
+      typeof value.forfeit === "string" && value.forfeit.trim()
+        ? value.forfeit.trim().slice(0, 120)
+        : DEFAULT_SETTINGS.forfeit,
   };
 }
 
