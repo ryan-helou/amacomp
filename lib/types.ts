@@ -37,10 +37,15 @@ export interface Athlete {
    * counts toward the day/week that's ending.
    */
   resetHour: number;
-  /** Chosen lane colour (hex from AVATAR_PALETTE), or null to use the default hash. */
+  /** Chosen lane colour (hex from AVATAR_PALETTE), or null to use the default hash.
+   *  Still used to tint the feed + back the initials fallback. */
   avatarColor: string | null;
-  /** Chosen monochrome glyph, or null to fall back to initials. */
+  /** Legacy monochrome glyph pick — superseded by photo avatars, kept for back-compat. */
   avatarGlyph: string | null;
+  /** Resolved profile-photo URL: an uploaded image, else the Strava photo, else null
+   *  (fall back to coloured initials). The image bytes are served by /api/avatar, not
+   *  carried in this payload. */
+  avatarUrl: string | null;
 }
 
 // Twelve colours the athlete can pick from — deliberately kept apart from the

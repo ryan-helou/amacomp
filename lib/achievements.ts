@@ -181,6 +181,9 @@ export function lastWeekRecap(
 ): WeekRecap | null {
   const prevRef = addDays(weekStart(refDay), -1); // a day inside last week
   const range: [DayKey, DayKey] = [weekStart(prevRef), weekEnd(prevRef)];
+  // Don't crown a "last week" champion for weeks that ended before the season
+  // even started — the recap panel is a victory lap, not a warm-up write-up.
+  if (range[0] < weekStart(settings.seasonStart)) return null;
   const standings = standingsForRange(athletes, activities, settings, range);
   if (!standings.some((s) => s.points > 0)) return null;
   const goal = settings.weeklyGoal;
@@ -204,8 +207,11 @@ export function championshipsByAthlete(
 ): Map<string, number> {
   const wins = new Map<string, number>();
   const thisWeek = weekStart(refDay);
+  // No trophies for pre-season weeks — warm-up logging shouldn't crown anyone.
+  const seasonWeek = weekStart(settings.seasonStart);
   for (const wk of weekTimeline(activities, refDay)) {
     if (wk >= thisWeek) continue; // only completed weeks crown a champion
+    if (wk < seasonWeek) continue; // pre-kickoff weeks don't count
     const range: [DayKey, DayKey] = [wk, weekEnd(wk)];
     const standings = standingsForRange(athletes, activities, settings, range);
     const top = standings[0];
