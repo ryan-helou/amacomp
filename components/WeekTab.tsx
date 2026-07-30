@@ -13,6 +13,7 @@ import {
 import { PaceClock } from "./PaceClock";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
+import { AthleteName } from "./ProfileContext";
 
 export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   // Athletes want to look at where they finished a past week — a leaderboard's
@@ -165,7 +166,7 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
             </div>
             <div className="min-w-0 flex-1 text-right">
               <div className="truncate text-sm font-semibold text-ink">
-                {h2h.rival.athlete.name}
+                <AthleteName id={h2h.rival.athlete.id} name={h2h.rival.athlete.name} />
               </div>
               <div className="stamp text-2xl text-ink-2">{fmtPoints(h2h.rival.points)}</div>
             </div>
@@ -202,9 +203,11 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
                   <Avatar athlete={row.athlete} me={isMe} className="h-8 w-8 text-[0.625rem]" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-semibold text-ink">
-                        {row.athlete.name}
-                      </span>
+                      <AthleteName
+                        id={row.athlete.id}
+                        name={row.athlete.name}
+                        className="truncate text-sm font-semibold text-ink"
+                      />
                       <span className="font-mono text-xs text-ink-2">
                         <span className="text-ink">{fmtPoints(row.points)}</span>
                         <span className="text-ink-3">/{fmtPoints(goal)}</span>
@@ -241,7 +244,9 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
             </span>
             <div className="flex-1">
               <div className="text-sm text-ink-2">Champion</div>
-              <div className="stamp text-xl text-ink">{recap.champion.athlete.name}</div>
+              <div className="stamp text-xl text-ink">
+                <AthleteName id={recap.champion.athlete.id} name={recap.champion.athlete.name} />
+              </div>
             </div>
             <div className="text-right">
               <div className="stamp text-xl text-gold">{fmtPoints(recap.champion.points)}</div>

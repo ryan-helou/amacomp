@@ -16,6 +16,7 @@ import { ScoringSheet } from "./ScoringSheet";
 import { Confetti } from "./Confetti";
 import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
+import { ProfileProvider, AthleteName } from "./ProfileContext";
 
 type Tab = "log" | "week" | "board" | "titles" | "feed";
 
@@ -208,6 +209,7 @@ export function AppShell({
   }
 
   return (
+    <ProfileProvider state={state} refDay={refDay}>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
       <header className="sticky top-0 z-30 border-b-2 border-ink bg-deck px-5 pb-3 pt-4">
@@ -215,7 +217,7 @@ export function AppShell({
           <div>
             <h1 className="stamp text-2xl leading-none text-ink">AMACOMP</h1>
             <p className="eyebrow mt-1 text-ink-3">
-              {state.me.name}
+              <AthleteName id={state.me.id} name={state.me.name} />
               {state.isAdmin && " · admin"}
             </p>
           </div>
@@ -333,5 +335,6 @@ export function AppShell({
 
       <Confetti fireKey={fireKey} />
     </div>
+    </ProfileProvider>
   );
 }
