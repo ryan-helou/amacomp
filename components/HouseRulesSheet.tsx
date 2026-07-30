@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SPORT_ORDER, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, rateLabel, type Settings } from "@/lib/types";
@@ -9,7 +9,8 @@ import { Glyph } from "./Glyph";
 /**
  * The league charter as a popup — the pact the lads play by. Opened from the
  * header (the AMACOMP wordmark or the "?"). Reads live from settings so the quota
- * and forfeit always match what's actually scored.
+ * and forfeit always match what's actually scored. Closes on backdrop tap, the
+ * Close button, Escape, or a swipe down.
  */
 export function HouseRulesSheet({
   settings,
@@ -18,11 +19,32 @@ export function HouseRulesSheet({
   settings: Settings;
   onClose: () => void;
 }) {
+  const startY = useRef<number | null>(null);
+  const [dragY, setDragY] = useState(0);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Swipe-to-dismiss from the grab handle. Touch events stay bound to the handle
+  // for the whole gesture, so this never fights the content scroll. Past ~100px
+  // of pull, let go to close; otherwise it springs back.
+  const onTouchStart = (e: React.TouchEvent) => {
+    startY.current = e.touches[0].clientY;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (startY.current == null) return;
+    const dy = e.touches[0].clientY - startY.current;
+    setDragY(dy > 0 ? dy : 0);
+  };
+  const onTouchEnd = () => {
+    if (startY.current == null) return;
+    if (dragY > 100) onClose();
+    else setDragY(0);
+    startY.current = null;
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
@@ -31,9 +53,20 @@ export function HouseRulesSheet({
         role="dialog"
         aria-modal="true"
         aria-label="House rules"
+        style={{
+          transform: dragY ? `translateY(${dragY}px)` : undefined,
+          transition: dragY ? "none" : "transform 0.25s ease",
+        }}
         className="relative max-h-[88dvh] overflow-y-auto rounded-t-3xl border-t-2 border-ink bg-deck px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5"
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-3" />
+        <div
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          className="-mx-5 -mt-5 mb-4 cursor-grab touch-none px-5 pb-2 pt-3 active:cursor-grabbing"
+        >
+          <div className="mx-auto h-1.5 w-12 rounded-full bg-ink-3" />
+        </div>
 
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-2.5">
