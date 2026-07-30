@@ -16,6 +16,8 @@ import {
   badgesFor,
   championshipsByAthlete,
   streakFor,
+  type Badge,
+  type BadgeTier,
 } from "@/lib/achievements";
 import { weeklyTrend } from "@/lib/stats";
 import { firstSeason, seasonFor } from "@/lib/season";
@@ -40,7 +42,7 @@ export function AthleteSheet({
   const data = useMemo(() => {
     if (!athlete) return null;
     const { athletes, activities, settings } = state;
-    const badges = badgesFor(athleteId, activities, settings, refDay);
+    const badges = badgesFor(athleteId, athletes, activities, settings, refDay);
     const streak = streakFor(athleteId, activities, settings, refDay);
     const titles =
       championshipsByAthlete(athletes, activities, settings, refDay).get(athleteId) ?? 0;
@@ -260,29 +262,16 @@ export function AthleteSheet({
           </div>
         </div>
 
-        {/* Badges */}
+        {/* Trophy cabinet */}
         <div className="mt-5 flex items-baseline justify-between">
-          <h3 className="eyebrow text-ink-2">Badges</h3>
+          <h3 className="eyebrow text-ink-2">Trophy cabinet</h3>
           <span className="font-mono text-xs text-ink-3">
-            {earned.length}/{data.badges.length}
+            {earned.length}/{data.badges.length} unlocked
           </span>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2">
+        <div className="mt-2 grid grid-cols-2 gap-2.5">
           {data.badges.map((b) => (
-            <div
-              key={b.id}
-              className={`flex items-center gap-2.5 rounded-xl border-2 px-3 py-2.5 ${
-                b.earned ? "border-ink bg-tile" : "border-line bg-transparent opacity-55"
-              }`}
-            >
-              <span className={b.earned ? "text-accent" : "text-ink-3"}>
-                <Glyph name={b.glyph as GlyphName} className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-ink">{b.name}</div>
-                <div className="truncate text-[0.6875rem] text-ink-2">{b.detail}</div>
-              </div>
-            </div>
+            <BadgeTile key={b.id} badge={b} />
           ))}
         </div>
 
@@ -362,6 +351,72 @@ function PB({
         <span className={`stamp text-lg ${sport ? SPORT_UI[sport].text : "text-ink"}`}>{value}</span>
         <span className="ml-1 font-mono text-[0.625rem] text-ink-3">{unit}</span>
       </span>
+    </div>
+  );
+}
+
+// The four medal tiers, each with a colour, a soft tint, and a glow for the
+// earned medallion. Bronze → Silver → Gold → Platinum.
+const TIER: Record<BadgeTier, { label: string; color: string; bg: string; glow: string }> = {
+  bronze: { label: "Bronze", color: "#C77B4A", bg: "rgba(199,123,74,0.13)", glow: "rgba(199,123,74,0.30)" },
+  silver: { label: "Silver", color: "#8D97A8", bg: "rgba(141,151,168,0.16)", glow: "rgba(141,151,168,0.30)" },
+  gold: { label: "Gold", color: "#E0A81E", bg: "rgba(224,168,30,0.15)", glow: "rgba(224,168,30,0.40)" },
+  platinum: { label: "Platinum", color: "#3FB4CC", bg: "rgba(63,180,204,0.15)", glow: "rgba(63,180,204,0.45)" },
+};
+
+function BadgeTile({ badge }: { badge: Badge }) {
+  const t = badge.tier ? TIER[badge.tier] : null;
+  const earned = badge.earned;
+  return (
+    <div
+      title={badge.what}
+      className={`relative flex flex-col items-center rounded-2xl border-2 px-3 py-3.5 text-center ${
+        earned ? "" : "border-line bg-tile opacity-70"
+      }`}
+      style={earned && t ? { borderColor: t.color, background: t.bg } : undefined}
+    >
+      {badge.maxed && t && (
+        <span
+          className="absolute right-2 top-2 rounded-full px-1.5 py-px text-[0.5rem] font-bold tracking-wider"
+          style={{ color: t.color, background: t.bg }}
+        >
+          MAX
+        </span>
+      )}
+
+      <div
+        className="flex h-12 w-12 items-center justify-center rounded-full border-2"
+        style={
+          earned && t
+            ? { borderColor: t.color, background: t.bg, color: t.color, boxShadow: `0 0 16px ${t.glow}` }
+            : { borderColor: "var(--color-line)", color: "var(--color-ink-3)" }
+        }
+      >
+        <Glyph name={badge.glyph as GlyphName} className="h-6 w-6" />
+      </div>
+
+      <div className={`mt-2 text-sm font-semibold ${earned ? "text-ink" : "text-ink-3"}`}>
+        {badge.name}
+      </div>
+      <div
+        className="mt-0.5 text-[0.625rem] font-bold uppercase tracking-widest"
+        style={{ color: earned && t ? t.color : "var(--color-ink-3)" }}
+      >
+        {earned && t ? t.label : "Locked"}
+      </div>
+
+      {/* Tier pips — one per level, filled up to the tier reached */}
+      <div className="mt-1.5 flex gap-1">
+        {Array.from({ length: badge.maxLevel }).map((_, i) => (
+          <span
+            key={i}
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: i < badge.level && t ? t.color : "var(--color-line)" }}
+          />
+        ))}
+      </div>
+
+      <div className="mt-1.5 font-mono text-[0.625rem] text-ink-3">{badge.detail}</div>
     </div>
   );
 }
