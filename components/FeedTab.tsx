@@ -94,6 +94,9 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
                               ? `${ui.label.toLowerCase()} workout`
                               : `${fmtKm(a.km)} ${SPORT_UNIT[a.sport]} ${ui.label.toLowerCase()}`}
                           </span>
+                          {a.source === "strava" && (
+                            <span className="text-ink-3"> · via Strava</span>
+                          )}
                         </p>
                         {a.note && (
                           <p className="truncate text-[0.8125rem] text-ink-3">{a.note}</p>

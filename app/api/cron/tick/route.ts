@@ -5,13 +5,15 @@ import { pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, fmtPoints } from "@/lib/scoring";
 import { addDays, today, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
+import { stravaConfigured, syncAthlete } from "@/lib/strava";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Scheduled nudges, triggered by an external cron (GitHub Actions) hitting this
- * endpoint with the shared secret. Idempotent per week via the `meta` store, so
- * a double-fire never double-notifies.
+ * Scheduled work, triggered by an external cron (GitHub Actions) hitting this
+ * endpoint with the shared secret. The notify jobs are idempotent per week via
+ * the `meta` store, so a double-fire never double-notifies.
+ *   ?job=strava   — every 30 min: pull each linked athlete's new activities
  *   ?job=results  — Monday: last week's champion + forfeit list
  *   ?job=deadline — Sunday: who still hasn't hit quota
  */
@@ -21,12 +23,34 @@ export async function GET(req: Request) {
   if (!process.env.CRON_SECRET || key !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const job = url.searchParams.get("job");
+  const store = getStore();
+
+  // Strava polling stands alone — it doesn't need push configured, and it reads
+  // per-connection rather than the whole app state.
+  if (job === "strava") {
+    if (!stravaConfigured()) {
+      return NextResponse.json({ ok: true, skipped: "strava not configured" });
+    }
+    const conns = await store.listStravaConns();
+    let athletes = 0;
+    let imported = 0;
+    for (const conn of conns) {
+      try {
+        imported += await syncAthlete(store, conn, 3);
+        athletes += 1;
+      } catch {
+        // One dead connection (revoked, rate-limited) shouldn't stop the rest.
+      }
+    }
+    return NextResponse.json({ ok: true, athletes, imported });
+  }
+
   if (!pushEnabled()) {
     return NextResponse.json({ ok: true, skipped: "push not configured" });
   }
 
-  const job = url.searchParams.get("job");
-  const store = getStore();
   const state = await readState();
   const now = today();
   const activities = state.activities;

@@ -1,5 +1,6 @@
 import { getStore } from "./db";
 import { currentAthlete, isAdmin } from "./session";
+import { stravaConfigured } from "./strava";
 import type { AppState } from "./types";
 
 /**
@@ -11,12 +12,26 @@ import type { AppState } from "./types";
 export async function readState(): Promise<AppState> {
   const store = getStore();
   const me = await currentAthlete();
-  const [athletes, activities, settings, reactions, comments] = await Promise.all([
+  const [athletes, activities, settings, reactions, comments, conn] = await Promise.all([
     store.listAthletes(),
     store.listActivities(),
     store.getSettings(),
     store.listReactions(),
     store.listComments(),
+    me ? store.getStravaByAthlete(me.id) : Promise.resolve(null),
   ]);
-  return { me, isAdmin: isAdmin(me), athletes, activities, settings, reactions, comments };
+  return {
+    me,
+    isAdmin: isAdmin(me),
+    athletes,
+    activities,
+    settings,
+    reactions,
+    comments,
+    strava: {
+      configured: stravaConfigured(),
+      connected: !!conn,
+      lastSyncAtISO: conn?.lastSyncAtISO ?? null,
+    },
+  };
 }

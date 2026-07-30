@@ -70,6 +70,27 @@ export function AppShell({
   const mine = week.find((s) => s.athlete.id === state.me?.id);
   const myWeekPoints = mine?.points ?? 0;
 
+  // After the Strava OAuth round-trip we land back here with ?strava=…; the page
+  // already re-rendered with the fresh connection + imported sessions, so this
+  // just confirms it and strips the param from the URL.
+  const [stravaMsg, setStravaMsg] = useState<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const st = params.get("strava");
+    if (!st) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot on mount, reading the OAuth return param
+    setStravaMsg(
+      st === "connected"
+        ? "Strava linked — your recent sessions are importing."
+        : "Strava didn't finish connecting. Give it another go.",
+    );
+    params.delete("strava");
+    const qs = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    const timer = setTimeout(() => setStravaMsg(null), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const [fireKey, setFireKey] = useState(0);
   useEffect(() => {
     const goal = state.settings.weeklyGoal;
@@ -177,6 +198,14 @@ export function AppShell({
           })}
         </div>
       </nav>
+
+      {stravaMsg && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 mx-auto w-full max-w-md px-5">
+          <div className="rounded-xl border-2 border-ink bg-deck px-4 py-3 text-sm font-medium text-ink shadow-lg">
+            {stravaMsg}
+          </div>
+        </div>
+      )}
 
       {scoringOpen && (
         <ScoringSheet league={league} onClose={() => setScoringOpen(false)} />
