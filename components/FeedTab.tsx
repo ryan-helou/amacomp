@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import { activityPoints, fmtKm, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
-import { REACTIONS, SPORT_UNIT, type Activity } from "@/lib/types";
+import { REACTIONS, SPORT_UNIT, type Activity, type Athlete } from "@/lib/types";
 import { REACTION_GLYPH, commentsFor, myReaction, reactionCounts } from "@/lib/banter";
+import { athleteColor } from "@/lib/avatar";
 import { SportMark } from "./SportMark";
 import { Glyph } from "./Glyph";
 import { ActivitySheet } from "./ActivitySheet";
@@ -17,9 +18,9 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
   const { state, send, busy } = league;
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const names = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const a of state.athletes) map.set(a.id, a.name);
+  const athleteById = useMemo(() => {
+    const map = new Map<string, Athlete>();
+    for (const a of state.athletes) map.set(a.id, a);
     return map;
   }, [state.athletes]);
 
@@ -72,8 +73,21 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
                 const { counts } = reactionCounts(a.id, state.reactions);
                 const mine = myReaction(a.id, state.me?.id, state.reactions);
                 const nComments = commentsFor(a.id, state.comments).length;
+                const author = athleteById.get(a.athleteId);
+                // Tint each row by the poster's avatar colour so the feed
+                // reads like a colour-coded stream. Two layers: a soft wash
+                // (`1a` ≈ 10% alpha) and a crisp 3px inset stripe on the
+                // left as the identity anchor. boxShadow keeps padding intact.
+                const laneColor = author?.avatarColor ?? athleteColor({ id: a.athleteId });
                 return (
-                  <li key={a.id} className="rounded-xl bg-tile px-3 py-2.5">
+                  <li
+                    key={a.id}
+                    className="rounded-xl bg-tile px-3 py-2.5"
+                    style={{
+                      backgroundColor: `${laneColor}1a`,
+                      boxShadow: `inset 3px 0 0 ${laneColor}`,
+                    }}
+                  >
                     <button
                       onClick={() => setOpenId(a.id)}
                       className="flex w-full items-center gap-3 text-left"
@@ -84,7 +98,7 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm text-ink">
                           <span className="font-semibold">
-                            {names.get(a.athleteId) ?? "Unknown"}
+                            {author?.name ?? "Unknown"}
                           </span>
                           {isMe && <span className="text-ink-3"> · you</span>}
                           <span className="text-ink-2">
