@@ -18,6 +18,7 @@ import {
   standingsForRange,
   type Standing,
 } from "./scoring";
+import { seasonChampions } from "./season";
 
 /**
  * Everything fun in AmaComp — streaks, badges, weekly champions, rivalries,
@@ -102,38 +103,85 @@ export function streakFor(
 // Badges
 // ---------------------------------------------------------------------------
 
+export type BadgeTier = "bronze" | "silver" | "gold" | "platinum";
+
 export interface Badge {
   id: string;
   glyph: string;
   name: string;
-  detail: string;
-  earned: boolean;
+  unit: string;
+  what: string; // one-line description of what the badge is for
+  value: number; // the athlete's current metric
+  earned: boolean; // level >= 1
+  tier: BadgeTier | null; // highest tier reached
+  level: number; // 0 = locked … maxLevel
+  maxLevel: number;
+  maxed: boolean;
+  progress: number; // 0..1 toward the NEXT tier (1 when maxed)
+  detail: string; // "1,240 / 2,500 km" or, when maxed, "2,500 km"
+}
+
+type Grade = [BadgeTier, number];
+
+/**
+ * Build one tiered badge. Grades are ascending thresholds; the athlete's tier is
+ * the highest grade they've cleared, and `progress` fills the bar toward the next
+ * one — so even a locked badge shows how far off the first tier is.
+ */
+function tieredBadge(
+  id: string,
+  glyph: string,
+  name: string,
+  what: string,
+  unit: string,
+  value: number,
+  grades: Grade[],
+  fmt: (n: number) => string,
+): Badge {
+  let level = 0;
+  for (const [, at] of grades) if (value + 1e-9 >= at) level += 1;
+  const maxLevel = grades.length;
+  const earned = level >= 1;
+  const maxed = level >= maxLevel;
+  const tier = earned ? grades[level - 1][0] : null;
+  const nextAt = maxed ? null : grades[level][1];
+  const prevAt = level > 0 ? grades[level - 1][1] : 0;
+  const progress =
+    nextAt == null ? 1 : Math.min(1, Math.max(0, (value - prevAt) / (nextAt - prevAt)));
+  const detail =
+    nextAt == null ? `${fmt(value)} ${unit}` : `${fmt(value)} / ${fmt(nextAt)} ${unit}`;
+  return { id, glyph, name, unit, what, value, earned, tier, level, maxLevel, maxed, progress, detail };
 }
 
 export function badgesFor(
   athleteId: string,
+  athletes: Athlete[],
   activities: Activity[],
   settings: Settings,
   refDay: DayKey = today(),
 ): Badge[] {
   const mine = activities.filter((a) => a.athleteId === athleteId);
   const sportsEver = new Set<Sport>();
-  let sessions = 0;
-  let kmTotal = 0;
-  let gymCount = 0;
   const dayPoints = new Map<DayKey, number>();
   const weekSports = new Map<DayKey, Set<Sport>>();
-
   const unscored = unscoredGymIds(activities);
+  let sessions = 0;
+  let kmTotal = 0;
+  let totalPoints = 0;
+  let longestRun = 0;
+  let longestRide = 0;
+  let longestSwim = 0;
+
   for (const a of mine) {
     sessions += 1;
     sportsEver.add(a.sport);
     if (SPORT_UNIT[a.sport] === "km") kmTotal += a.km;
-    if (a.sport === "gym") gymCount += 1;
-    dayPoints.set(
-      a.occurredOn,
-      (dayPoints.get(a.occurredOn) ?? 0) + activityPoints(a, settings, unscored),
-    );
+    if (a.sport === "run") longestRun = Math.max(longestRun, a.km);
+    else if (a.sport === "bike") longestRide = Math.max(longestRide, a.km);
+    else if (a.sport === "swim") longestSwim = Math.max(longestSwim, a.km);
+    const p = activityPoints(a, settings, unscored);
+    totalPoints += p;
+    dayPoints.set(a.occurredOn, (dayPoints.get(a.occurredOn) ?? 0) + p);
     const wk = weekStart(a.occurredOn);
     let s = weekSports.get(wk);
     if (!s) weekSports.set(wk, (s = new Set()));
@@ -141,27 +189,59 @@ export function badgesFor(
   }
 
   const maxDay = Math.max(0, ...dayPoints.values());
-  const tripleWeek = [...weekSports.values()].some(
+  const tripleWeeks = [...weekSports.values()].filter(
     (s) => s.has("swim") && s.has("bike") && s.has("run"),
-  );
+  ).length;
+  const distinctSports = sportsEver.size;
   const { best } = streakFor(athleteId, activities, settings, refDay);
-  const hitAnyWeek = best >= 1;
-  const allFour =
-    sportsEver.has("swim") &&
-    sportsEver.has("bike") &&
-    sportsEver.has("run") &&
-    sportsEver.has("gym");
+  const wins = championshipsByAthlete(athletes, activities, settings, refDay).get(athleteId) ?? 0;
+  const seasonTitles = seasonChampions(
+    athletes,
+    activities,
+    settings,
+    refDay,
+    settings.seasonStart,
+  ).filter((c) => c.status === "past" && c.champion?.athlete.id === athleteId).length;
 
-  const catalog: (Omit<Badge, "earned"> & { earned: boolean })[] = [
-    { id: "first-splash", glyph: "drop", name: "First Splash", detail: "Log your first session", earned: sessions >= 1 },
-    { id: "iron-will", glyph: "target", name: "Iron Will", detail: "Hit the weekly quota", earned: hitAnyWeek },
-    { id: "hat-trick", glyph: "flame", name: "Hat Trick", detail: "3 weeks of quota in a row", earned: best >= 3 },
-    { id: "triple-threat", glyph: "trio", name: "Triple Threat", detail: "Swim, bike and run in one week", earned: tripleWeek },
-    { id: "centurion", glyph: "medal", name: "Centurion", detail: "100 km logged all-time", earned: kmTotal >= 100 },
-    { id: "big-day", glyph: "star", name: "Big Day", detail: "50+ points in a single day", earned: maxDay >= 50 },
-    { id: "all-rounder", glyph: "rings", name: "All-Rounder", detail: "Log all four disciplines", earned: allFour },
-    { id: "gym-rat", glyph: "dumbbell", name: "Gym Rat", detail: "10 gym workouts", earned: gymCount >= 10 },
+  const n0 = (n: number) => Math.round(n).toLocaleString("en-US");
+  const km = (n: number) => {
+    const r = Math.round(n * 10) / 10;
+    return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  };
+
+  const catalog: Badge[] = [
+    tieredBadge("champion", "trophy", "Champion", "Weekly wins", "wins", wins,
+      [["bronze", 1], ["silver", 5], ["gold", 15], ["platinum", 40]], n0),
+    tieredBadge("dynasty", "crown", "Dynasty", "Season titles", "titles", seasonTitles,
+      [["bronze", 1], ["silver", 2], ["gold", 4], ["platinum", 8]], n0),
+    tieredBadge("odometer", "compass", "Odometer", "Distance logged", "km", kmTotal,
+      [["bronze", 100], ["silver", 500], ["gold", 1000], ["platinum", 2500]], km),
+    tieredBadge("powerhouse", "bolt", "Powerhouse", "All-time points", "pts", totalPoints,
+      [["bronze", 500], ["silver", 2500], ["gold", 10000], ["platinum", 25000]], n0),
+    tieredBadge("iron-streak", "flame", "Iron Streak", "Weeks of quota in a row", "wks", best,
+      [["bronze", 2], ["silver", 4], ["gold", 12], ["platinum", 26]], n0),
+    tieredBadge("relentless", "shield", "Relentless", "Sessions logged", "sessions", sessions,
+      [["bronze", 10], ["silver", 50], ["gold", 150], ["platinum", 365]], n0),
+    tieredBadge("big-day", "star", "Big Day", "Points in a single day", "pts", maxDay,
+      [["bronze", 50], ["silver", 100], ["gold", 200], ["platinum", 350]], n0),
+    tieredBadge("triathlete", "trio", "Triathlete", "Swim + bike + run weeks", "wks", tripleWeeks,
+      [["bronze", 1], ["silver", 5], ["gold", 15], ["platinum", 40]], n0),
+    tieredBadge("marathoner", "flag", "Marathoner", "Longest single run", "km", longestRun,
+      [["bronze", 10], ["silver", 21.1], ["gold", 42.2], ["platinum", 50]], km),
+    tieredBadge("summiteer", "mountain", "Summiteer", "Longest single ride", "km", longestRide,
+      [["bronze", 40], ["silver", 80], ["gold", 160], ["platinum", 200]], km),
+    tieredBadge("deep-water", "wave", "Deep Water", "Longest single swim", "km", longestSwim,
+      [["bronze", 1], ["silver", 2], ["gold", 3.8], ["platinum", 5]], km),
+    tieredBadge("renaissance", "rings", "Renaissance", "Disciplines logged", "sports", distinctSports,
+      [["bronze", 2], ["silver", 3], ["gold", 4]], n0),
   ];
+
+  // Earned first (highest tier leads), then locked ordered by how close they are.
+  catalog.sort((a, b) => {
+    if (a.earned !== b.earned) return a.earned ? -1 : 1;
+    if (a.earned) return b.level - a.level || b.progress - a.progress;
+    return b.progress - a.progress;
+  });
   return catalog;
 }
 
