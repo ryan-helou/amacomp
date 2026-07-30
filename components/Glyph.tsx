@@ -13,7 +13,8 @@ export type GlyphName =
   | "rings"
   | "dumbbell"
   | "bolt"
-  | "chat";
+  | "chat"
+  | "trash";
 
 export function Glyph({
   name,
@@ -111,6 +112,15 @@ export function Glyph({
       return (
         <svg {...common}>
           <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
+        </svg>
+      );
+    case "trash":
+      return (
+        <svg {...common}>
+          <path d="M4 6.5h16" />
+          <path d="M9 6.5V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5" />
+          <path d="M6.5 6.5 7.5 20a1 1 0 0 0 1 .9h7a1 1 0 0 0 1-.9l1-13.5" />
+          <path d="M10 10v7M14 10v7" />
         </svg>
       );
   }

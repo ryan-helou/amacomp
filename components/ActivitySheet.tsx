@@ -36,6 +36,11 @@ export function ActivitySheet({
   const { state, busy, send } = league;
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [delErr, setDelErr] = useState<string | null>(null);
+
+  // You can bin your own session; the admin can bin anyone's.
+  const canManage = activity.athleteId === state.me?.id || state.isAdmin;
 
   const nameOf = useMemo(
     () => new Map(state.athletes.map((a) => [a.id, a.name])),
@@ -79,6 +84,13 @@ export function ActivitySheet({
     });
     if (err) setError(err);
     else setText("");
+  }
+
+  async function remove() {
+    setDelErr(null);
+    const err = await send(`/api/activities/${activity.id}`, { method: "DELETE" });
+    if (err) setDelErr(err);
+    else onClose(); // the session's gone; drop the sheet
   }
 
   return (
@@ -127,7 +139,44 @@ export function ActivitySheet({
               </div>
               <div className="eyebrow text-ink-3">pts</div>
             </div>
+            {canManage && !confirmDelete && (
+              <button
+                onClick={() => {
+                  setDelErr(null);
+                  setConfirmDelete(true);
+                }}
+                disabled={busy}
+                aria-label="Delete session"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-line bg-tile text-ink-3 disabled:opacity-40"
+              >
+                <Glyph name="trash" className="h-[18px] w-[18px]" />
+              </button>
+            )}
           </div>
+
+          {/* Delete confirm */}
+          {confirmDelete && (
+            <div className="mb-2.5 flex items-center gap-2 rounded-xl border-2 border-run/50 bg-run/5 px-3 py-2.5">
+              <span className="flex-1 text-[0.8125rem] text-ink">
+                Delete this session? It leaves the board for good.
+              </span>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={busy}
+                className="eyebrow rounded-lg px-3 py-1.5 text-ink-2 disabled:opacity-40"
+              >
+                Keep
+              </button>
+              <button
+                onClick={remove}
+                disabled={busy}
+                className="eyebrow rounded-lg bg-run px-3 py-1.5 text-tile disabled:opacity-40"
+              >
+                {busy ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          )}
+          {delErr && <p className="mb-2 text-xs font-medium text-run">{delErr}</p>}
 
           {/* Reactions */}
           <div className="flex gap-2 border-y border-line py-2.5">
