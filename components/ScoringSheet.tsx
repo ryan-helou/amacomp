@@ -311,7 +311,7 @@ function AvatarPicker({ league }: { league: League }) {
     if (!file) return;
     setPhotoErr(null);
     try {
-      const image = await resizeToSquare(file, 256);
+      const image = await resizeToSquare(file, 512);
       const err = await send("/api/avatar", {
         method: "POST",
         body: JSON.stringify({ image }),
