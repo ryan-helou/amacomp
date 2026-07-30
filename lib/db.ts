@@ -750,19 +750,8 @@ class MemoryStore implements Store {
   private athletes: Athlete[] = [];
   private activities: Activity[] = [];
   private settings: Settings = { ...DEFAULT_SETTINGS };
-  private avatarImages = new Map<string, { data: string; contentType: string; v: number }>();
-  private stravaPhotos = new Map<string, string>();
 
   async init() {}
-
-  private recomputeAvatarUrl(athleteId: string) {
-    const a = this.athletes.find((x) => x.id === athleteId);
-    if (!a) return;
-    const img = this.avatarImages.get(athleteId);
-    a.avatarUrl = img
-      ? `/api/avatar/${athleteId}?v=${img.v}`
-      : (this.stravaPhotos.get(athleteId) ?? null);
-  }
 
   async findOrCreateAthlete(name: string): Promise<Athlete> {
     const clean = normalizeName(name);
