@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
-import { initials } from "@/lib/ui";
 import { formatRange, periodRange, type DayKey } from "@/lib/dates";
 import type { AppState } from "@/lib/types";
 import {
@@ -13,6 +12,7 @@ import {
 } from "@/lib/achievements";
 import { PaceClock } from "./PaceClock";
 import { Glyph } from "./Glyph";
+import { Avatar } from "./Avatar";
 
 export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const standings = useMemo(
@@ -141,14 +141,7 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    aria-hidden
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-[0.625rem] font-bold ${
-                      isMe ? "border-ink bg-ink text-tile" : "border-line text-ink-2"
-                    }`}
-                  >
-                    {initials(row.athlete.name)}
-                  </div>
+                  <Avatar athlete={row.athlete} me={isMe} className="h-8 w-8 text-[0.625rem]" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="truncate text-sm font-semibold text-ink">
