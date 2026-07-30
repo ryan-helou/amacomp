@@ -10,6 +10,7 @@ import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { athleteColor } from "@/lib/avatar";
 import { SportMark } from "./SportMark";
 import { Glyph } from "./Glyph";
+import { Avatar } from "./Avatar";
 import { AthleteName } from "./ProfileContext";
 import { ActivitySheet } from "./ActivitySheet";
 import type { League } from "./useLeague";
@@ -100,9 +101,20 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
                       onClick={() => setOpenId(a.id)}
                       className="flex w-full items-center gap-3 text-left"
                     >
-                      <span className={ui.text}>
-                        <SportMark sport={a.sport} className="h-[18px] w-[18px]" />
-                      </span>
+                      {author ? (
+                        <div className="relative shrink-0">
+                          <Avatar athlete={author} me={isMe} className="h-10 w-10 text-xs" />
+                          <span
+                            className={`absolute -bottom-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-deck text-white ${ui.bg}`}
+                          >
+                            <SportMark sport={a.sport} className="h-2.5 w-2.5" />
+                          </span>
+                        </div>
+                      ) : (
+                        <span className={ui.text}>
+                          <SportMark sport={a.sport} className="h-[18px] w-[18px]" />
+                        </span>
+                      )}
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm text-ink">
                           {author ? (
