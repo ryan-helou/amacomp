@@ -49,6 +49,8 @@ export async function GET(req: NextRequest) {
       expiresAt: t.expiresAt,
       scope: STRAVA_SCOPE,
     });
+    // Their Strava photo becomes the default avatar (until they upload their own).
+    if (t.photoUrl) await store.setStravaPhoto(me.id, t.photoUrl);
     // Best-effort backfill — don't fail the connect if Strava is slow.
     try {
       const after = Math.floor(Date.now() / 1000) - 14 * 86400;

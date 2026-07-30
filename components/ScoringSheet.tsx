@@ -1,21 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { SPORT_ORDER } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import {
-  AVATAR_GLYPHS,
   AVATAR_PALETTE,
   SPORT_UNIT,
   UNIT_ABBR,
-  type AvatarGlyph,
   type Settings,
 } from "@/lib/types";
 import { SportMark } from "./SportMark";
 import { NotificationSetup } from "./NotificationSetup";
 import { StravaSetup } from "./StravaSetup";
 import { Avatar } from "./Avatar";
-import { Glyph } from "./Glyph";
 import type { League } from "./useLeague";
 
 /**
@@ -282,20 +279,24 @@ export function ScoringSheet({
 }
 
 /**
- * Pick a lane colour + optional monochrome symbol. Selections update
- * optimistically via the shared league.send flow — no separate loading state
- * needed. "None" for glyph falls back to the athlete's initials.
+ * Set a profile photo — upload your own, or fall back to your Strava photo, then
+ * initials. The lane colour still tints your feed posts and backs the initials.
+ * Everything saves optimistically through the shared league.send flow.
  */
 function AvatarPicker({ league }: { league: League }) {
   const { state, busy, send } = league;
   const me = state.me;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photoErr, setPhotoErr] = useState<string | null>(null);
   if (!me) return null;
+
   const previewAthlete = {
     id: me.id,
     name: me.name,
     avatarColor: me.avatarColor,
-    avatarGlyph: me.avatarGlyph,
+    avatarUrl: me.avatarUrl,
   };
+  const hasUploaded = !!me.avatarUrl && me.avatarUrl.startsWith("/api/avatar/");
 
   function saveColor(color: string) {
     send("/api/session", {
@@ -303,19 +304,27 @@ function AvatarPicker({ league }: { league: League }) {
       body: JSON.stringify({ avatarColor: color }),
     });
   }
-  function saveGlyph(glyph: AvatarGlyph | null) {
-    send("/api/session", {
-      method: "PATCH",
-      body: JSON.stringify({ avatarGlyph: glyph }),
-    });
+
+  async function onPickFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // let the same file be re-picked after a cancel
+    if (!file) return;
+    setPhotoErr(null);
+    try {
+      const image = await resizeToSquare(file, 256);
+      const err = await send("/api/avatar", {
+        method: "POST",
+        body: JSON.stringify({ image }),
+      });
+      if (err) setPhotoErr(err);
+    } catch {
+      setPhotoErr("Couldn't read that image — try another.");
+    }
   }
-  function surprise() {
-    const color = AVATAR_PALETTE[Math.floor(Math.random() * AVATAR_PALETTE.length)];
-    const glyph = AVATAR_GLYPHS[Math.floor(Math.random() * AVATAR_GLYPHS.length)];
-    send("/api/session", {
-      method: "PATCH",
-      body: JSON.stringify({ avatarColor: color, avatarGlyph: glyph }),
-    });
+
+  async function removePhoto() {
+    setPhotoErr(null);
+    await send("/api/avatar", { method: "DELETE" });
   }
 
   return (
@@ -324,20 +333,45 @@ function AvatarPicker({ league }: { league: League }) {
         <Avatar athlete={previewAthlete} me className="h-12 w-12 text-sm" />
         <div className="min-w-0 flex-1">
           <div className="eyebrow text-ink">Your avatar</div>
-          <p className="mt-0.5 text-[0.8125rem] text-ink-2">Your lane on the board.</p>
+          <p className="mt-0.5 text-[0.8125rem] text-ink-2">
+            {state.strava.connected
+              ? "Defaults to your Strava photo — upload to override."
+              : "Upload a photo, or it falls back to your initials."}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={surprise}
-          disabled={busy}
-          className="eyebrow shrink-0 rounded-lg border-2 border-line px-3 py-2 text-ink-2 transition-transform active:scale-95 disabled:opacity-40"
-        >
-          Surprise me
-        </button>
       </div>
 
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={onPickFile}
+        className="hidden"
+      />
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+          className="eyebrow flex-1 rounded-lg border-2 border-line bg-tile px-3 py-2.5 text-ink-2 transition-transform active:scale-95 disabled:opacity-40"
+        >
+          {busy ? "Working…" : hasUploaded ? "Change photo" : "Upload photo"}
+        </button>
+        {hasUploaded && (
+          <button
+            type="button"
+            onClick={removePhoto}
+            disabled={busy}
+            className="eyebrow rounded-lg px-3 py-2.5 text-ink-3 disabled:opacity-40"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      {photoErr && <p className="mt-2 text-xs font-medium text-run">{photoErr}</p>}
+
       <div className="mt-3">
-        <div className="eyebrow mb-1.5 text-ink-3">Colour</div>
+        <div className="eyebrow mb-1.5 text-ink-3">Lane colour</div>
         <div className="grid grid-cols-6 gap-2">
           {AVATAR_PALETTE.map((c) => {
             const active = me.avatarColor === c;
@@ -358,42 +392,34 @@ function AvatarPicker({ league }: { league: League }) {
           })}
         </div>
       </div>
-
-      <div className="mt-3">
-        <div className="eyebrow mb-1.5 text-ink-3">Symbol</div>
-        <div className="grid grid-cols-6 gap-2">
-          <button
-            type="button"
-            aria-label="Use initials"
-            aria-pressed={me.avatarGlyph === null}
-            disabled={busy}
-            onClick={() => saveGlyph(null)}
-            className={`stamp flex h-10 items-center justify-center rounded-lg border-2 bg-deck-2/40 text-sm text-ink-2 disabled:opacity-40 ${
-              me.avatarGlyph === null ? "border-ink" : "border-line"
-            }`}
-          >
-            Aa
-          </button>
-          {AVATAR_GLYPHS.map((g) => {
-            const active = me.avatarGlyph === g;
-            return (
-              <button
-                key={g}
-                type="button"
-                aria-label={`Symbol ${g}`}
-                aria-pressed={active}
-                disabled={busy}
-                onClick={() => saveGlyph(g)}
-                className={`flex h-10 items-center justify-center rounded-lg border-2 bg-deck-2/40 text-ink-2 disabled:opacity-40 ${
-                  active ? "border-ink text-ink" : "border-line"
-                }`}
-              >
-                <Glyph name={g} className="h-5 w-5" />
-              </button>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
+}
+
+/** Draw the picked file to a centred, cover-cropped square and hand back a
+ *  compact JPEG data URL — keeps uploads tiny and dependency-free (no server
+ *  image lib). */
+function resizeToSquare(file: File, size: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("no canvas context"));
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("bad image"));
+    };
+    img.src = url;
+  });
 }
