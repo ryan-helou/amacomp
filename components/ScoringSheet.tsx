@@ -28,6 +28,8 @@ export function ScoringSheet({
     run: String(state.settings.multipliers.run),
     gym: String(state.settings.multipliers.gym),
     weeklyGoal: String(state.settings.weeklyGoal),
+    seasonStart: state.settings.seasonStart,
+    forfeit: state.settings.forfeit,
   }));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -51,6 +53,8 @@ export function ScoringSheet({
         gym: Number(form.gym),
       },
       weeklyGoal: Number(form.weeklyGoal),
+      seasonStart: form.seasonStart,
+      forfeit: form.forfeit,
     };
     const err = await send("/api/settings", {
       method: "PUT",
@@ -142,6 +146,43 @@ export function ScoringSheet({
               }`}
             />
             <span className="eyebrow w-12 text-ink-3">pts</span>
+          </div>
+
+          <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+            <label htmlFor="season" className="eyebrow block text-ink-2">
+              Season starts
+            </label>
+            <input
+              id="season"
+              type="date"
+              readOnly={!editable}
+              value={form.seasonStart}
+              onChange={(e) => setForm({ ...form, seasonStart: e.target.value })}
+              className={`mt-2 block w-full appearance-none rounded-lg border-2 px-3 py-2 text-ink [color-scheme:light] focus:outline-none ${
+                editable ? "border-ink-3 bg-tile focus:border-accent" : "border-transparent bg-transparent"
+              }`}
+            />
+            <p className="mt-1.5 text-[0.6875rem] text-ink-3">
+              Nothing counts before this day.
+            </p>
+          </div>
+
+          <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+            <label htmlFor="forfeit" className="eyebrow block text-ink-2">
+              Loser&apos;s forfeit
+            </label>
+            <input
+              id="forfeit"
+              type="text"
+              maxLength={120}
+              readOnly={!editable}
+              value={form.forfeit}
+              onChange={(e) => setForm({ ...form, forfeit: e.target.value })}
+              placeholder="What the weekly loser owes"
+              className={`mt-2 block w-full rounded-lg border-2 px-3 py-2 text-ink focus:outline-none ${
+                editable ? "border-ink-3 bg-tile focus:border-accent" : "border-transparent bg-transparent px-0"
+              }`}
+            />
           </div>
         </div>
 

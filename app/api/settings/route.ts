@@ -3,6 +3,7 @@ import { getStore } from "@/lib/db";
 import { currentAthlete, isAdmin } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { SPORTS, type Settings, type Sport } from "@/lib/types";
+import { isDayKey } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +43,20 @@ export async function PUT(req: Request) {
     );
   }
 
+  if (!isDayKey(body.seasonStart)) {
+    return NextResponse.json({ error: "Pick a valid season start date." }, { status: 400 });
+  }
+
+  const forfeit = typeof body.forfeit === "string" ? body.forfeit.trim().slice(0, 120) : "";
+  if (!forfeit) {
+    return NextResponse.json({ error: "Give the forfeit some words." }, { status: 400 });
+  }
+
   const settings: Settings = {
     multipliers,
     weeklyGoal: Math.round(weeklyGoal * 10) / 10,
+    seasonStart: body.seasonStart,
+    forfeit,
   };
 
   await getStore().setSettings(settings);

@@ -50,11 +50,17 @@ export interface Settings {
   multipliers: Record<Sport, number>;
   /** Points every athlete is expected to hit each week. */
   weeklyGoal: number;
+  /** The competition only counts sessions on/after this local day (`YYYY-MM-DD`). */
+  seasonStart: string;
+  /** What the weekly loser owes — shown wherever the stakes come up. */
+  forfeit: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   multipliers: { swim: 25, bike: 1, run: 5, gym: 30 },
   weeklyGoal: 75,
+  seasonStart: "2026-08-10",
+  forfeit: "Cook the boys a meal + run a marathon",
 };
 
 export interface AppState {
