@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { SPORT_ORDER, fmtKm, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { SPORT_UNIT, UNIT_LABEL, rateLabel, type AppState } from "@/lib/types";
+import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { monthlyChampions, weekWinsBoard } from "@/lib/achievements";
 import { hallOfFame } from "@/lib/records";
@@ -54,74 +54,6 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
 
   return (
     <div className="space-y-8">
-      {/* House rules — the pact the lads play by */}
-      <section className="overflow-hidden rounded-2xl border-2 border-ink bg-tile">
-        <div className="flex items-center justify-between border-b-2 border-line bg-deck-2/50 px-5 py-3">
-          <div>
-            <p className="eyebrow text-ink-3">The pact</p>
-            <h2 className="stamp text-2xl text-ink">House Rules</h2>
-          </div>
-          <span className="text-gold" aria-hidden>
-            <Glyph name="shield" className="h-8 w-8" />
-          </span>
-        </div>
-
-        <div className="space-y-5 px-5 py-5">
-          {/* The weekly law */}
-          <div className="flex items-center gap-4">
-            <div className="stat shrink-0 leading-none text-ink" style={{ fontSize: "3.5rem" }}>
-              {fmtPoints(state.settings.weeklyGoal)}
-            </div>
-            <div className="min-w-0">
-              <p className="eyebrow accent-text">points · every week</p>
-              <p className="mt-1 text-sm text-ink-2">
-                Fall short and you owe:{" "}
-                <span className="font-semibold text-ink">{state.settings.forfeit}</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="h-px bg-line" />
-
-          {/* End-of-season stakes */}
-          <div>
-            <p className="eyebrow mb-2 text-ink-3">End of season</p>
-            <div className="space-y-2">
-              <div className="flex items-start gap-3 rounded-xl border-2 border-gold/40 bg-gold/5 px-4 py-3">
-                <span className="mt-0.5 shrink-0 text-gold" aria-hidden>
-                  <Glyph name="crown" className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gold">First place eats free</p>
-                  <p className="text-[0.8125rem] text-ink-2">
-                    …and their name shines <span className="font-semibold text-gold">gold</span>{" "}
-                    all next season.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-xl border-2 border-line bg-deck-2/40 px-4 py-3">
-                <span className="mt-0.5 shrink-0 text-run" aria-hidden>
-                  <Glyph name="flame" className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-ink">Last place cooks the meal</p>
-                  <p className="text-[0.8125rem] text-ink-2">
-                    The whole crew chips in for it — everyone but the champ.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <p className="border-t border-line pt-3 text-center font-mono text-[0.6875rem] text-ink-3">
-            {SPORT_ORDER.map(
-              (s) =>
-                `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(state.settings.multipliers[s], SPORT_UNIT[s])}`,
-            ).join("  ·  ")}
-          </p>
-        </div>
-      </section>
-
       <section>
         <div className="flex items-center gap-2">
           <span className="text-gold" aria-hidden>
