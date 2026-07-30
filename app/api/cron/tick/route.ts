@@ -3,7 +3,7 @@ import { getStore } from "@/lib/db";
 import { readState } from "@/lib/state";
 import { notifyOvertakes, pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, fmtPoints } from "@/lib/scoring";
-import { addDays, today, weekStart } from "@/lib/dates";
+import { addDays, parseDayKey, today, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
 import { stravaConfigured, syncAthlete } from "@/lib/strava";
 
@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
  * endpoint with the shared secret. The notify jobs are idempotent per week via
  * the `meta` store, so a double-fire never double-notifies.
  *   ?job=strava   — every 30 min: pull each linked athlete's new activities
+ *   ?job=midweek  — Thursday: nudge whoever's last or off the quota pace
  *   ?job=results  — Monday: last week's champion + forfeit list
  *   ?job=deadline — Sunday: who still hasn't hit quota
  */
@@ -121,6 +122,54 @@ export async function GET(req: Request) {
         url: "/",
         tag: "deadline",
       });
+      sent += 1;
+    }
+    return NextResponse.json({ ok: true, sent });
+  }
+
+  if (job === "midweek") {
+    // One nudge per week, and only to people it actually applies to — last place,
+    // or projected to miss quota at the current rate. Never nag someone who's
+    // already safe, so it stays a signal, not spam.
+    const marker = `midweek-${weekStart(now)}`;
+    if (await store.getMeta(marker)) {
+      return NextResponse.json({ ok: true, sent: 0, note: "already sent" });
+    }
+    await store.setMeta(marker, "1");
+
+    const goal = state.settings.weeklyGoal;
+    const standings = standingsFor(state.athletes, activities, state.settings, "week", now);
+    const msPerDay = 86_400_000;
+    const daysIn =
+      Math.round(
+        (parseDayKey(now).getTime() - parseDayKey(weekStart(now)).getTime()) / msPerDay,
+      ) + 1; // Mon = 1 … Sun = 7
+    const daysLeft = Math.max(0, 7 - daysIn);
+    const lastRank = standings.length ? standings[standings.length - 1].rank : 0;
+
+    let sent = 0;
+    for (const s of standings) {
+      if (s.points >= goal) continue; // safe — leave them be
+      const togo = fmtPoints(goal - s.points);
+      const projected = daysIn > 0 ? (s.points / daysIn) * 7 : 0;
+      const isLast = standings.length > 1 && lastRank > 1 && s.rank === lastRank;
+      const days = `${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
+
+      let title: string;
+      let body: string;
+      if (isLast) {
+        const ahead = standings.find((x) => x.rank < s.rank);
+        title = "You're in last";
+        body = ahead
+          ? `Last this week — ${fmtPoints(ahead.points - s.points)} pts behind ${ahead.athlete.name}. ${togo} to quota, ${days} left.`
+          : `Last this week. ${togo} pts to quota, ${days} left.`;
+      } else if (projected < goal) {
+        title = "Off the pace";
+        body = `You're off pace for your ${fmtPoints(goal)}-pt week — ${togo} to go, ${days} left. Time to move.`;
+      } else {
+        continue; // on pace and not last — nothing to say
+      }
+      await sendToAthlete(s.athlete.id, { title, body, url: "/", tag: "midweek" });
       sent += 1;
     }
     return NextResponse.json({ ok: true, sent });
