@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { activityPoints, fmtKm, fmtPoints } from "@/lib/scoring";
+import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
 import { REACTIONS, SPORT_UNIT, type Activity, type Athlete } from "@/lib/types";
 import { REACTION_GLYPH, commentsFor, myReaction, reactionCounts } from "@/lib/banter";
+import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { athleteColor } from "@/lib/avatar";
 import { SportMark } from "./SportMark";
 import { Glyph } from "./Glyph";
@@ -23,6 +24,9 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
     for (const a of state.athletes) map.set(a.id, a);
     return map;
   }, [state.athletes]);
+
+  // Gym workouts past the daily cap — shown, but marked as scoring nothing.
+  const unscored = useMemo(() => unscoredGymIds(state.activities), [state.activities]);
 
   const days = useMemo(() => {
     const groups = new Map<DayKey, Activity[]>();
@@ -59,7 +63,10 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
   return (
     <div className="space-y-6">
       {days.map(([day, items]) => {
-        const dayPoints = items.reduce((sum, a) => sum + activityPoints(a, state.settings), 0);
+        const dayPoints = items.reduce(
+          (sum, a) => sum + activityPoints(a, state.settings, unscored),
+          0,
+        );
         return (
           <section key={day}>
             <div className="flex items-baseline justify-between border-b-2 border-ink pb-1.5">
@@ -115,9 +122,18 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
                         {a.note && (
                           <p className="truncate text-[0.8125rem] text-ink-3">{a.note}</p>
                         )}
+                        {unscored.has(a.id) && (
+                          <p className="text-[0.8125rem] text-ink-3">
+                            Past the {MAX_SCORING_GYM_PER_DAY}-a-day gym cap — logged, not scored.
+                          </p>
+                        )}
                       </div>
-                      <span className={`stamp shrink-0 text-base ${ui.text}`}>
-                        {fmtPoints(activityPoints(a, state.settings))}
+                      <span
+                        className={`stamp shrink-0 text-base ${
+                          unscored.has(a.id) ? "text-ink-3 line-through" : ui.text
+                        }`}
+                      >
+                        {fmtPoints(activityPoints(a, state.settings, unscored))}
                       </span>
                     </button>
 

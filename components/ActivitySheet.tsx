@@ -132,10 +132,19 @@ export function ActivitySheet({
                   : `${fmtKm(activity.km)} km ${ui.label.toLowerCase()}`}
                 {activity.note ? ` — ${activity.note}` : ""}
               </div>
+              {isUnscored && (
+                <div className="mt-1 text-[0.8125rem] text-ink-3">
+                  Past the {MAX_SCORING_GYM_PER_DAY}-a-day gym cap — logged, not scored.
+                </div>
+              )}
             </div>
             <div className="text-right">
-              <div className={`stamp text-xl ${ui.text}`}>
-                {fmtPoints(activityPoints(activity, state.settings))}
+              <div
+                className={`stamp text-xl ${
+                  isUnscored ? "text-ink-3 line-through" : ui.text
+                }`}
+              >
+                {fmtPoints(activityPoints(activity, state.settings, unscored))}
               </div>
               <div className="eyebrow text-ink-3">pts</div>
             </div>

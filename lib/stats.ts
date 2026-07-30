@@ -1,6 +1,6 @@
 import type { Activity, Athlete, Settings, Sport } from "./types";
 import { SPORT_UNIT } from "./types";
-import { activityPoints, standingsForRange } from "./scoring";
+import { activityPoints, standingsForRange, unscoredGymIds } from "./scoring";
 import { addDays, today, weekEnd, weekStart, type DayKey } from "./dates";
 
 export interface TrendWeek {
@@ -24,12 +24,13 @@ export function weeklyTrend(
     keys.unshift(wk);
     wk = addDays(wk, -7);
   }
+  const unscored = unscoredGymIds(activities);
   return keys.map((w) => {
     const end = weekEnd(w);
     let points = 0;
     for (const a of activities) {
       if (a.athleteId === athleteId && a.occurredOn >= w && a.occurredOn <= end) {
-        points += activityPoints(a, settings);
+        points += activityPoints(a, settings, unscored);
       }
     }
     const [, m, d] = w.split("-");
@@ -62,8 +63,9 @@ export function teamTotals(
   let gymWorkouts = 0;
   let distanceKm = 0;
 
+  const unscored = unscoredGymIds(activities);
   for (const a of activities) {
-    points += activityPoints(a, settings);
+    points += activityPoints(a, settings, unscored);
     kmBySport[a.sport] += a.km;
     if (a.sport === "gym") gymWorkouts += 1;
     if (SPORT_UNIT[a.sport] === "km") distanceKm += a.km;

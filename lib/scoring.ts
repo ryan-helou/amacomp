@@ -1,6 +1,7 @@
 import type { Activity, Athlete, Settings, Sport } from "./types";
 import { SPORTS, SPORT_UNIT } from "./types";
 import { inRange, type DayKey, type Period, periodRange } from "./dates";
+import { MAX_SCORING_GYM_PER_DAY } from "./validate";
 
 /**
  * Points are derived from distance at read time rather than frozen when an
@@ -12,8 +13,48 @@ export function pointsFor(km: number, sport: Sport, settings: Settings): number 
   return km * (settings.multipliers[sport] ?? 0);
 }
 
-export function activityPoints(a: Activity, settings: Settings): number {
+/**
+ * Points for one activity. Pass the set from `unscoredGymIds` to have
+ * over-the-cap gym workouts score zero; omit it when you genuinely want the
+ * face value (e.g. the "Worth" preview on the log form, before it's saved).
+ */
+export function activityPoints(
+  a: Activity,
+  settings: Settings,
+  unscored?: Set<string>,
+): number {
+  if (unscored?.has(a.id)) return 0;
   return pointsFor(a.km, a.sport, settings);
+}
+
+/**
+ * The gym workouts that fall past the per-day cap, as a set of activity ids.
+ * Earliest-logged wins, so the cap can never retroactively un-score a session
+ * that already counted. Computed over whatever list is passed in — callers hand
+ * over the full activity list, and range filtering happens afterwards, so a
+ * week view and an all-time view agree on which workouts scored.
+ */
+export function unscoredGymIds(activities: Activity[]): Set<string> {
+  const byAthleteDay = new Map<string, Activity[]>();
+  for (const a of activities) {
+    if (SPORT_UNIT[a.sport] !== "flat") continue;
+    const key = `${a.athleteId}|${a.occurredOn}`;
+    const list = byAthleteDay.get(key);
+    if (list) list.push(a);
+    else byAthleteDay.set(key, [a]);
+  }
+
+  const unscored = new Set<string>();
+  for (const list of byAthleteDay.values()) {
+    if (list.length <= MAX_SCORING_GYM_PER_DAY) continue;
+    // Stable order: oldest first, id as the tie-break so two logs written in the
+    // same millisecond still resolve the same way on every render.
+    const ordered = [...list].sort(
+      (x, y) => x.createdAt.localeCompare(y.createdAt) || x.id.localeCompare(y.id),
+    );
+    for (const a of ordered.slice(MAX_SCORING_GYM_PER_DAY)) unscored.add(a.id);
+  }
+  return unscored;
 }
 
 export interface Standing {
@@ -27,6 +68,10 @@ export interface Standing {
   rank: number;
   /** Fraction of the weekly goal reached — only meaningful for the week view. */
   goalProgress: number;
+  /** Sessions that came in from Strava rather than being typed by hand. */
+  stravaSessions: number;
+  /** Gym workouts in this window that were past the daily cap and scored nothing. */
+  unscoredSessions: number;
 }
 
 function emptySportMap(): Record<Sport, number> {
@@ -61,13 +106,26 @@ export function standingsForRange(
       kmBySport: emptySportMap(),
       rank: 0,
       goalProgress: 0,
+      stravaSessions: 0,
+      unscoredSessions: 0,
     });
   }
+
+  // Computed over the whole list, before the range filter, so a capped workout
+  // stays capped no matter which window you're looking at.
+  const unscored = unscoredGymIds(activities);
 
   for (const a of activities) {
     if (!inRange(a.occurredOn, range)) continue;
     const row = rows.get(a.athleteId);
     if (!row) continue;
+    if (a.source === "strava") row.stravaSessions += 1;
+    if (unscored.has(a.id)) {
+      // Still a session that happened — it just contributes no points or volume.
+      row.sessions += 1;
+      row.unscoredSessions += 1;
+      continue;
+    }
     const pts = activityPoints(a, settings);
     row.points += pts;
     // `km` is the distance total, so gym hours don't get summed into it — they
@@ -101,7 +159,8 @@ export function standingsForRange(
 }
 
 export function totalPoints(activities: Activity[], settings: Settings): number {
-  return activities.reduce((sum, a) => sum + activityPoints(a, settings), 0);
+  const unscored = unscoredGymIds(activities);
+  return activities.reduce((sum, a) => sum + activityPoints(a, settings, unscored), 0);
 }
 
 /** Trim float noise, keep one decimal, and never render "12.0". */

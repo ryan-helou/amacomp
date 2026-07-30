@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { activityPoints, fmtKm, fmtPoints } from "@/lib/scoring";
+import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
 import { SPORT_UNIT, UNIT_LABEL, type Activity } from "@/lib/types";
+import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { SportMark } from "./SportMark";
 import { ActivityForm, emptyDraft, type ActivityDraft } from "./ActivityForm";
 import type { League } from "./useLeague";
@@ -29,6 +30,7 @@ export function LogTab({
     () => state.activities.filter((a) => a.athleteId === state.me?.id),
     [state.activities, state.me?.id],
   );
+  const unscored = useMemo(() => unscoredGymIds(state.activities), [state.activities]);
 
   async function create() {
     setError(null);
@@ -178,10 +180,19 @@ export function LogTab({
                           {a.note}
                         </p>
                       )}
+                      {unscored.has(a.id) && (
+                        <p className="mt-0.5 text-[0.8125rem] text-ink-3">
+                          Past the {MAX_SCORING_GYM_PER_DAY}-a-day gym cap — logged, not scored.
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
-                      <div className={`stamp text-xl ${ui.text}`}>
-                        {fmtPoints(activityPoints(a, state.settings))}
+                      <div
+                        className={`stamp text-xl ${
+                          unscored.has(a.id) ? "text-ink-3 line-through" : ui.text
+                        }`}
+                      >
+                        {fmtPoints(activityPoints(a, state.settings, unscored))}
                       </div>
                       <div className="eyebrow text-ink-3">pts</div>
                     </div>
