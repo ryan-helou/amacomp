@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, parseDayKey, todayWithReset, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
-import { seasonChampions, seasonFor } from "@/lib/season";
+import { reigningChampionId, seasonChampions, seasonFor } from "@/lib/season";
 import type { AppState } from "@/lib/types";
 import { useLeague } from "./useLeague";
 import { LoginScreen } from "./LoginScreen";
@@ -155,6 +155,10 @@ export function AppShell({
       ),
     [state.athletes, state.activities, state.settings, refDay],
   );
+  const championId = useMemo(
+    () => reigningChampionId(state.athletes, state.activities, state.settings, refDay),
+    [state.athletes, state.activities, state.settings, refDay],
+  );
   const crownedRef = useRef(false);
   const [crownMsg, setCrownMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -209,7 +213,7 @@ export function AppShell({
   }
 
   return (
-    <ProfileProvider state={state} refDay={refDay}>
+    <ProfileProvider state={state} refDay={refDay} championId={championId}>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
       <header className="sticky top-0 z-30 border-b-2 border-ink bg-deck px-5 pb-3 pt-4">

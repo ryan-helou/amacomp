@@ -30,14 +30,17 @@ export function AthleteSheet({
   state,
   athleteId,
   refDay,
+  reigning,
   onClose,
 }: {
   state: AppState;
   athleteId: string;
   refDay: DayKey;
+  reigning?: string | null;
   onClose: () => void;
 }) {
   const athlete = state.athletes.find((a) => a.id === athleteId);
+  const isChampion = !!athlete && reigning === athlete.id;
 
   const data = useMemo(() => {
     if (!athlete) return null;
@@ -148,7 +151,17 @@ export function AthleteSheet({
             <Avatar athlete={athlete} me={isMe} className="h-14 w-14 text-base" />
           )}
           <div className="flex-1">
-            <h2 className="stamp text-2xl text-ink">{athlete.name}</h2>
+            <h2 className={`stamp text-2xl ${isChampion ? "text-gold" : "text-ink"}`}>
+              {isChampion && (
+                <Glyph name="crown" className="mr-1.5 inline h-5 w-5 -translate-y-0.5 align-baseline" />
+              )}
+              {athlete.name}
+            </h2>
+            {isChampion && (
+              <div className="eyebrow mt-1 inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[0.625rem] text-gold">
+                Reigning champion
+              </div>
+            )}
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-xs text-ink-2">
               {data.titles > 0 && (
                 <span className="inline-flex items-center gap-1 text-gold">

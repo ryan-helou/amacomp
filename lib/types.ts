@@ -104,9 +104,9 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   multipliers: { swim: 25, bike: 1, run: 5, gym: 30 },
-  weeklyGoal: 75,
+  weeklyGoal: 100,
   seasonStart: "2026-08-03",
-  forfeit: "Cook the boys a meal + run a marathon",
+  forfeit: "Run a marathon — unless the lads excuse you",
 };
 
 export const REACTIONS = ["fire", "beast", "respect"] as const;

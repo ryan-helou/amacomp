@@ -11,33 +11,44 @@ import { AthleteSheet } from "./AthleteSheet";
  * so a name is tappable wherever it appears, not just on the Board.
  */
 const OpenProfileCtx = createContext<(athleteId: string) => void>(() => {});
+// The reigning champion (last season's winner) — shown in gold everywhere.
+const ChampionCtx = createContext<string | null>(null);
 
 export function useOpenProfile() {
   return useContext(OpenProfileCtx);
 }
 
+export function useReigningChampion() {
+  return useContext(ChampionCtx);
+}
+
 export function ProfileProvider({
   state,
   refDay,
+  championId = null,
   children,
 }: {
   state: AppState;
   refDay: DayKey;
+  championId?: string | null;
   children: ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   return (
-    <OpenProfileCtx.Provider value={setSelected}>
-      {children}
-      {selected && (
-        <AthleteSheet
-          state={state}
-          athleteId={selected}
-          refDay={refDay}
-          onClose={() => setSelected(null)}
-        />
-      )}
-    </OpenProfileCtx.Provider>
+    <ChampionCtx.Provider value={championId}>
+      <OpenProfileCtx.Provider value={setSelected}>
+        {children}
+        {selected && (
+          <AthleteSheet
+            state={state}
+            athleteId={selected}
+            refDay={refDay}
+            reigning={championId}
+            onClose={() => setSelected(null)}
+          />
+        )}
+      </OpenProfileCtx.Provider>
+    </ChampionCtx.Provider>
   );
 }
 
@@ -56,6 +67,8 @@ export function AthleteName({
   className?: string;
 }) {
   const open = useOpenProfile();
+  const champ = useReigningChampion();
+  const gold = !!id && champ === id;
   return (
     <span
       role="button"
@@ -71,7 +84,11 @@ export function AthleteName({
           open(id);
         }
       }}
-      className={`cursor-pointer underline-offset-2 hover:underline active:opacity-60 ${className ?? ""}`}
+      // Reigning champion's name is gilded (inline colour beats any text-* class).
+      style={gold ? { color: "var(--color-gold)" } : undefined}
+      className={`cursor-pointer underline-offset-2 hover:underline active:opacity-60 ${
+        gold ? "font-semibold" : ""
+      } ${className ?? ""}`}
     >
       {name}
     </span>

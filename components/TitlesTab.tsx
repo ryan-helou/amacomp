@@ -198,7 +198,9 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
       <section>
         <h2 className="eyebrow text-ink-2">Seasons</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">
-          Every two months is a new season. Win it to take the crown.
+          Every two months is a new season. Winner eats free and wears{" "}
+          <span className="font-semibold text-gold">gold</span> all next season. Last place
+          cooks — everyone chips in but the champ.
         </p>
         <ul className="mt-3 space-y-2">
           {seasons.map((s) => (

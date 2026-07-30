@@ -98,3 +98,20 @@ export function seasonChampions(
   }
   return out;
 }
+
+/**
+ * The reigning champion — winner of the most recent COMPLETED season — who wears
+ * gold through the current season. Null before any season has finished (so nobody
+ * is gilded during Season 1 or the pre-season).
+ */
+export function reigningChampionId(
+  athletes: Athlete[],
+  activities: Activity[],
+  settings: Settings,
+  refDay: DayKey,
+): string | null {
+  const past = seasonChampions(athletes, activities, settings, refDay, settings.seasonStart).find(
+    (c) => c.status === "past" && c.champion,
+  );
+  return past?.champion?.athlete.id ?? null;
+}
