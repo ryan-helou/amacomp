@@ -4,21 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { SPORT_UI } from "@/lib/ui";
-import {
-  MAX_COMMENT,
-  REACTIONS,
-  REACTION_LABEL,
-  SPORT_UNIT,
-  type Activity,
-} from "@/lib/types";
-import { formatDayRelative, timeAgo, type DayKey } from "@/lib/dates";
-import {
-  REACTION_GLYPH,
-  commentsFor,
-  myReaction,
-  reactionCounts,
-} from "@/lib/banter";
-import { Avatar } from "./Avatar";
+import { SPORT_UNIT, type Activity } from "@/lib/types";
+import { formatDayRelative, type DayKey } from "@/lib/dates";
 import { Glyph } from "./Glyph";
 import { SportMark } from "./SportMark";
 import { AthleteName } from "./ProfileContext";
@@ -37,8 +24,6 @@ export function ActivitySheet({
   onClose: () => void;
 }) {
   const { state, busy, send } = league;
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [delErr, setDelErr] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -84,9 +69,6 @@ export function ActivitySheet({
     [state.athletes],
   );
 
-  const { counts, total } = reactionCounts(activity.id, state.reactions);
-  const mine = myReaction(activity.id, state.me?.id, state.reactions);
-  const comments = commentsFor(activity.id, state.comments);
   const ui = SPORT_UI[activity.sport];
   const isFlat = SPORT_UNIT[activity.sport] === "flat";
   const unscored = useMemo(() => unscoredGymIds(state.activities), [state.activities]);
@@ -97,29 +79,6 @@ export function ActivitySheet({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  async function react(type: (typeof REACTIONS)[number]) {
-    if (mine === type) {
-      await send(`/api/activities/${activity.id}/react`, { method: "DELETE" });
-    } else {
-      await send(`/api/activities/${activity.id}/react`, {
-        method: "POST",
-        body: JSON.stringify({ type }),
-      });
-    }
-  }
-
-  async function addComment() {
-    const body = text.trim();
-    if (!body) return;
-    setError(null);
-    const err = await send(`/api/activities/${activity.id}/comments`, {
-      method: "POST",
-      body: JSON.stringify({ body }),
-    });
-    if (err) setError(err);
-    else setText("");
-  }
 
   async function remove() {
     setDelErr(null);
@@ -267,114 +226,11 @@ export function ActivitySheet({
             </div>
           )}
           {delErr && <p className="mb-2 text-xs font-medium text-run">{delErr}</p>}
-
-          {/* Reactions */}
-          <div className="flex gap-2 border-y border-line py-2.5">
-            {REACTIONS.map((type) => {
-              const on = mine === type;
-              const n = counts[type];
-              return (
-                <button
-                  key={type}
-                  onClick={() => react(type)}
-                  disabled={busy}
-                  aria-pressed={on}
-                  aria-label={REACTION_LABEL[type]}
-                  className={`flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 transition-colors ${
-                    on
-                      ? "border-accent bg-accent/10 text-accent"
-                      : "border-line bg-tile text-ink-2"
-                  }`}
-                >
-                  <Glyph name={REACTION_GLYPH[type]} className="h-4 w-4" />
-                  {n > 0 && <span className="font-mono text-xs">{n}</span>}
-                </button>
-              );
-            })}
-            <div className="ml-auto flex items-center gap-1.5 self-center text-ink-3">
-              <Glyph name="chat" className="h-4 w-4" />
-              <span className="font-mono text-xs">{comments.length}</span>
-            </div>
-          </div>
         </div>
-
-        {/* Comments */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
-          {comments.length === 0 ? (
-            <p className="py-6 text-center text-sm text-ink-3">
-              {total > 0 ? "Reactions only — no words yet." : "Be the first to say something."}
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {comments.map((c) => {
-                const author = athleteOf.get(c.athleteId);
-                const canDelete = c.athleteId === state.me?.id || state.isAdmin;
-                return (
-                  <li key={c.id} className="flex gap-2.5">
-                    {author && (
-                      <Avatar athlete={author} className="mt-0.5 h-7 w-7 text-[0.5625rem]" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-2">
-                        {author ? (
-                          <AthleteName
-                            id={author.id}
-                            name={author.name}
-                            className="text-sm font-semibold text-ink"
-                          />
-                        ) : (
-                          <span className="text-sm font-semibold text-ink">Unknown</span>
-                        )}
-                        <span className="font-mono text-[0.625rem] text-ink-3">
-                          {timeAgo(c.createdAt)}
-                        </span>
-                        {canDelete && (
-                          <button
-                            onClick={() => send(`/api/comments/${c.id}`, { method: "DELETE" })}
-                            className="ml-auto font-mono text-[0.625rem] text-ink-3"
-                          >
-                            delete
-                          </button>
-                        )}
-                      </div>
-                      <p className="whitespace-pre-wrap break-words text-[0.9375rem] text-ink">
-                        {c.body}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        {/* Composer */}
-        <div className="shrink-0 border-t-2 border-line px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-          {error && <p className="mb-2 text-xs font-medium text-run">{error}</p>}
-          <div className="flex items-end gap-2">
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              maxLength={MAX_COMMENT}
-              rows={1}
-              placeholder="Add a comment…"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  addComment();
-                }
-              }}
-              className="max-h-28 min-h-[44px] flex-1 resize-none rounded-xl border-2 border-ink-3 bg-tile px-3 py-2.5 text-[0.9375rem] text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none"
-            />
-            <button
-              onClick={addComment}
-              disabled={busy || !text.trim()}
-              className="accent-fill eyebrow rounded-xl px-4 py-3 shadow-sm transition-opacity disabled:opacity-40"
-            >
-              Send
-            </button>
-          </div>
-        </div>
+        <div
+          aria-hidden
+          className="shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        />
           </>
         )}
       </div>
