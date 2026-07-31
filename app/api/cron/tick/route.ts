@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
 import { readState } from "@/lib/state";
-import { notifyOvertakes, pushEnabled, sendToAthlete } from "@/lib/push";
+import { notifyOvertakes, notifyQuotaHits, pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, standingsForRange, fmtPoints } from "@/lib/scoring";
 import { addDays, parseDayKey, today, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
@@ -58,6 +58,13 @@ export async function GET(req: Request) {
       for (const [athleteId, ids] of importedBy) {
         imported += ids.length;
         await notifyOvertakes(
+          athleteId,
+          state.athletes,
+          state.activities,
+          ids,
+          state.settings,
+        ).catch(() => {});
+        await notifyQuotaHits(
           athleteId,
           state.athletes,
           state.activities,

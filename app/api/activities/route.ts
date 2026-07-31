@@ -5,7 +5,7 @@ import { readState } from "@/lib/state";
 import { isDayKey } from "@/lib/dates";
 import { isSport, SPORT_UNIT } from "@/lib/types";
 import { MAX_KM, parseKm, parseNote } from "@/lib/validate";
-import { notifyOvertakes } from "@/lib/push";
+import { notifyOvertakes, notifyQuotaHits } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +49,13 @@ export async function POST(req: Request) {
   // Fire-and-forget: notify anyone this session leapfrogged this week. Never
   // let a push failure affect the log response.
   void notifyOvertakes(
+    me.id,
+    state.athletes,
+    state.activities,
+    [created.id],
+    state.settings,
+  ).catch(() => {});
+  void notifyQuotaHits(
     me.id,
     state.athletes,
     state.activities,

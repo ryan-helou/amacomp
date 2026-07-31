@@ -3,7 +3,7 @@ import { currentAthlete } from "@/lib/session";
 import { getStore } from "@/lib/db";
 import { readState } from "@/lib/state";
 import { syncAthlete } from "@/lib/strava";
-import { notifyOvertakes } from "@/lib/push";
+import { notifyOvertakes, notifyQuotaHits } from "@/lib/push";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +20,13 @@ export async function POST() {
     const created = await syncAthlete(store, conn, 21);
     const state = await readState();
     void notifyOvertakes(
+      me.id,
+      state.athletes,
+      state.activities,
+      created,
+      state.settings,
+    ).catch(() => {});
+    void notifyQuotaHits(
       me.id,
       state.athletes,
       state.activities,
