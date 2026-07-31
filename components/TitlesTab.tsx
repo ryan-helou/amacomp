@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { SPORT_ORDER, fmtKm, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
@@ -13,9 +13,11 @@ import { AthleteName, useOpenProfile } from "./ProfileContext";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
+import { RecordSheet } from "./RecordSheet";
 
 export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const openProfile = useOpenProfile();
+  const [openRecord, setOpenRecord] = useState<string | null>(null);
 
   const athleteById = useMemo(
     () => new Map(state.athletes.map((a) => [a.id, a])),
@@ -104,7 +106,11 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
             return (
               <li key={r.key}>
                 {holder ? (
-                  <button onClick={() => openProfile(holder.id)} className={cls}>
+                  <button
+                    onClick={() => setOpenRecord(r.key)}
+                    aria-label={`How ${holder.name} set the ${r.label} record`}
+                    className={cls}
+                  >
                     {body}
                   </button>
                 ) : (
@@ -299,6 +305,14 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
         )}
       </section>
 
+      {openRecord &&
+        (() => {
+          const r = records.find((x) => x.key === openRecord);
+          if (!r) return null;
+          return (
+            <RecordSheet record={r} state={state} onClose={() => setOpenRecord(null)} />
+          );
+        })()}
     </div>
   );
 }

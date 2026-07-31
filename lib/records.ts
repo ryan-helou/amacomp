@@ -1,7 +1,7 @@
 import type { Activity, Settings, Sport } from "./types";
 import { SPORT_UNIT } from "./types";
 import { activityPoints, unscoredGymIds } from "./scoring";
-import { addDays, formatDay, formatRange, weekEnd, weekStart } from "./dates";
+import { addDays, formatDay, formatRange, weekEnd, weekStart, type DayKey } from "./dates";
 import type { GlyphName } from "@/components/Glyph";
 
 /**
@@ -10,6 +10,14 @@ import type { GlyphName } from "@/components/Glyph";
  * one puts your name up. Points respect the gym-per-day cap so a record can't be
  * farmed, exactly like the board.
  */
+/** Enough to reconstruct the story of the record — the record sheet uses this
+ *  to filter the full activity list back down to the sessions that built it. */
+export type RecordContext =
+  | { kind: "day"; day: DayKey }
+  | { kind: "week"; weekStart: DayKey }
+  | { kind: "activity"; activityId: string }
+  | { kind: "streak"; endDay: DayKey; length: number };
+
 export interface HallRecord {
   key: string;
   label: string;
@@ -23,12 +31,15 @@ export interface HallRecord {
   unit: "pts" | "km" | "days" | "sessions";
   /** When it was set — a day, or a week range. */
   detail: string;
+  /** How to re-derive the sessions behind this mark. Absent while unclaimed. */
+  context?: RecordContext;
 }
 
 interface Peak {
   holderId: string | null;
   value: number;
   detail: string;
+  context?: RecordContext;
 }
 const emptyPeak = (): Peak => ({ holderId: null, value: 0, detail: "" });
 
@@ -50,16 +61,36 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
   for (const a of activities) {
     const p = pts(a);
     if (p > bigDaySession.value) {
-      bigDaySession = { holderId: a.athleteId, value: p, detail: formatDay(a.occurredOn) };
+      bigDaySession = {
+        holderId: a.athleteId,
+        value: p,
+        detail: formatDay(a.occurredOn),
+        context: { kind: "activity", activityId: a.id },
+      };
     }
     if (a.sport === "run" && a.km > longestRun.value) {
-      longestRun = { holderId: a.athleteId, value: a.km, detail: formatDay(a.occurredOn) };
+      longestRun = {
+        holderId: a.athleteId,
+        value: a.km,
+        detail: formatDay(a.occurredOn),
+        context: { kind: "activity", activityId: a.id },
+      };
     }
     if (a.sport === "bike" && a.km > longestRide.value) {
-      longestRide = { holderId: a.athleteId, value: a.km, detail: formatDay(a.occurredOn) };
+      longestRide = {
+        holderId: a.athleteId,
+        value: a.km,
+        detail: formatDay(a.occurredOn),
+        context: { kind: "activity", activityId: a.id },
+      };
     }
     if (a.sport === "swim" && a.km > longestSwim.value) {
-      longestSwim = { holderId: a.athleteId, value: a.km, detail: formatDay(a.occurredOn) };
+      longestSwim = {
+        holderId: a.athleteId,
+        value: a.km,
+        detail: formatDay(a.occurredOn),
+        context: { kind: "activity", activityId: a.id },
+      };
     }
 
     const dk = `${a.athleteId}|${a.occurredOn}`;
@@ -79,28 +110,38 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
   for (const [k, v] of dayPts) {
     if (v > bestDay.value) {
       const [holderId, day] = k.split("|");
-      bestDay = { holderId, value: v, detail: formatDay(day) };
+      bestDay = { holderId, value: v, detail: formatDay(day), context: { kind: "day", day } };
     }
   }
   let bestWeek = emptyPeak();
   for (const [k, v] of weekPts) {
     if (v > bestWeek.value) {
       const [holderId, wk] = k.split("|");
-      bestWeek = { holderId, value: v, detail: formatRange([wk, weekEnd(wk)]) };
+      bestWeek = {
+        holderId,
+        value: v,
+        detail: formatRange([wk, weekEnd(wk)]),
+        context: { kind: "week", weekStart: wk },
+      };
     }
   }
   let bestKmDay = emptyPeak();
   for (const [k, v] of dayKm) {
     if (v > bestKmDay.value) {
       const [holderId, day] = k.split("|");
-      bestKmDay = { holderId, value: v, detail: formatDay(day) };
+      bestKmDay = { holderId, value: v, detail: formatDay(day), context: { kind: "day", day } };
     }
   }
   let busiestWeek = emptyPeak();
   for (const [k, v] of weekSessions) {
     if (v > busiestWeek.value) {
       const [holderId, wk] = k.split("|");
-      busiestWeek = { holderId, value: v, detail: formatRange([wk, weekEnd(wk)]) };
+      busiestWeek = {
+        holderId,
+        value: v,
+        detail: formatRange([wk, weekEnd(wk)]),
+        context: { kind: "week", weekStart: wk },
+      };
     }
   }
   // Longest run of consecutive days with at least one session.
@@ -118,7 +159,12 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
       }
     }
     if (best > longestStreak.value) {
-      longestStreak = { holderId, value: best, detail: `to ${formatDay(bestEnd)}` };
+      longestStreak = {
+        holderId,
+        value: best,
+        detail: `to ${formatDay(bestEnd)}`,
+        context: { kind: "streak", endDay: bestEnd, length: best },
+      };
     }
   }
 
