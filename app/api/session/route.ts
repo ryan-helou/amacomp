@@ -75,9 +75,11 @@ export async function PATCH(req: Request) {
 
   if (Object.prototype.hasOwnProperty.call(body, "resetHour")) {
     const hour = Number(body.resetHour);
-    if (!Number.isInteger(hour) || hour < 0 || hour > 11) {
+    // Capped at 3 AM — later than that and a 5 AM run counts for yesterday,
+    // which stops being intuitive and starts looking like cheating the reset.
+    if (!Number.isInteger(hour) || hour < 0 || hour > 3) {
       return NextResponse.json(
-        { error: "Pick an hour between midnight and 11 AM." },
+        { error: "Pick an hour between midnight and 3 AM." },
         { status: 400 },
       );
     }

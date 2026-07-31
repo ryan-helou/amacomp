@@ -248,7 +248,7 @@ export function ScoringSheet({
               }
               className="shrink-0 rounded-lg border-2 border-ink-3 bg-tile px-2 py-2 text-sm text-ink focus:border-accent focus:outline-none"
             >
-              {[0, 1, 2, 3, 4, 5, 6].map((h) => (
+              {[0, 1, 2, 3].map((h) => (
                 <option key={h} value={h}>
                   {h === 0 ? "12 AM" : `${h} AM`}
                 </option>
