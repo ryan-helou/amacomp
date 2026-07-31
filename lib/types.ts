@@ -109,35 +109,6 @@ export const DEFAULT_SETTINGS: Settings = {
   forfeit: "Run a marathon — unless the lads excuse you",
 };
 
-export const REACTIONS = ["fire", "beast", "respect"] as const;
-export type ReactionType = (typeof REACTIONS)[number];
-
-export function isReaction(v: unknown): v is ReactionType {
-  return typeof v === "string" && (REACTIONS as readonly string[]).includes(v);
-}
-
-export const REACTION_LABEL: Record<ReactionType, string> = {
-  fire: "On fire",
-  beast: "Beast",
-  respect: "Respect",
-};
-
-export interface Reaction {
-  activityId: string;
-  athleteId: string;
-  type: ReactionType;
-}
-
-export interface Comment {
-  id: string;
-  activityId: string;
-  athleteId: string;
-  body: string;
-  createdAt: string;
-}
-
-export const MAX_COMMENT = 280;
-
 /** The signed-in athlete's Strava link, surfaced to the client for the settings card. */
 export interface StravaStatus {
   /** The server has Strava API credentials — if false, the feature stays hidden. */
@@ -154,8 +125,6 @@ export interface AppState {
   athletes: Athlete[];
   activities: Activity[];
   settings: Settings;
-  reactions: Reaction[];
-  comments: Comment[];
   strava: StravaStatus;
 }
 

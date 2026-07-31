@@ -4,12 +4,10 @@ import { useMemo, useState } from "react";
 import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
-import { REACTIONS, SPORT_UNIT, type Activity, type Athlete } from "@/lib/types";
-import { REACTION_GLYPH, commentsFor, myReaction, reactionCounts } from "@/lib/banter";
+import { SPORT_UNIT, type Activity, type Athlete } from "@/lib/types";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { athleteColor } from "@/lib/avatar";
 import { SportMark } from "./SportMark";
-import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { AthleteName } from "./ProfileContext";
 import { ActivitySheet } from "./ActivitySheet";
@@ -18,7 +16,7 @@ import type { League } from "./useLeague";
 const PAGE = 60;
 
 export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) {
-  const { state, send, busy } = league;
+  const { state } = league;
   const [openId, setOpenId] = useState<string | null>(null);
 
   const athleteById = useMemo(() => {
@@ -39,18 +37,6 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
     }
     return [...groups.entries()];
   }, [state.activities]);
-
-  async function react(activityId: string, type: (typeof REACTIONS)[number]) {
-    const mine = myReaction(activityId, state.me?.id, state.reactions);
-    if (mine === type) {
-      await send(`/api/activities/${activityId}/react`, { method: "DELETE" });
-    } else {
-      await send(`/api/activities/${activityId}/react`, {
-        method: "POST",
-        body: JSON.stringify({ type }),
-      });
-    }
-  }
 
   const openActivity = state.activities.find((a) => a.id === openId) ?? null;
 
@@ -79,9 +65,6 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
               {items.map((a) => {
                 const ui = SPORT_UI[a.sport];
                 const isMe = a.athleteId === state.me?.id;
-                const { counts } = reactionCounts(a.id, state.reactions);
-                const mine = myReaction(a.id, state.me?.id, state.reactions);
-                const nComments = commentsFor(a.id, state.comments).length;
                 const author = athleteById.get(a.athleteId);
                 // Tint each row by the poster's avatar colour so the feed
                 // reads like a colour-coded stream. Two layers: a soft wash
@@ -151,36 +134,6 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
                         {fmtPoints(activityPoints(a, state.settings, unscored))}
                       </span>
                     </button>
-
-                    <div className="mt-2 flex items-center gap-1.5 border-t border-line pt-2">
-                      {REACTIONS.map((type) => {
-                        const on = mine === type;
-                        const n = counts[type];
-                        return (
-                          <button
-                            key={type}
-                            onClick={() => react(a.id, type)}
-                            disabled={busy}
-                            aria-pressed={on}
-                            className={`flex items-center gap-1 rounded-full border px-2 py-1 transition-colors ${
-                              on ? "border-accent bg-accent/10 text-accent" : "border-line text-ink-3"
-                            }`}
-                          >
-                            <Glyph name={REACTION_GLYPH[type]} className="h-3.5 w-3.5" />
-                            {n > 0 && <span className="font-mono text-[0.625rem]">{n}</span>}
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => setOpenId(a.id)}
-                        className="ml-auto flex items-center gap-1 rounded-full border border-line px-2 py-1 text-ink-3"
-                      >
-                        <Glyph name="chat" className="h-3.5 w-3.5" />
-                        <span className="font-mono text-[0.625rem]">
-                          {nComments > 0 ? nComments : "Comment"}
-                        </span>
-                      </button>
-                    </div>
                   </li>
                 );
               })}

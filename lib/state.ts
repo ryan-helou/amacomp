@@ -39,12 +39,10 @@ function maybeBackgroundSyncStrava(store: Store, conn: StravaConn): void {
 export async function readState(): Promise<AppState> {
   const store = getStore();
   const me = await currentAthlete();
-  const [athletes, activities, settings, reactions, comments, conn] = await Promise.all([
+  const [athletes, activities, settings, conn] = await Promise.all([
     store.listAthletes(),
     store.listActivities(),
     store.getSettings(),
-    store.listReactions(),
-    store.listComments(),
     me ? store.getStravaByAthlete(me.id) : Promise.resolve(null),
   ]);
   if (conn) maybeBackgroundSyncStrava(store, conn);
@@ -54,8 +52,6 @@ export async function readState(): Promise<AppState> {
     athletes,
     activities,
     settings,
-    reactions,
-    comments,
     strava: {
       configured: stravaConfigured(),
       connected: !!conn,
