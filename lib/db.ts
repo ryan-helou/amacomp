@@ -203,10 +203,15 @@ function toAthlete(r: {
   const avatarUrl = r.avatar_image_type
     ? `/api/avatar/${r.id}?v=${r.avatar_image_v ?? 0}`
     : (r.strava_photo_url ?? null);
+  // The reset hour used to allow up to 11 AM. When we tightened it to 3, we
+  // didn't migrate the DB — clamping on read makes the new cap take effect for
+  // anyone still holding an old value, without a destructive UPDATE.
+  const rawReset = Number(r.reset_hour ?? 0);
+  const resetHour = Math.max(0, Math.min(3, Number.isFinite(rawReset) ? rawReset : 0));
   return {
     id: r.id,
     name: r.name,
-    resetHour: Number(r.reset_hour ?? 0),
+    resetHour,
     avatarColor: r.avatar_color ?? null,
     avatarGlyph: r.avatar_glyph ?? null,
     avatarUrl,
