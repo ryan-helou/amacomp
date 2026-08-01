@@ -13,11 +13,14 @@ import type { SeasonInfo } from "@/lib/season";
  */
 
 // Beat sheet, in seconds.
-const T_NUMBER = 0.25;
-const T_HEADLINE = 0.85;
-const T_MONTHS = 1.1;
-const T_SLAP = 1.45;
-const T_OUTRO = 2.35;
+const T_LINE1 = 0.25;
+const T_LINE2 = 0.62;
+const T_MONTHS = 0.98;
+const T_SLAP = 1.3;
+const T_OUTRO = 2.2;
+
+// Both title lines share one size so they read as a single stacked lockup.
+const TITLE_SIZE = "clamp(1.9rem, 9.5vw, 2.9rem)";
 
 export function SeasonKickoff({
   season,
@@ -133,38 +136,32 @@ export function SeasonKickoff({
                 background:
                   "radial-gradient(circle, rgba(176,131,7,0.75) 0%, transparent 68%)",
                 filter: "blur(26px)",
-                animation: `sk-flare 900ms ease-out ${T_NUMBER - 0.1}s both`,
+                animation: `sk-flare 900ms ease-out ${T_LINE1 - 0.1}s both`,
               }}
             />
-            <p
-              className="eyebrow relative text-[0.6875rem]"
-              style={{
-                color: "#e2b53d",
-                animation: "sk-eyebrow 700ms ease-out both",
-              }}
-            >
-              Season
-            </p>
-
-            {/* The gold sits on its own layer so it always rests bright; the
-                specular band is a second, mostly-transparent copy swept across
-                on top. Sweeping the base gradient itself would park the numeral
-                on whatever stop the animation happened to end on. */}
+            {/* Two lines, one size — SEASON n / STARTS NOW reads as a single
+                stacked lockup. The numeral keeps the gold so the season still
+                carries the accent, and a specular band sweeps the line once.
+                The gold sits on its own layer and the sheen is a second,
+                mostly-transparent copy on top: sweeping the base gradient
+                itself parks the text on whatever stop the animation ends on. */}
             <div
-              className="stat relative mt-1 leading-[0.82]"
+              className="stamp relative leading-[1.02] text-white"
               style={{
-                fontSize: "clamp(5rem, 27vw, 8.5rem)",
-                filter: "drop-shadow(0 6px 30px rgba(226,181,61,0.45))",
-                animation: `sk-slam 760ms cubic-bezier(0.16, 1, 0.3, 1) ${T_NUMBER}s both`,
+                fontSize: TITLE_SIZE,
+                letterSpacing: "0.02em",
+                animation: `sk-headline 760ms cubic-bezier(0.16, 1, 0.3, 1) ${T_LINE1}s both`,
               }}
             >
+              <span>SEASON </span>
               <span
                 style={{
                   backgroundImage:
-                    "linear-gradient(168deg, #ffeaa4 0%, #e2b53d 42%, #a67a05 100%)",
+                    "linear-gradient(168deg, #ffeaa4 0%, #e2b53d 46%, #b98d09 100%)",
                   WebkitBackgroundClip: "text",
                   backgroundClip: "text",
                   color: "transparent",
+                  filter: "drop-shadow(0 3px 16px rgba(226,181,61,0.45))",
                 }}
               >
                 {season.number}
@@ -174,28 +171,27 @@ export function SeasonKickoff({
                 className="absolute inset-0"
                 style={{
                   backgroundImage:
-                    "linear-gradient(100deg, transparent 40%, rgba(255,255,255,0.92) 50%, transparent 60%)",
+                    "linear-gradient(100deg, transparent 42%, rgba(255,255,255,0.85) 50%, transparent 58%)",
                   backgroundSize: "260% 100%",
                   backgroundPosition: "190% 0",
                   WebkitBackgroundClip: "text",
                   backgroundClip: "text",
                   color: "transparent",
-                  animation: `sk-sheen 1500ms cubic-bezier(0.3, 0, 0.2, 1) ${
-                    T_NUMBER + 0.39
+                  animation: `sk-sheen 1400ms cubic-bezier(0.3, 0, 0.2, 1) ${
+                    T_LINE1 + 0.35
                   }s both`,
                 }}
               >
-                {season.number}
+                SEASON {season.number}
               </span>
             </div>
 
-            {/* Reads top-to-bottom as one sentence — SEASON / n / STARTS NOW. */}
             <p
-              className="stamp relative mt-2 text-white"
+              className="stamp relative leading-[1.02] text-white"
               style={{
-                fontSize: "clamp(1.9rem, 9.5vw, 2.9rem)",
+                fontSize: TITLE_SIZE,
                 letterSpacing: "0.02em",
-                animation: `sk-headline 760ms cubic-bezier(0.16, 1, 0.3, 1) ${T_HEADLINE}s both`,
+                animation: `sk-headline 760ms cubic-bezier(0.16, 1, 0.3, 1) ${T_LINE2}s both`,
               }}
             >
               STARTS NOW
