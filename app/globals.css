@@ -308,15 +308,58 @@ input[type="number"] {
   }
 }
 
-/* The splash an athlete makes landing in their lane. */
-@keyframes sk-splash {
+/* The sticker gets slapped on: overshoots small, snaps back, settles askew. */
+@keyframes sk-slap {
+  0% {
+    opacity: 0;
+    transform: scale(2.3) rotate(-16deg);
+    filter: blur(10px);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.92) rotate(2.5deg);
+    filter: blur(0);
+  }
+  75% {
+    transform: scale(1.04) rotate(-5deg);
+  }
+  100% {
+    transform: scale(1) rotate(-3.2deg);
+  }
+}
+
+/* The shockwave off that impact. */
+@keyframes sk-shock {
   from {
-    opacity: 0.85;
-    transform: scale(0.55);
+    opacity: 0.7;
+    transform: scale(0.35);
   }
   to {
     opacity: 0;
-    transform: scale(2.1);
+    transform: scale(2.6);
+  }
+}
+
+/* The whole card takes the hit. */
+@keyframes sk-jolt {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  15% {
+    transform: translate3d(-7px, 5px, 0);
+  }
+  30% {
+    transform: translate3d(6px, -4px, 0);
+  }
+  45% {
+    transform: translate3d(-4px, -3px, 0);
+  }
+  60% {
+    transform: translate3d(3px, 3px, 0);
+  }
+  80% {
+    transform: translate3d(-2px, 1px, 0);
   }
 }
 
