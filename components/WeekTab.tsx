@@ -117,8 +117,16 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
           </button>
         </div>
 
-        <div className="mt-5">
-          <PaceClock bySport={mine?.bySport} goal={goal} size={216} />
+        {/* Week is the landing tab, so the board needs to be reachable without
+            scrolling. The ring is the hero once there's a score to show, but a
+            216px "0" pushed everyone else below the fold — it shrinks until
+            there's something in it. */}
+        <div className="mt-4">
+          <PaceClock
+            bySport={mine?.bySport}
+            goal={goal}
+            size={(mine?.points ?? 0) > 0 ? 196 : 148}
+          />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">

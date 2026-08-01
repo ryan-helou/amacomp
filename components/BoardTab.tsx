@@ -141,18 +141,26 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           ))}
         </div>
 
-        {/* Sport filter — "All" is the points board; a sport ranks by volume. */}
-        <div className="mt-2 grid grid-cols-5 gap-1.5" role="tablist" aria-label="Discipline">
+        {/* Sport filter — "All" is the points board; a sport ranks by volume.
+            Kept to one compact row: it's a second-order question next to the
+            period, and stacked full-size tiles pushed the first athlete off
+            the top of the screen. The selected sport is named underneath, so
+            dropping the per-tile labels costs nothing. */}
+        <div
+          className="mt-2 flex items-center gap-1.5"
+          role="tablist"
+          aria-label="Discipline"
+        >
           <button
             role="tab"
             aria-selected={sport === "all"}
+            aria-label="All disciplines"
             onClick={() => setSport("all")}
-            className={`flex flex-col items-center gap-1 rounded-lg border-2 py-2 transition-colors ${
-              sport === "all" ? "border-ink bg-ink text-tile" : "border-line bg-tile text-ink-2"
+            className={`flex h-9 flex-1 items-center justify-center rounded-lg border-2 transition-colors ${
+              sport === "all" ? "border-ink bg-ink text-tile" : "border-line bg-tile text-ink-3"
             }`}
           >
-            <Glyph name="trio" className="h-5 w-5" />
-            <span className="eyebrow text-[0.5625rem]">All</span>
+            <Glyph name="trio" className="h-[18px] w-[18px]" />
           </button>
           {SPORT_ORDER.map((s) => {
             const on = sport === s;
@@ -162,19 +170,24 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                 key={s}
                 role="tab"
                 aria-selected={on}
+                aria-label={ui.label}
                 onClick={() => setSport(s)}
-                className={`flex flex-col items-center gap-1 rounded-lg border-2 py-2 transition-colors ${
-                  on ? `${ui.border} ${ui.bg} text-white` : "border-line bg-tile text-ink-2"
+                className={`flex h-9 flex-1 items-center justify-center rounded-lg border-2 transition-colors ${
+                  on ? `${ui.border} ${ui.bg} text-white` : `border-line bg-tile ${ui.text}`
                 }`}
               >
-                <SportMark sport={s} className="h-5 w-5" />
-                <span className="eyebrow text-[0.5625rem]">{ui.label}</span>
+                <SportMark sport={s} className="h-[18px] w-[18px]" />
               </button>
             );
           })}
         </div>
 
         <p className="mt-2 text-center font-mono text-xs text-ink-3">
+          {sport !== "all" && (
+            <span className={SPORT_UI[sport].text}>
+              {SPORT_UI[sport].label} ·{" "}
+            </span>
+          )}
           {period === "all" ? "Every session ever logged" : formatRange(range)}
         </p>
       </div>
