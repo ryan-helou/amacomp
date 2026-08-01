@@ -60,6 +60,15 @@ export function firstSeason(seasonStart: DayKey): SeasonInfo {
   return seasonByNumber(1, seasonStart);
 }
 
+/**
+ * The day a season actually opens for the league. Seasons are month-aligned, but
+ * Season 1 opens on the configured kickoff instead — that's the Monday the
+ * competition genuinely starts, and it's later than the 1st of its month.
+ */
+export function seasonOpensOn(season: SeasonInfo, seasonStart: DayKey): DayKey {
+  return season.number === 1 ? seasonStart : season.start;
+}
+
 export type SeasonStatus = "past" | "live" | "upcoming";
 
 export interface SeasonChampion {

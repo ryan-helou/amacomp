@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, parseDayKey, todayWithReset, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
-import { reigningChampionId, seasonChampions, seasonFor } from "@/lib/season";
+import { reigningChampionId, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
 import type { AppState } from "@/lib/types";
 import { useLeague } from "./useLeague";
 import { LoginScreen } from "./LoginScreen";
@@ -15,6 +15,7 @@ import { TitlesTab } from "./TitlesTab";
 import { ScoringSheet } from "./ScoringSheet";
 import { HouseRulesSheet } from "./HouseRulesSheet";
 import { Confetti } from "./Confetti";
+import { SeasonKickoff } from "./SeasonKickoff";
 import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
 import { ProfileProvider, AthleteName } from "./ProfileContext";
@@ -118,6 +119,31 @@ export function AppShell({
     const timer = setTimeout(() => setStravaMsg(null), 5000);
     return () => clearTimeout(timer);
   }, []);
+
+  // The season kickoff card. Shown once per athlete per season, on the first
+  // open on or after the day the season opens — Season 1 opens on the configured
+  // Monday kickoff, later seasons on the 1st of their first month. Bounded to
+  // the opening week so it stays a kickoff rather than a mid-season surprise for
+  // anyone who's been away. localStorage, so it's per-device and needs no schema.
+  const [kickoffSeason, setKickoffSeason] = useState<ReturnType<typeof seasonFor>>(null);
+  useEffect(() => {
+    if (!state.me) return;
+    const season = seasonFor(refDay, state.settings.seasonStart);
+    if (!season) return;
+    const opensOn = seasonOpensOn(season, state.settings.seasonStart);
+    if (refDay < opensOn || refDay > addDays(opensOn, 6)) return;
+    const key = `amacomp-season-intro-${state.me.id}-${season.number}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      // Marked as seen up front: a reload or a crash mid-animation shouldn't
+      // replay it, and the card is a moment rather than something to re-earn.
+      localStorage.setItem(key, "1");
+    } catch {
+      return; // private mode — skip rather than replay it on every open
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot on mount, gated by a localStorage marker
+    setKickoffSeason(season);
+  }, [state.me, state.settings.seasonStart, refDay]);
 
   const [fireKey, setFireKey] = useState(0);
   useEffect(() => {
@@ -359,6 +385,15 @@ export function AppShell({
       )}
 
       <Confetti fireKey={fireKey} />
+
+      {kickoffSeason && state.me && (
+        <SeasonKickoff
+          season={kickoffSeason}
+          athletes={state.athletes}
+          meId={state.me.id}
+          onDismiss={() => setKickoffSeason(null)}
+        />
+      )}
     </div>
     </ProfileProvider>
   );

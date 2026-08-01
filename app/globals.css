@@ -175,6 +175,87 @@ input[type="number"] {
   animation: lane-in 380ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+/*
+  Season kickoff — the one moment the app goes dark. A season start is a race
+  start: everyone lines up level, and the athletes are announced onto their
+  lanes one at a time. Every animation runs `both`, so its resting state is the
+  finished composition — under reduced motion the whole thing simply arrives
+  composed rather than disappearing.
+*/
+@keyframes sk-veil {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sk-eyebrow {
+  from {
+    opacity: 0;
+    letter-spacing: 0.55em;
+  }
+}
+
+/* The number lands like a stamp: overshoot, settle, focus. */
+@keyframes sk-slam {
+  0% {
+    opacity: 0;
+    transform: scale(1.75);
+    filter: blur(7px);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(0.965);
+    filter: blur(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* One pulse of pool light behind the number, timed to the landing. */
+@keyframes sk-flare {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  58% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes sk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* The lane rope strings out from the wall. */
+@keyframes sk-rope {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* The athlete arrives down their lane. */
+@keyframes sk-enter-lane {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+}
+
+.sk-rope {
+  height: 5px;
+  border-radius: 999px;
+  transform-origin: left center;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--rope) 0 9px,
+    color-mix(in srgb, var(--rope) 22%, transparent) 9px 18px
+  );
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
