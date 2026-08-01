@@ -38,11 +38,19 @@ export function seasonByNumber(n: number, seasonStart: DayKey): SeasonInfo {
   const endAbs = startAbs + 1;
   const ey = Math.floor(endAbs / 12);
   const em = (endAbs % 12) + 1;
+  // Season 1 opens on the configured kickoff, not the 1st of its month. The
+  // kickoff sits inside season 1's month block (Aug 3 in an Aug–Sep season), so
+  // without this clamp the warm-up days before it would score into the season —
+  // and someone who logged on Aug 1 leads a season that hasn't started.
+  // `start` is the scoring window, so every range built from it is fixed here
+  // rather than at each call site.
+  const monthStart = `${sy}-${pad(sm)}-01`;
+  const start = n === 1 && seasonStart > monthStart ? seasonStart : monthStart;
   return {
     number: n,
     label: `Season ${n}`,
     monthsLabel: `${SHORT_MONTHS[sm - 1]}–${SHORT_MONTHS[em - 1]}`,
-    start: `${sy}-${pad(sm)}-01`,
+    start,
     end: `${ey}-${pad(em)}-${pad(lastDay(ey, em))}`,
   };
 }
@@ -61,12 +69,13 @@ export function firstSeason(seasonStart: DayKey): SeasonInfo {
 }
 
 /**
- * The day a season actually opens for the league. Seasons are month-aligned, but
- * Season 1 opens on the configured kickoff instead — that's the Monday the
- * competition genuinely starts, and it's later than the 1st of its month.
+ * The day a season opens for the league — the first day that scores into it.
+ * `seasonByNumber` already clamps Season 1 to the configured kickoff, so this
+ * is just the season's start; it stays as a named accessor because "when does
+ * this season open" reads better at the call site than `.start`.
  */
-export function seasonOpensOn(season: SeasonInfo, seasonStart: DayKey): DayKey {
-  return season.number === 1 ? seasonStart : season.start;
+export function seasonOpensOn(season: SeasonInfo): DayKey {
+  return season.start;
 }
 
 export type SeasonStatus = "past" | "live" | "upcoming";

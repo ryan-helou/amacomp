@@ -130,7 +130,7 @@ export function AppShell({
     if (!state.me) return;
     const season = seasonFor(refDay, state.settings.seasonStart);
     if (!season) return;
-    const opensOn = seasonOpensOn(season, state.settings.seasonStart);
+    const opensOn = seasonOpensOn(season);
     if (refDay < opensOn || refDay > addDays(opensOn, 6)) return;
     const key = `amacomp-season-intro-${state.me.id}-${season.number}`;
     try {

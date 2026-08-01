@@ -1,4 +1,5 @@
 import { unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
+import { seasonByNumber, seasonChampions } from "./season";
 import { DEFAULT_SETTINGS, type Activity, type Athlete } from "./types";
 
 /**
@@ -131,6 +132,31 @@ console.log("\ntotalPoints applies the cap");
     gym("g3", "a", "2026-08-10", "2026-08-10T03:00:00Z"),
   ];
   check("3 gym -> 60 not 90", totalPoints(acts, S), 60);
+}
+
+console.log("\nseason window starts at kickoff, not the 1st");
+{
+  // Seasons are month-aligned (Aug–Sep) but the league opens Mon 3 Aug. The
+  // warm-up days before kickoff must not score into Season 1, or whoever
+  // logged on the 1st leads a season that hasn't started.
+  const S2 = { ...S, seasonStart: "2026-08-03" };
+  const s1 = seasonByNumber(1, "2026-08-03");
+  check("season 1 opens on the kickoff", s1.start, "2026-08-03");
+  check("season 1 still ends with its month block", s1.end, "2026-09-30");
+  check("season 1 is still labelled Aug–Sep", s1.monthsLabel, "Aug–Sep");
+  // Later seasons are pure month blocks — no kickoff to respect.
+  check("season 2 starts on the 1st", seasonByNumber(2, "2026-08-03").start, "2026-10-01");
+
+  const athletes = [ath("j", "Jona"), ath("r", "Ryan")];
+  const acts = [
+    run("pre", "j", "2026-08-01", 3.353), // warm-up, before kickoff
+    { ...run("pre2", "j", "2026-08-01", 0), sport: "swim" as const, km: 0.4, id: "pre2" },
+    run("in", "r", "2026-08-05", 4), // after kickoff
+  ];
+  const champs = seasonChampions(athletes, acts, S2, "2026-08-06", "2026-08-03");
+  const live = champs.find((c) => c.status === "live")!;
+  check("pre-kickoff logs don't win the season", live.champion?.athlete.name, "Ryan");
+  check("champion's points exclude warm-up", live.champion?.points, 20);
 }
 
 console.log(failures === 0 ? "\nAll passed.\n" : `\n${failures} FAILED\n`);
