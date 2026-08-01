@@ -389,8 +389,6 @@ export function AppShell({
       {kickoffSeason && state.me && (
         <SeasonKickoff
           season={kickoffSeason}
-          athletes={state.athletes}
-          meId={state.me.id}
           onDismiss={() => setKickoffSeason(null)}
         />
       )}
