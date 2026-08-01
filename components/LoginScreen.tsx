@@ -27,7 +27,13 @@ export function LoginScreen({
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
       <p className="eyebrow text-ink-2">Triathlon standings</p>
-      <h1 className="stamp accent-text mt-2 text-[clamp(2.75rem,15vw,3.75rem)] leading-[0.85]">
+      {/* `accent-text` paints the gradient with background-clip:text, which
+          clips to the element's background box — not to the glyphs. At 15vw the
+          word ran ~14px wider than that box, so the tail of the P had no
+          gradient to paint and simply vanished ("AMACOMF"). inline-block makes
+          the box hug the text, and the smaller step keeps it inside the gutters
+          on a 320px phone. */}
+      <h1 className="stamp accent-text mt-2 inline-block w-fit text-[clamp(2.25rem,13vw,3.75rem)] leading-[0.85]">
         AMACOMP
       </h1>
       <p className="mt-4 max-w-xs text-[0.9375rem] leading-snug text-ink-2">

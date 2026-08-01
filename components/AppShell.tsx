@@ -381,7 +381,14 @@ export function AppShell({
       )}
 
       {scoringOpen && (
-        <ScoringSheet league={league} onClose={() => setScoringOpen(false)} />
+        <ScoringSheet
+          league={league}
+          onClose={() => setScoringOpen(false)}
+          onOpenRules={() => {
+            setScoringOpen(false);
+            setRulesOpen(true);
+          }}
+        />
       )}
 
       <Confetti fireKey={fireKey} />

@@ -10,6 +10,7 @@ import {
   type Settings,
 } from "@/lib/types";
 import { SportMark } from "./SportMark";
+import { Glyph } from "./Glyph";
 import { NotificationSetup } from "./NotificationSetup";
 import { StravaSetup } from "./StravaSetup";
 import { Avatar } from "./Avatar";
@@ -22,9 +23,13 @@ import type { League } from "./useLeague";
 export function ScoringSheet({
   league,
   onClose,
+  onOpenRules,
 }: {
   league: League;
   onClose: () => void;
+  /** Swap this sheet for the House Rules one — the rules are the clearest
+   *  explainer in the app and the header "?" is easy to miss. */
+  onOpenRules: () => void;
 }) {
   const { state, busy, send } = league;
   const editable = state.isAdmin;
@@ -91,19 +96,96 @@ export function ScoringSheet({
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-3" />
 
         <div className="flex items-baseline justify-between">
-          <h2 className="stamp accent-text text-2xl">SCORING</h2>
+          <h2 className="stamp accent-text text-2xl">SETTINGS</h2>
           <button onClick={onClose} className="eyebrow text-ink-2">
             Close
           </button>
         </div>
 
-        <p className="mt-2 text-sm text-ink-2">
-          {editable
-            ? "Change the points per kilometre or the weekly quota. Every session already logged re-scores under the new rules."
-            : "These are the league rules. Ryan sets them."}
-        </p>
+        {/* The rules deserve a labelled door, not just the "?" in the header. */}
+        <button
+          onClick={onOpenRules}
+          className="mt-4 flex w-full items-center gap-3 rounded-xl border-2 border-ink bg-tile px-4 py-3 text-left"
+        >
+          <span className="text-gold">
+            <Glyph name="trophy" className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="eyebrow block text-ink">House rules</span>
+            <span className="mt-0.5 block text-[0.8125rem] text-ink-2">
+              The quota, the forfeit, and what the season winner gets.
+            </span>
+          </span>
+          <span aria-hidden className="shrink-0 text-ink-3">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <path d="M9 5l7 7-7 7" />
+            </svg>
+          </span>
+        </button>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-6 border-t border-line pt-4">
+          <NotificationSetup />
+        </div>
+
+        <div className="mt-4">
+          <StravaSetup league={league} />
+        </div>
+
+        <div className="mt-4">
+          <AvatarPicker league={league} />
+        </div>
+
+        <div className="mt-4 rounded-xl border-2 border-line bg-tile px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="reset" className="eyebrow block text-ink">
+                Your day starts at
+              </label>
+              <p className="mt-0.5 text-[0.8125rem] text-ink-2">
+                Late-night sessions before this count for the day before.
+              </p>
+            </div>
+            <select
+              id="reset"
+              value={String(state.me?.resetHour ?? 0)}
+              disabled={busy}
+              onChange={(e) =>
+                send("/api/session", {
+                  method: "PATCH",
+                  body: JSON.stringify({ resetHour: Number(e.target.value) }),
+                })
+              }
+              className="shrink-0 rounded-lg border-2 border-ink-3 bg-tile px-2 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+            >
+              {[0, 1, 2, 3].map((h) => (
+                <option key={h} value={h}>
+                  {h === 0 ? "12 AM" : `${h} AM`}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Scoring sits last: only the admin can change it, so for everyone
+            else it's reference material, not a control. */}
+        <div className="mt-7 border-t border-line pt-4">
+          <h3 className="eyebrow text-ink-2">Scoring</h3>
+          <p className="mt-1 text-sm text-ink-2">
+            {editable
+              ? "Change the points per kilometre or the weekly quota. Every session already logged re-scores under the new rules."
+              : "These are the league rules. Ryan sets them."}
+          </p>
+        </div>
+
+        <div className="mt-3 space-y-3">
           {SPORT_ORDER.map((sport) => {
             const ui = SPORT_UI[sport];
             return (
@@ -215,49 +297,6 @@ export function ScoringSheet({
         )}
 
         <div className="mt-6 border-t border-line pt-4">
-          <NotificationSetup />
-        </div>
-
-        <div className="mt-4">
-          <StravaSetup league={league} />
-        </div>
-
-        <div className="mt-4">
-          <AvatarPicker league={league} />
-        </div>
-
-        <div className="mt-4 rounded-xl border-2 border-line bg-tile px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <label htmlFor="reset" className="eyebrow block text-ink">
-                Your day starts at
-              </label>
-              <p className="mt-0.5 text-[0.8125rem] text-ink-2">
-                Late-night sessions before this count for the day before.
-              </p>
-            </div>
-            <select
-              id="reset"
-              value={String(state.me?.resetHour ?? 0)}
-              disabled={busy}
-              onChange={(e) =>
-                send("/api/session", {
-                  method: "PATCH",
-                  body: JSON.stringify({ resetHour: Number(e.target.value) }),
-                })
-              }
-              className="shrink-0 rounded-lg border-2 border-ink-3 bg-tile px-2 py-2 text-sm text-ink focus:border-accent focus:outline-none"
-            >
-              {[0, 1, 2, 3].map((h) => (
-                <option key={h} value={h}>
-                  {h === 0 ? "12 AM" : `${h} AM`}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="mt-4">
           <p className="text-xs text-ink-3">
             Signed in as{" "}
             <span className="font-semibold text-ink-2">{state.me?.name}</span>

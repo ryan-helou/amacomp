@@ -18,6 +18,7 @@ import { RecordSheet } from "./RecordSheet";
 export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const openProfile = useOpenProfile();
   const [openRecord, setOpenRecord] = useState<string | null>(null);
+  const [showUnclaimed, setShowUnclaimed] = useState(false);
 
   const athleteById = useMemo(
     () => new Map(state.athletes.map((a) => [a.id, a])),
@@ -27,6 +28,8 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
     () => hallOfFame(state.activities, state.settings),
     [state.activities, state.settings],
   );
+  const shownRecords = useMemo(() => records.filter((r) => r.holderId), [records]);
+  const unclaimed = useMemo(() => records.filter((r) => !r.holderId), [records]);
   const seasons = useMemo(
     () =>
       seasonChampions(
@@ -67,7 +70,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
           All-time records. Beat one and your name goes up.
         </p>
         <ul className="mt-3 space-y-2">
-          {records.map((r) => {
+          {shownRecords.map((r) => {
             const holder = r.holderId ? athleteById.get(r.holderId) : null;
             const shown = r.unit === "km" ? fmtKm(r.value) : fmtPoints(r.value);
             const body = (
@@ -120,6 +123,44 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
             );
           })}
         </ul>
+
+        {/* Unclaimed records collapse into one line. On day one every record is
+            unclaimed, and nine identical "go get it" rows is an empty shelf —
+            this keeps it a trophy case that fills up, without hiding anything. */}
+        {unclaimed.length > 0 && (
+          <div className="mt-2">
+            <button
+              onClick={() => setShowUnclaimed((v) => !v)}
+              aria-expanded={showUnclaimed}
+              className="flex w-full items-center gap-2 rounded-xl border-2 border-dashed border-line px-4 py-3 text-left"
+            >
+              <span className="eyebrow flex-1 text-ink-2">
+                {unclaimed.length} record{unclaimed.length === 1 ? "" : "s"} up for grabs
+              </span>
+              <span className="eyebrow text-ink-3">{showUnclaimed ? "Hide" : "Show"}</span>
+            </button>
+            {showUnclaimed && (
+              <ul className="mt-2 space-y-1.5">
+                {unclaimed.map((r) => (
+                  <li
+                    key={r.key}
+                    className="flex items-center gap-3 rounded-xl border-2 border-line bg-tile px-4 py-2.5"
+                  >
+                    <span className="shrink-0 text-ink-3">
+                      {r.sport ? (
+                        <SportMark sport={r.sport} className="h-5 w-5" />
+                      ) : r.glyph ? (
+                        <Glyph name={r.glyph} className="h-5 w-5" />
+                      ) : null}
+                    </span>
+                    <span className="eyebrow flex-1 text-ink-2">{r.label}</span>
+                    <span className="eyebrow shrink-0 text-ink-3">{r.unit}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </section>
       <section>
         <h2 className="eyebrow text-ink-2">Together so far</h2>
