@@ -10,8 +10,8 @@ import {
   unscoredGymIds,
 } from "@/lib/scoring";
 import { addDays, formatRange, periodRange, weekStart, type DayKey } from "@/lib/dates";
-import { SPORT_UNIT, type AppState } from "@/lib/types";
-import { SPORT_UI } from "@/lib/ui";
+import { SPORT_UNIT, isGrant, type Activity } from "@/lib/types";
+import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import {
   headToHead,
   lastWeekRecap,
@@ -23,8 +23,10 @@ import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
 import { AthleteName, useReigningChampion } from "./ProfileContext";
+import type { League } from "./useLeague";
 
-export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
+export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) {
+  const { state, send, busy } = league;
   // Athletes want to look at where they finished a past week — a leaderboard's
   // no fun if it evaporates on Monday. Nav is local to this tab; the rest of
   // the app keeps tracking "today" from AppShell's refDay.
@@ -62,13 +64,18 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
     });
 
   const unscored = useMemo(() => unscoredGymIds(state.activities), [state.activities]);
+  const inViewedWeek = (a: Activity) =>
+    a.occurredOn >= range[0] && a.occurredOn <= range[1];
+  // Real logged sessions only — grants are pulled out and shown on their own.
   const weekSessions = (athleteId: string) =>
     state.activities
-      .filter(
-        (a) => a.athleteId === athleteId && a.occurredOn >= range[0] && a.occurredOn <= range[1],
-      )
+      .filter((a) => a.athleteId === athleteId && !isGrant(a) && inViewedWeek(a))
       .map((a) => ({ activity: a, points: activityPoints(a, state.settings, unscored) }))
       .sort((x, y) => y.points - x.points || x.activity.occurredOn.localeCompare(y.activity.occurredOn));
+  const weekGrants = (athleteId: string) =>
+    state.activities
+      .filter((a) => a.athleteId === athleteId && isGrant(a) && inViewedWeek(a))
+      .sort((x, y) => y.createdAt.localeCompare(x.createdAt));
 
   const streak = useMemo(
     () => streakFor(meId, state.activities, state.settings, refDay),
@@ -124,10 +131,22 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
         <div className="mt-4">
           <PaceClock
             bySport={mine?.bySport}
+            granted={mine?.grantedPoints}
             goal={goal}
             size={(mine?.points ?? 0) > 0 ? 196 : 148}
           />
         </div>
+
+        {(mine?.grantedPoints ?? 0) > 0 && (
+          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-2">
+            <span
+              aria-hidden
+              className="inline-block h-3 w-3 rounded-[3px] ring-1 ring-line"
+              style={{ backgroundImage: GRANT_HATCH }}
+            />
+            Includes <span className="font-semibold text-ink">{fmtPoints(mine!.grantedPoints)}</span> awarded by admin
+          </p>
+        )}
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           {showStreak && (
@@ -226,12 +245,19 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
 
         <ul className="mt-3 space-y-2">
           {standings.map((row) => {
-            const pct = Math.min(row.goalProgress, 1) * 100;
             const done = row.points >= goal;
+            // Stack the bar: earned first, then the hatched granted tail.
+            const granted = row.grantedPoints;
+            const earned = Math.max(row.points - granted, 0);
+            const earnedShown = goal > 0 ? Math.min(earned, goal) : 0;
+            const grantedShown = goal > 0 ? Math.min(Math.max(granted, 0), goal - earnedShown) : 0;
+            const earnedPct = goal > 0 ? (earnedShown / goal) * 100 : 0;
+            const grantedPct = goal > 0 ? (grantedShown / goal) * 100 : 0;
             const isMe = row.athlete.id === meId;
             const isOpen = expanded.has(row.athlete.id);
             const gold = champ === row.athlete.id;
             const sessions = isOpen ? weekSessions(row.athlete.id) : [];
+            const grants = isOpen ? weekGrants(row.athlete.id) : [];
             return (
               <li
                 key={row.athlete.id}
@@ -259,16 +285,33 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
                         )}
                         {row.athlete.name}
                       </span>
-                      <span className="font-mono text-xs text-ink-2">
-                        <span className="text-ink">{fmtPoints(row.points)}</span>
-                        <span className="text-ink-3">/{fmtPoints(goal)}</span>
+                      <span className="flex items-baseline gap-1.5 font-mono text-xs text-ink-2">
+                        {granted > 0 && (
+                          <span
+                            className="rounded bg-ink-2/10 px-1 py-px text-[0.625rem] font-semibold text-ink-2"
+                            title="Awarded by admin"
+                          >
+                            +{fmtPoints(granted)}
+                          </span>
+                        )}
+                        <span>
+                          <span className="text-ink">{fmtPoints(row.points)}</span>
+                          <span className="text-ink-3">/{fmtPoints(goal)}</span>
+                        </span>
                       </span>
                     </div>
-                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-deck-2">
+                    <div className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-deck-2">
                       <div
                         className={done ? "h-full bg-good" : "h-full accent-fill"}
-                        style={{ width: `${pct}%` }}
+                        style={{ width: `${earnedPct}%` }}
                       />
+                      {grantedPct > 0 && (
+                        <div
+                          className="h-full"
+                          style={{ width: `${grantedPct}%`, backgroundImage: GRANT_HATCH }}
+                          title="Awarded by admin"
+                        />
+                      )}
                     </div>
                   </div>
                   {done && (
@@ -292,47 +335,79 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
 
                 {isOpen && (
                   <div className="border-t-2 border-line px-3 py-2.5">
-                    {sessions.length === 0 ? (
+                    {(sessions.length > 0 || row.grantedPoints > 0) && (
+                      <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[0.6875rem]">
+                        {SPORT_ORDER.filter((s) => (row.bySport[s] ?? 0) > 0).map((s) => (
+                          <span key={s} className={SPORT_UI[s].text}>
+                            {SPORT_UI[s].label} {fmtPoints(row.bySport[s])}
+                          </span>
+                        ))}
+                        {row.grantedPoints > 0 && (
+                          <span className="text-ink-2">Awarded {fmtPoints(row.grantedPoints)}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {(sessions.length > 0 || grants.length > 0) ? (
+                      <ul className="space-y-1.5">
+                        {grants.map((g) => (
+                          <GrantLine
+                            key={g.id}
+                            grant={g}
+                            canManage={state.isAdmin}
+                            busy={busy}
+                            onDelete={() => send(`/api/activities/${g.id}`, { method: "DELETE" })}
+                          />
+                        ))}
+                        {sessions.map(({ activity: a, points }) => {
+                          const ui = SPORT_UI[a.sport];
+                          const flat = SPORT_UNIT[a.sport] === "flat";
+                          const isUnscored = unscored.has(a.id);
+                          return (
+                            <li key={a.id} className="flex items-center gap-2.5">
+                              <span className={`shrink-0 ${ui.text}`} aria-hidden>
+                                <SportMark sport={a.sport} className="h-4 w-4" />
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-2">
+                                {flat
+                                  ? `${ui.label} workout`
+                                  : `${fmtKm(a.km)} km ${ui.label.toLowerCase()}`}
+                                {a.note && <span className="text-ink-3"> · {a.note}</span>}
+                              </span>
+                              <span
+                                className={`shrink-0 font-mono text-xs ${
+                                  isUnscored ? "text-ink-3 line-through" : "text-ink"
+                                }`}
+                              >
+                                {fmtPoints(points)}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : (
                       <p className="py-1 text-center text-[0.8125rem] text-ink-3">
                         No sessions this week.
                       </p>
-                    ) : (
-                      <>
-                        <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[0.6875rem]">
-                          {SPORT_ORDER.filter((s) => (row.bySport[s] ?? 0) > 0).map((s) => (
-                            <span key={s} className={SPORT_UI[s].text}>
-                              {SPORT_UI[s].label} {fmtPoints(row.bySport[s])}
-                            </span>
-                          ))}
-                        </div>
-                        <ul className="space-y-1.5">
-                          {sessions.map(({ activity: a, points }) => {
-                            const ui = SPORT_UI[a.sport];
-                            const flat = SPORT_UNIT[a.sport] === "flat";
-                            const isUnscored = unscored.has(a.id);
-                            return (
-                              <li key={a.id} className="flex items-center gap-2.5">
-                                <span className={`shrink-0 ${ui.text}`} aria-hidden>
-                                  <SportMark sport={a.sport} className="h-4 w-4" />
-                                </span>
-                                <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-2">
-                                  {flat
-                                    ? `${ui.label} workout`
-                                    : `${fmtKm(a.km)} km ${ui.label.toLowerCase()}`}
-                                  {a.note && <span className="text-ink-3"> · {a.note}</span>}
-                                </span>
-                                <span
-                                  className={`shrink-0 font-mono text-xs ${
-                                    isUnscored ? "text-ink-3 line-through" : "text-ink"
-                                  }`}
-                                >
-                                  {fmtPoints(points)}
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </>
+                    )}
+
+                    {state.isAdmin && (
+                      <AdminGrant
+                        athleteName={row.athlete.name}
+                        shortfall={Math.max(goal - row.points, 0)}
+                        goal={goal}
+                        busy={busy}
+                        onGrant={(points) =>
+                          send("/api/grants", {
+                            method: "POST",
+                            body: JSON.stringify({
+                              athleteId: row.athlete.id,
+                              occurredOn: range[0],
+                              points,
+                            }),
+                          })
+                        }
+                      />
                     )}
                   </div>
                 )}
@@ -377,6 +452,151 @@ export function WeekTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+/** One admin-awarded points row inside a week breakdown. */
+function GrantLine({
+  grant,
+  canManage,
+  busy,
+  onDelete,
+}: {
+  grant: Activity;
+  canManage: boolean;
+  busy: boolean;
+  onDelete: () => Promise<string | null>;
+}) {
+  return (
+    <li className="flex items-center gap-2.5">
+      <span
+        aria-hidden
+        className="h-4 w-4 shrink-0 rounded-[4px] ring-1 ring-line"
+        style={{ backgroundImage: GRANT_HATCH }}
+      />
+      <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-2">
+        Awarded by admin
+        {grant.note && <span className="text-ink-3"> · {grant.note}</span>}
+      </span>
+      {canManage && (
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={busy}
+          aria-label="Remove award"
+          className="shrink-0 rounded-md px-1.5 py-0.5 text-ink-3 disabled:opacity-40"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      )}
+      <span className="shrink-0 font-mono text-xs text-ink">{fmtPoints(grant.points ?? 0)}</span>
+    </li>
+  );
+}
+
+/** Admin-only control to award points to an athlete for the viewed week. */
+function AdminGrant({
+  athleteName,
+  shortfall,
+  goal,
+  busy,
+  onGrant,
+}: {
+  athleteName: string;
+  /** Points still needed to reach quota (0 once met) — the one-tap top-up. */
+  shortfall: number;
+  goal: number;
+  busy: boolean;
+  onGrant: (points: number) => Promise<string | null>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function grant(points: number) {
+    setError(null);
+    if (!Number.isFinite(points) || points <= 0) {
+      setError("Enter a points amount.");
+      return;
+    }
+    const err = await onGrant(points);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setAmount("");
+    setOpen(false);
+  }
+
+  return (
+    <div className="mt-2.5 border-t border-line pt-2.5">
+      {!open ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {shortfall > 0 && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => grant(shortfall)}
+              className="eyebrow rounded-lg border-2 border-ink bg-tile px-3 py-1.5 text-ink disabled:opacity-40"
+            >
+              Top up to {fmtPoints(goal)} (+{fmtPoints(shortfall)})
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="eyebrow rounded-lg px-2 py-1.5 text-ink-2"
+          >
+            {shortfall > 0 ? "Custom" : "Award points"}
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="number"
+            inputMode="numeric"
+            min="1"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Points"
+            className="w-24 rounded-lg border-2 border-ink bg-tile px-2 py-1.5 text-sm text-ink focus:outline-none"
+          />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => grant(Number(amount))}
+            className="eyebrow rounded-lg border-2 border-ink bg-accent/10 px-3 py-1.5 accent-text disabled:opacity-40"
+          >
+            Award
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setAmount("");
+              setError(null);
+            }}
+            className="eyebrow px-2 py-1.5 text-ink-3"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      <p className="mt-1 text-[0.6875rem] text-ink-3">
+        Points for {athleteName} this week — counts toward the season.
+      </p>
+      {error && <p className="mt-1 text-xs font-medium text-run">{error}</p>}
     </div>
   );
 }

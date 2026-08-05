@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
-import { SPORT_UNIT, UNIT_LABEL, type Activity } from "@/lib/types";
+import { SPORT_UNIT, UNIT_LABEL, isGrant, type Activity } from "@/lib/types";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { SportMark } from "./SportMark";
 import { ActivityForm, emptyDraft, type ActivityDraft } from "./ActivityForm";
@@ -26,8 +26,10 @@ export function LogTab({
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
+  // Your logged sessions — admin grants are awarded, not logged, so they're not
+  // yours to edit here; they show up on the Week tab instead.
   const mine = useMemo(
-    () => state.activities.filter((a) => a.athleteId === state.me?.id),
+    () => state.activities.filter((a) => a.athleteId === state.me?.id && !isGrant(a)),
     [state.activities, state.me?.id],
   );
   const unscored = useMemo(() => unscoredGymIds(state.activities), [state.activities]);

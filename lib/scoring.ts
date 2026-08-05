@@ -1,5 +1,5 @@
 import type { Activity, Athlete, Settings, Sport } from "./types";
-import { SPORTS, SPORT_UNIT } from "./types";
+import { SPORTS, SPORT_UNIT, isGrant } from "./types";
 import { inRange, type DayKey, type Period, periodRange } from "./dates";
 import { MAX_SCORING_GYM_PER_DAY } from "./validate";
 
@@ -23,6 +23,8 @@ export function activityPoints(
   settings: Settings,
   unscored?: Set<string>,
 ): number {
+  // An admin grant carries its points directly — no sport, no distance.
+  if (isGrant(a)) return a.points ?? 0;
   if (unscored?.has(a.id)) return 0;
   return pointsFor(a.km, a.sport, settings);
 }
@@ -37,6 +39,7 @@ export function activityPoints(
 export function unscoredGymIds(activities: Activity[]): Set<string> {
   const byAthleteDay = new Map<string, Activity[]>();
   for (const a of activities) {
+    if (isGrant(a)) continue;
     if (SPORT_UNIT[a.sport] !== "flat") continue;
     const key = `${a.athleteId}|${a.occurredOn}`;
     const list = byAthleteDay.get(key);
@@ -72,6 +75,9 @@ export interface Standing {
   stravaSessions: number;
   /** Gym workouts in this window that were past the daily cap and scored nothing. */
   unscoredSessions: number;
+  /** Points the admin awarded directly (already included in `points`), tracked
+   *  separately so the UI can show them as granted rather than earned. */
+  grantedPoints: number;
 }
 
 function emptySportMap(): Record<Sport, number> {
@@ -108,6 +114,7 @@ export function standingsForRange(
       goalProgress: 0,
       stravaSessions: 0,
       unscoredSessions: 0,
+      grantedPoints: 0,
     });
   }
 
@@ -119,6 +126,14 @@ export function standingsForRange(
     if (!inRange(a.occurredOn, range)) continue;
     const row = rows.get(a.athleteId);
     if (!row) continue;
+    // Admin grants are points, not a session — they lift the total (and so the
+    // quota + rank) but don't touch km, session counts, or the sport split.
+    if (isGrant(a)) {
+      const pts = a.points ?? 0;
+      row.points += pts;
+      row.grantedPoints += pts;
+      continue;
+    }
     if (a.source === "strava") row.stravaSessions += 1;
     if (unscored.has(a.id)) {
       // Still a session that happened — it just contributes no points or volume.

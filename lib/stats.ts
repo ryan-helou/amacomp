@@ -1,5 +1,5 @@
 import type { Activity, Athlete, Settings, Sport } from "./types";
-import { SPORT_UNIT } from "./types";
+import { SPORT_UNIT, isGrant } from "./types";
 import { activityPoints, standingsForRange, unscoredGymIds } from "./scoring";
 import { addDays, today, weekEnd, weekStart, type DayKey } from "./dates";
 
@@ -60,12 +60,17 @@ export function teamTotals(
 ): TeamTotals {
   const kmBySport: Record<Sport, number> = { swim: 0, bike: 0, run: 0, gym: 0 };
   let points = 0;
+  let sessions = 0;
   let gymWorkouts = 0;
   let distanceKm = 0;
 
   const unscored = unscoredGymIds(activities);
   for (const a of activities) {
+    // Admin grants are awarded points, not collective effort — leave them out of
+    // the "look what we've done" totals entirely.
+    if (isGrant(a)) continue;
     points += activityPoints(a, settings, unscored);
+    sessions += 1;
     kmBySport[a.sport] += a.km;
     if (a.sport === "gym") gymWorkouts += 1;
     if (SPORT_UNIT[a.sport] === "km") distanceKm += a.km;
@@ -73,7 +78,7 @@ export function teamTotals(
 
   return {
     points,
-    sessions: activities.length,
+    sessions,
     athletes: athletes.length,
     kmBySport,
     gymWorkouts,

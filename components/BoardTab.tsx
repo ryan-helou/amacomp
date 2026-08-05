@@ -8,9 +8,9 @@ import {
   standingsForRange,
   type Standing,
 } from "@/lib/scoring";
-import { SPORT_UI } from "@/lib/ui";
+import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import { formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
-import { SPORT_UNIT, rateLabel, type Athlete, type AppState, type Sport } from "@/lib/types";
+import { SPORT_UNIT, rateLabel, isGrant, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { firstSeason, seasonFor } from "@/lib/season";
 import { useOpenProfile, useReigningChampion } from "./ProfileContext";
@@ -75,6 +75,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
     const agg = new Map<string, { athlete: Athlete; value: number; sessions: number }>();
     for (const a of state.athletes) agg.set(a.id, { athlete: a, value: 0, sessions: 0 });
     for (const act of state.activities) {
+      if (isGrant(act)) continue;
       if (act.sport !== sport || act.occurredOn < from || act.occurredOn > to) continue;
       const r = agg.get(act.athleteId);
       if (!r) continue;
@@ -340,6 +341,15 @@ function Lane({
                   />
                 );
               })}
+            {scored && row.grantedPoints > 0 && (
+              <div
+                style={{
+                  width: `${(row.grantedPoints / row.points) * width * 100}%`,
+                  backgroundImage: GRANT_HATCH,
+                }}
+                title={`Awarded: ${fmtPoints(row.grantedPoints)} pts`}
+              />
+            )}
           </div>
 
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[0.6875rem] text-ink-3">
