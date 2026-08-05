@@ -161,17 +161,9 @@ export function AppShell({
     setFireKey((k) => k + 1);
   }, [state.me, myWeekPoints, state.settings.weeklyGoal, refDay]);
 
-  // Seasons — a kickoff banner for the first week a season is live, and a
-  // one-time "season champion" celebration once a season has finished.
-  const curSeason = seasonFor(refDay, state.settings.seasonStart);
-  const seasonLiveDay = curSeason
-    ? curSeason.number === 1
-      ? state.settings.seasonStart // Season 1 goes live at the configured kickoff
-      : curSeason.start
-    : null;
-  const inKickoffWeek =
-    !!curSeason && !!seasonLiveDay && refDay >= seasonLiveDay && refDay <= addDays(seasonLiveDay, 6);
-
+  // Seasons — a one-time "season champion" celebration once a season has
+  // finished. (The in-app "season is live" banner was retired; the full-screen
+  // kickoff card still marks the start of a season.)
   const seasons = useMemo(
     () =>
       seasonChampions(
@@ -299,25 +291,18 @@ export function AppShell({
         </div>
       </header>
 
-      {refDay < state.settings.seasonStart ? (
+      {refDay < state.settings.seasonStart && (
         <div className="border-b-2 border-gold/40 bg-gold/10 px-5 py-2.5 text-center">
           <p className="eyebrow text-gold">Warm-up mode</p>
           <p className="mt-0.5 text-xs text-ink-2">
             Log freely — every board resets when the season kicks off {formatKickoff(state.settings.seasonStart)}.
           </p>
         </div>
-      ) : inKickoffWeek && curSeason ? (
-        <div className="border-b-2 border-accent/30 bg-accent/5 px-5 py-2.5 text-center">
-          <p className="eyebrow accent-text">{curSeason.label} is live</p>
-          <p className="mt-0.5 text-xs text-ink-2">
-            {curSeason.monthsLabel} · fresh board, two months to prove it.
-          </p>
-        </div>
-      ) : null}
+      )}
 
       <main className="flex-1 px-5 pb-28 pt-5">
         {tab === "log" && <LogTab league={league} refDay={refDay} />}
-        {tab === "week" && <WeekTab state={state} refDay={refDay} />}
+        {tab === "week" && <WeekTab league={league} refDay={refDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
         {tab === "titles" && <TitlesTab state={state} refDay={refDay} />}
         {tab === "feed" && <FeedTab league={league} refDay={refDay} />}

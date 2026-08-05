@@ -76,21 +76,53 @@ export function isAvatarGlyph(v: unknown): v is AvatarGlyph {
   return typeof v === "string" && (AVATAR_GLYPHS as readonly string[]).includes(v);
 }
 
-/** Where an activity came from — hand-logged or pulled in from Strava. */
-export type ActivitySource = "manual" | "strava";
+/**
+ * Where an activity came from — hand-logged, pulled in from Strava, or an
+ * `admin` point grant. A grant is the league admin awarding points directly (to
+ * top someone up to quota when they couldn't complete a week), so they don't
+ * fall behind on the season. It rides in the activity log so it flows through
+ * the same weekly-quota and season aggregation as everything else, but carries a
+ * flat `points` amount instead of a distance, and is always rendered as a grant
+ * rather than a real session. See `isGrant`.
+ */
+export type ActivitySource = "manual" | "strava" | "admin";
 
 export interface Activity {
   id: string;
   athleteId: string;
+  /**
+   * For real activities, the discipline. Admin grants carry an inert placeholder
+   * here (they have no sport) and are filtered out of all sport/distance/record
+   * logic via `isGrant` — read `points`, never `sport`, for a grant.
+   */
   sport: Sport;
-  /** Kilometres for distance sports; always 1 for a flat gym workout. See SPORT_UNIT. */
+  /** Kilometres for distance sports; always 1 for a flat gym workout, 0 for a grant. See SPORT_UNIT. */
   km: number;
   /** Local calendar date, `YYYY-MM-DD`. Deliberately date-only: no timezone maths. */
   occurredOn: string;
   note: string | null;
   source: ActivitySource;
+  /**
+   * A flat points override. Non-null only for admin grants, where it is the
+   * awarded amount; null for logged activities, which score from km × multiplier.
+   */
+  points: number | null;
   createdAt: string;
 }
+
+/** An admin point grant — awarded points, not a logged session. */
+export function isGrant(a: Activity): boolean {
+  return a.source === "admin";
+}
+
+/**
+ * Grants have no discipline, but the stored `sport` column is non-null. This
+ * inert placeholder is written for every grant and never read (all sport/
+ * distance/record logic short-circuits on `isGrant` first). Kept as a real
+ * distance sport — not "gym" — so nothing ever mistakes a grant for a gym
+ * workout against the daily cap.
+ */
+export const GRANT_SPORT: Sport = "run";
 
 export interface Settings {
   /** Points per km for distance sports; points per workout for gym. */

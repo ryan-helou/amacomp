@@ -1,5 +1,5 @@
 import type { Activity, Settings, Sport } from "./types";
-import { SPORT_UNIT } from "./types";
+import { SPORT_UNIT, isGrant } from "./types";
 import { activityPoints, unscoredGymIds } from "./scoring";
 import { addDays, formatDay, formatRange, weekEnd, weekStart, type DayKey } from "./dates";
 import type { GlyphName } from "@/components/Glyph";
@@ -59,6 +59,8 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
   const athleteDays = new Map<string, Set<string>>(); // athleteId → set of active days
 
   for (const a of activities) {
+    // Awarded points aren't a performance — they never set a record.
+    if (isGrant(a)) continue;
     const p = pts(a);
     if (p > bigDaySession.value) {
       bigDaySession = {

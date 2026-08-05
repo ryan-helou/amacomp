@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
-import { SPORT_UI } from "@/lib/ui";
+import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
-import { SPORT_UNIT, type Activity, type Athlete } from "@/lib/types";
+import { SPORT_UNIT, isGrant, type Activity, type Athlete } from "@/lib/types";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { athleteColor } from "@/lib/avatar";
 import { SportMark } from "./SportMark";
@@ -63,9 +63,62 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
             </div>
             <ul className="mt-2 space-y-1.5">
               {items.map((a) => {
-                const ui = SPORT_UI[a.sport];
                 const isMe = a.athleteId === state.me?.id;
                 const author = athleteById.get(a.athleteId);
+
+                // Admin grants aren't sessions — no sport, no distance, and no
+                // detail sheet to open. Render them as an award row.
+                if (isGrant(a)) {
+                  const laneColor = author?.avatarColor ?? athleteColor({ id: a.athleteId });
+                  return (
+                    <li
+                      key={a.id}
+                      className="rounded-xl bg-tile px-3 py-2.5"
+                      style={{
+                        backgroundColor: `${laneColor}1a`,
+                        boxShadow: `inset 3px 0 0 ${laneColor}`,
+                      }}
+                    >
+                      <div className="flex w-full items-center gap-3">
+                        {author ? (
+                          <div className="relative shrink-0">
+                            <Avatar athlete={author} me={isMe} className="h-10 w-10 text-xs" />
+                            <span
+                              aria-hidden
+                              className="absolute -bottom-1 -right-1 h-[18px] w-[18px] rounded-full border-2 border-deck ring-1 ring-line"
+                              style={{ backgroundImage: GRANT_HATCH }}
+                            />
+                          </div>
+                        ) : (
+                          <span
+                            aria-hidden
+                            className="h-[18px] w-[18px] rounded-[4px] ring-1 ring-line"
+                            style={{ backgroundImage: GRANT_HATCH }}
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm text-ink">
+                            {author ? (
+                              <AthleteName id={author.id} name={author.name} className="font-semibold" />
+                            ) : (
+                              <span className="font-semibold">Unknown</span>
+                            )}
+                            {isMe && <span className="text-ink-3"> · you</span>}
+                            <span className="text-ink-2"> — awarded by admin</span>
+                          </p>
+                          {a.note && (
+                            <p className="truncate text-[0.8125rem] text-ink-3">{a.note}</p>
+                          )}
+                        </div>
+                        <span className="stamp shrink-0 text-base text-ink-2">
+                          {fmtPoints(a.points ?? 0)}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                }
+
+                const ui = SPORT_UI[a.sport];
                 // Tint each row by the poster's avatar colour so the feed
                 // reads like a colour-coded stream. Two layers: a soft wash
                 // (`1a` ≈ 10% alpha) and a crisp 3px inset stripe on the

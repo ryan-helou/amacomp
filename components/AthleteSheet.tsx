@@ -10,8 +10,8 @@ import {
   standingsForRange,
   unscoredGymIds,
 } from "@/lib/scoring";
-import { SPORT_UI } from "@/lib/ui";
-import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
+import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
+import { SPORT_UNIT, UNIT_LABEL, isGrant, type AppState } from "@/lib/types";
 import {
   badgesFor,
   championshipsByAthlete,
@@ -66,9 +66,10 @@ export function AthleteSheet({
 
     const trend = weeklyTrend(athleteId, activities, settings, refDay, 8);
 
-    // Personal bests + lifetime totals from this athlete's own log.
+    // Personal bests + lifetime totals from this athlete's own log — awarded
+    // points aren't sessions, so they never set a personal best.
     const unscored = unscoredGymIds(activities);
-    const mine = activities.filter((a) => a.athleteId === athleteId);
+    const mine = activities.filter((a) => a.athleteId === athleteId && !isGrant(a));
     let longestRun = 0,
       longestRide = 0,
       longestSwim = 0,
@@ -234,6 +235,15 @@ export function AthleteSheet({
                   />
                 );
               })}
+              {data.allTime!.grantedPoints > 0 && (
+                <div
+                  style={{
+                    width: `${(data.allTime!.grantedPoints / data.allTime!.points) * 100}%`,
+                    backgroundImage: GRANT_HATCH,
+                  }}
+                  title={`Awarded: ${fmtPoints(data.allTime!.grantedPoints)} pts`}
+                />
+              )}
             </div>
             <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[0.625rem]">
               {SPORT_ORDER.filter((s) => (data.allTime?.bySport[s] ?? 0) > 0).map((s) => (
@@ -241,6 +251,9 @@ export function AthleteSheet({
                   {SPORT_UI[s].label} {fmtPoints(data.allTime!.bySport[s])}
                 </span>
               ))}
+              {data.allTime!.grantedPoints > 0 && (
+                <span className="text-ink-2">Awarded {fmtPoints(data.allTime!.grantedPoints)}</span>
+              )}
             </div>
           </div>
         )}

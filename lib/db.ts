@@ -19,6 +19,8 @@ export interface NewActivity {
   km: number;
   occurredOn: string;
   note: string | null;
+  /** Flat points override — set only when creating an admin grant. */
+  points?: number | null;
 }
 
 export type ActivityPatch = Partial<Omit<NewActivity, "athleteId">>;
@@ -141,7 +143,7 @@ function mergeSettings(raw: unknown): Settings {
 // ---------------------------------------------------------------------------
 
 const ACTIVITY_COLS = `id, athlete_id, sport, km::float8 AS km,
-   to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, note, source,
+   to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, note, source, points::float8 AS points,
    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at`;
 
 type ActivityRow = {
@@ -152,6 +154,7 @@ type ActivityRow = {
   occurred_on: string;
   note: string | null;
   source: string | null;
+  points: number | null;
   created_at: string;
 };
 
@@ -164,6 +167,7 @@ function toActivity(r: ActivityRow): Activity {
     occurredOn: r.occurred_on,
     note: r.note,
     source: (r.source as ActivitySource) ?? "manual",
+    points: r.points == null ? null : Number(r.points),
     createdAt: r.created_at,
   };
 }
@@ -286,6 +290,10 @@ class PgStore implements Store {
         );
         await this.pool.query(
           `ALTER TABLE activities ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual'`,
+        );
+        // Flat points override for admin grants; NULL for logged activities.
+        await this.pool.query(
+          `ALTER TABLE activities ADD COLUMN IF NOT EXISTS points NUMERIC(10,3)`,
         );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS settings (
@@ -477,10 +485,10 @@ class PgStore implements Store {
   async createActivity(input: NewActivity, source: ActivitySource = "manual"): Promise<Activity> {
     await this.init();
     const r = await this.pool.query(
-      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING ${ACTIVITY_COLS}`,
-      [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note, source],
+      [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note, source, input.points ?? null],
     );
     return toActivity(r.rows[0] as ActivityRow);
   }
@@ -758,6 +766,7 @@ class MemoryStore implements Store {
       occurredOn: input.occurredOn,
       note: input.note,
       source,
+      points: input.points ?? null,
       createdAt: new Date().toISOString(),
     };
     this.activities.push(created);

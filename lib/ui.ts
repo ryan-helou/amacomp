@@ -42,6 +42,14 @@ export const SPORT_UI: Record<
   },
 };
 
+/**
+ * Hatched slate fill that marks admin-awarded points everywhere they surface —
+ * the ring slice, the weekly bars, the feed. Deliberately not a sport hue, so a
+ * glance reads it as "awarded, not earned". Use as a CSS `background-image`.
+ */
+export const GRANT_HATCH =
+  "repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-ink-2) 60%, transparent) 0 2px, color-mix(in srgb, var(--color-ink-2) 14%, transparent) 2px 5px)";
+
 /** Initials for the lane avatar — one letter for a single name, two otherwise. */
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/);

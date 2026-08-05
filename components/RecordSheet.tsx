@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { SPORT_UNIT, type AppState } from "@/lib/types";
+import { SPORT_UNIT, isGrant, type AppState } from "@/lib/types";
 import { addDays, formatDay } from "@/lib/dates";
 import type { HallRecord } from "@/lib/records";
 import { SportMark } from "./SportMark";
@@ -38,7 +38,10 @@ export function RecordSheet({
   // The sessions that built this record, oldest first so it reads as a story.
   const contributing = useMemo(() => {
     if (!record.context || !record.holderId) return [];
-    const mine = state.activities.filter((a) => a.athleteId === record.holderId);
+    // Records are built from logged sessions only — awarded points never count.
+    const mine = state.activities.filter(
+      (a) => a.athleteId === record.holderId && !isGrant(a),
+    );
     const ctx = record.context;
     if (ctx.kind === "activity") {
       return mine.filter((a) => a.id === ctx.activityId);

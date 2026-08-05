@@ -25,10 +25,13 @@ function check(label: string, actual: unknown, expected: unknown) {
 const S = DEFAULT_SETTINGS; // gym 30/workout, run 5/km
 
 function gym(id: string, athleteId: string, day: string, createdAt: string): Activity {
-  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", createdAt };
+  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", points: null, createdAt };
 }
 function run(id: string, athleteId: string, day: string, km: number): Activity {
-  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", createdAt: "2026-08-10T10:00:00Z" };
+  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", points: null, createdAt: "2026-08-10T10:00:00Z" };
+}
+function grant(id: string, athleteId: string, day: string, points: number): Activity {
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, createdAt: "2026-08-11T10:00:00Z" };
 }
 
 const ath = (id: string, name: string): Athlete => ({
@@ -132,6 +135,41 @@ console.log("\ntotalPoints applies the cap");
     gym("g3", "a", "2026-08-10", "2026-08-10T03:00:00Z"),
   ];
   check("3 gym -> 60 not 90", totalPoints(acts, S), 60);
+}
+
+console.log("\nadmin grants: awarded points, not a session");
+{
+  const athletes = [ath("a", "Ann"), ath("b", "Bob")];
+  // Ann runs 10km = 50 pts, then the admin tops her up 50 to clear a 100 quota.
+  const acts = [
+    run("r1", "a", "2026-08-10", 10),
+    grant("gr1", "a", "2026-08-10", 50),
+    run("r2", "b", "2026-08-10", 4), // 20 pts
+  ];
+  const st = standingsForRange(athletes, acts, S, ["2026-08-10", "2026-08-16"]);
+  const ann = st.find((s) => s.athlete.id === "a")!;
+  check("grant lifts the total 50+50=100", ann.points, 100);
+  check("grantedPoints tracked separately", ann.grantedPoints, 50);
+  check("grant is not counted as a session", ann.sessions, 1);
+  check("grant doesn't touch the sport split", ann.bySport.run, 50);
+  check("grant doesn't add distance km", ann.km, 10);
+  check("topped-up Ann now leads the week", ann.rank, 1);
+  check("goalProgress reflects the grant (100/100)", ann.goalProgress, 1);
+  // A grant counts everywhere points do, including totalPoints.
+  check("totalPoints includes the grant", totalPoints(acts, S), 120);
+}
+{
+  // Grants land in the season the same as any dated activity.
+  const S2 = { ...S, seasonStart: "2026-08-03" };
+  const athletes = [ath("j", "Jona"), ath("r", "Ryan")];
+  const acts = [
+    run("in", "r", "2026-08-05", 4), // Ryan 20 pts
+    grant("g", "j", "2026-08-05", 30), // admin awards Jona 30 in-season
+  ];
+  const champs = seasonChampions(athletes, acts, S2, "2026-08-06", "2026-08-03");
+  const live = champs.find((c) => c.status === "live")!;
+  check("granted points count toward the season lead", live.champion?.athlete.name, "Jona");
+  check("season champion's total includes the grant", live.champion?.points, 30);
 }
 
 console.log("\nseason window starts at kickoff, not the 1st");

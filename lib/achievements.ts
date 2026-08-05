@@ -1,5 +1,5 @@
 import type { Activity, Athlete, Settings, Sport } from "./types";
-import { SPORT_UNIT } from "./types";
+import { SPORT_UNIT, isGrant } from "./types";
 import {
   addDays,
   formatMonth,
@@ -173,6 +173,8 @@ export function badgesFor(
   let longestSwim = 0;
 
   for (const a of mine) {
+    // Badges are for what you did — awarded points don't earn them.
+    if (isGrant(a)) continue;
     sessions += 1;
     sportsEver.add(a.sport);
     if (SPORT_UNIT[a.sport] === "km") kmTotal += a.km;
