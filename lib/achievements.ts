@@ -256,6 +256,8 @@ export interface WeekRecap {
   champion: Standing;
   hit: Standing[];
   missed: Standing[];
+  /** Athletes the admin waived for the week — excused rather than on the hook. */
+  excused: Standing[];
 }
 
 export function lastWeekRecap(
@@ -276,7 +278,8 @@ export function lastWeekRecap(
     rangeLabel: formatRange(range),
     champion: standings[0],
     hit: standings.filter((s) => s.points >= goal),
-    missed: standings.filter((s) => s.points < goal),
+    missed: standings.filter((s) => s.points < goal && !s.excused),
+    excused: standings.filter((s) => s.excused),
   };
 }
 

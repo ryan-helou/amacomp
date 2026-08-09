@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
-import { SPORT_UNIT, isGrant, type Activity, type Athlete } from "@/lib/types";
+import { SPORT_UNIT, isGrant, isExcuse, type Activity, type Athlete } from "@/lib/types";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { athleteColor } from "@/lib/avatar";
 import { SportMark } from "./SportMark";
@@ -104,7 +104,9 @@ export function FeedTab({ league, refDay }: { league: League; refDay: DayKey }) 
                               <span className="font-semibold">Unknown</span>
                             )}
                             {isMe && <span className="text-ink-3"> · you</span>}
-                            <span className="text-ink-2"> — awarded by admin</span>
+                            <span className="text-ink-2">
+                              {isExcuse(a) ? " — excused this week" : " — awarded by admin"}
+                            </span>
                           </p>
                           {a.note && (
                             <p className="truncate text-[0.8125rem] text-ink-3">{a.note}</p>

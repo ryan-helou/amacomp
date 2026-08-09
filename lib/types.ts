@@ -77,15 +77,17 @@ export function isAvatarGlyph(v: unknown): v is AvatarGlyph {
 }
 
 /**
- * Where an activity came from — hand-logged, pulled in from Strava, or an
- * `admin` point grant. A grant is the league admin awarding points directly (to
- * top someone up to quota when they couldn't complete a week), so they don't
- * fall behind on the season. It rides in the activity log so it flows through
- * the same weekly-quota and season aggregation as everything else, but carries a
- * flat `points` amount instead of a distance, and is always rendered as a grant
- * rather than a real session. See `isGrant`.
+ * Where an activity came from — hand-logged, pulled in from Strava, or one of
+ * the two admin point-grant kinds. Both grant kinds are the league admin adding
+ * points directly (so someone who couldn't complete a week doesn't fall behind
+ * on the season): `admin` is a discretionary award of any amount, `excuse` is
+ * waiving the week — a top-up to exactly the weekly quota, shown as "excused".
+ * Both ride in the activity log so they flow through the same weekly-quota and
+ * season aggregation as everything else, but carry a flat `points` amount
+ * instead of a distance, and are always rendered as a grant rather than a real
+ * session. See `isGrant` / `isExcuse`.
  */
-export type ActivitySource = "manual" | "strava" | "admin";
+export type ActivitySource = "manual" | "strava" | "admin" | "excuse";
 
 export interface Activity {
   id: string;
@@ -110,9 +112,14 @@ export interface Activity {
   createdAt: string;
 }
 
-/** An admin point grant — awarded points, not a logged session. */
+/** An admin point grant of either kind — awarded points, not a logged session. */
 export function isGrant(a: Activity): boolean {
-  return a.source === "admin";
+  return a.source === "admin" || a.source === "excuse";
+}
+
+/** A grant that waives the week (top-up to quota), shown as "excused". */
+export function isExcuse(a: Activity): boolean {
+  return a.source === "excuse";
 }
 
 /**
