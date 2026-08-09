@@ -1,5 +1,5 @@
 import type { Activity, Athlete, Settings, Sport } from "./types";
-import { SPORTS, SPORT_UNIT, isGrant } from "./types";
+import { SPORTS, SPORT_UNIT, isGrant, isExcuse } from "./types";
 import { inRange, type DayKey, type Period, periodRange } from "./dates";
 import { MAX_SCORING_GYM_PER_DAY } from "./validate";
 
@@ -78,6 +78,8 @@ export interface Standing {
   /** Points the admin awarded directly (already included in `points`), tracked
    *  separately so the UI can show them as granted rather than earned. */
   grantedPoints: number;
+  /** True if the admin waived this week for the athlete (an `excuse` grant). */
+  excused: boolean;
 }
 
 function emptySportMap(): Record<Sport, number> {
@@ -115,6 +117,7 @@ export function standingsForRange(
       stravaSessions: 0,
       unscoredSessions: 0,
       grantedPoints: 0,
+      excused: false,
     });
   }
 
@@ -132,6 +135,7 @@ export function standingsForRange(
       const pts = a.points ?? 0;
       row.points += pts;
       row.grantedPoints += pts;
+      if (isExcuse(a)) row.excused = true;
       continue;
     }
     if (a.source === "strava") row.stravaSessions += 1;

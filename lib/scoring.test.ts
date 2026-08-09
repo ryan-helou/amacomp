@@ -33,6 +33,9 @@ function run(id: string, athleteId: string, day: string, km: number): Activity {
 function grant(id: string, athleteId: string, day: string, points: number): Activity {
   return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, createdAt: "2026-08-11T10:00:00Z" };
 }
+function excuse(id: string, athleteId: string, day: string, points: number): Activity {
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "excuse", points, createdAt: "2026-08-11T10:00:00Z" };
+}
 
 const ath = (id: string, name: string): Athlete => ({
   id, name, resetHour: 0, avatarColor: null, avatarGlyph: null, avatarUrl: null,
@@ -170,6 +173,31 @@ console.log("\nadmin grants: awarded points, not a session");
   const live = champs.find((c) => c.status === "live")!;
   check("granted points count toward the season lead", live.champion?.athlete.name, "Jona");
   check("season champion's total includes the grant", live.champion?.points, 30);
+}
+
+console.log("\nexcuse: waive the week, flagged excused");
+{
+  const athletes = [ath("a", "Ann")];
+  // Ann earned 40; an excuse tops her up the remaining 60 to hit the 100 quota.
+  const acts = [
+    run("r1", "a", "2026-08-10", 8), // 40 pts
+    excuse("ex1", "a", "2026-08-10", 60),
+  ];
+  const st = standingsForRange(athletes, acts, S, ["2026-08-10", "2026-08-16"]);
+  const ann = st.find((s) => s.athlete.id === "a")!;
+  check("excuse lifts the total to quota", ann.points, 100);
+  check("excuse counts as granted points", ann.grantedPoints, 60);
+  check("row is flagged excused", ann.excused, true);
+  check("excuse is not a session", ann.sessions, 1);
+}
+{
+  // A plain award is a grant but NOT an excuse.
+  const athletes = [ath("a", "Ann")];
+  const st = standingsForRange(athletes, [grant("g", "a", "2026-08-10", 50)], S, [
+    "2026-08-10",
+    "2026-08-16",
+  ]);
+  check("a plain award doesn't flag excused", st[0].excused, false);
 }
 
 console.log("\nseason window starts at kickoff, not the 1st");

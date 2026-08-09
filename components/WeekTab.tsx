@@ -10,7 +10,7 @@ import {
   unscoredGymIds,
 } from "@/lib/scoring";
 import { addDays, formatRange, periodRange, weekStart, type DayKey } from "@/lib/dates";
-import { SPORT_UNIT, isGrant, type Activity } from "@/lib/types";
+import { SPORT_UNIT, isGrant, isExcuse, type Activity } from "@/lib/types";
 import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import {
   headToHead,
@@ -144,7 +144,11 @@ export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) 
               className="inline-block h-3 w-3 rounded-[3px] ring-1 ring-line"
               style={{ backgroundImage: GRANT_HATCH }}
             />
-            Includes <span className="font-semibold text-ink">{fmtPoints(mine!.grantedPoints)}</span> awarded by admin
+            {mine?.excused ? (
+              <>Week excused — topped up to <span className="font-semibold text-ink">{fmtPoints(goal)}</span></>
+            ) : (
+              <>Includes <span className="font-semibold text-ink">{fmtPoints(mine!.grantedPoints)}</span> awarded by admin</>
+            )}
           </p>
         )}
 
@@ -246,6 +250,7 @@ export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) 
         <ul className="mt-3 space-y-2">
           {standings.map((row) => {
             const done = row.points >= goal;
+            const excused = row.excused;
             // Stack the bar: earned first, then the hatched granted tail.
             const granted = row.grantedPoints;
             const earned = Math.max(row.points - granted, 0);
@@ -315,8 +320,12 @@ export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) 
                     </div>
                   </div>
                   {done && (
-                    <span className="eyebrow shrink-0 rounded-md bg-good/12 px-2 py-1 text-good">
-                      Met
+                    <span
+                      className={`eyebrow shrink-0 rounded-md px-2 py-1 ${
+                        excused ? "bg-ink-2/10 text-ink-2" : "bg-good/12 text-good"
+                      }`}
+                    >
+                      {excused ? "Excused" : "Met"}
                     </span>
                   )}
                   <svg
@@ -343,7 +352,9 @@ export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) 
                           </span>
                         ))}
                         {row.grantedPoints > 0 && (
-                          <span className="text-ink-2">Awarded {fmtPoints(row.grantedPoints)}</span>
+                          <span className="text-ink-2">
+                            {row.excused ? "Excused" : "Awarded"} {fmtPoints(row.grantedPoints)}
+                          </span>
                         )}
                       </div>
                     )}
@@ -396,8 +407,19 @@ export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) 
                         athleteName={row.athlete.name}
                         shortfall={Math.max(goal - row.points, 0)}
                         goal={goal}
+                        excused={excused}
                         busy={busy}
-                        onGrant={(points) =>
+                        onExcuse={() =>
+                          send("/api/grants", {
+                            method: "POST",
+                            body: JSON.stringify({
+                              kind: "excuse",
+                              athleteId: row.athlete.id,
+                              occurredOn: range[0],
+                            }),
+                          })
+                        }
+                        onAward={(points) =>
                           send("/api/grants", {
                             method: "POST",
                             body: JSON.stringify({
@@ -438,16 +460,26 @@ export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) 
               <div className="eyebrow text-ink-3">pts</div>
             </div>
           </div>
-          {recap.missed.length > 0 && (
+          {(recap.missed.length > 0 || recap.excused.length > 0) && (
             <div className="mt-3 border-t border-gold/20 pt-2 text-xs text-ink-2">
-              <p>
-                <span className="font-semibold text-ink">Missed quota:</span>{" "}
-                {listNames(recap.missed.map((s) => s.athlete.name))}.
-              </p>
-              <p className="mt-1">
-                <span className="font-semibold text-run">Forfeit:</span>{" "}
-                {state.settings.forfeit}
-              </p>
+              {recap.missed.length > 0 && (
+                <>
+                  <p>
+                    <span className="font-semibold text-ink">Missed quota:</span>{" "}
+                    {listNames(recap.missed.map((s) => s.athlete.name))}.
+                  </p>
+                  <p className="mt-1">
+                    <span className="font-semibold text-run">Forfeit:</span>{" "}
+                    {state.settings.forfeit}
+                  </p>
+                </>
+              )}
+              {recap.excused.length > 0 && (
+                <p className="mt-1">
+                  <span className="font-semibold text-ink-2">Excused:</span>{" "}
+                  {listNames(recap.excused.map((s) => s.athlete.name))}.
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -476,7 +508,7 @@ function GrantLine({
         style={{ backgroundImage: GRANT_HATCH }}
       />
       <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-2">
-        Awarded by admin
+        {isExcuse(grant) ? "Excused this week" : "Awarded by admin"}
         {grant.note && <span className="text-ink-3"> · {grant.note}</span>}
       </span>
       {canManage && (
@@ -505,32 +537,45 @@ function GrantLine({
   );
 }
 
-/** Admin-only control to award points to an athlete for the viewed week. */
+/**
+ * Admin-only controls for the viewed week: excuse the week (waive it — a top-up
+ * to exactly the quota, shown as "excused") or award a discretionary amount.
+ */
 function AdminGrant({
   athleteName,
   shortfall,
   goal,
+  excused,
   busy,
-  onGrant,
+  onExcuse,
+  onAward,
 }: {
   athleteName: string;
-  /** Points still needed to reach quota (0 once met) — the one-tap top-up. */
+  /** Points still needed to reach quota (0 once met) — the excuse top-up size. */
   shortfall: number;
   goal: number;
+  /** Already waived for this week — hide the excuse button. */
+  excused: boolean;
   busy: boolean;
-  onGrant: (points: number) => Promise<string | null>;
+  onExcuse: () => Promise<string | null>;
+  onAward: (points: number) => Promise<string | null>;
 }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  async function grant(points: number) {
+  async function excuse() {
+    setError(null);
+    const err = await onExcuse();
+    if (err) setError(err);
+  }
+  async function award(points: number) {
     setError(null);
     if (!Number.isFinite(points) || points <= 0) {
       setError("Enter a points amount.");
       return;
     }
-    const err = await onGrant(points);
+    const err = await onAward(points);
     if (err) {
       setError(err);
       return;
@@ -543,14 +588,14 @@ function AdminGrant({
     <div className="mt-2.5 border-t border-line pt-2.5">
       {!open ? (
         <div className="flex flex-wrap items-center gap-2">
-          {shortfall > 0 && (
+          {!excused && (
             <button
               type="button"
               disabled={busy}
-              onClick={() => grant(shortfall)}
+              onClick={excuse}
               className="eyebrow rounded-lg border-2 border-ink bg-tile px-3 py-1.5 text-ink disabled:opacity-40"
             >
-              Top up to {fmtPoints(goal)} (+{fmtPoints(shortfall)})
+              {shortfall > 0 ? `Excuse week (+${fmtPoints(shortfall)})` : "Excuse week"}
             </button>
           )}
           <button
@@ -558,7 +603,7 @@ function AdminGrant({
             onClick={() => setOpen(true)}
             className="eyebrow rounded-lg px-2 py-1.5 text-ink-2"
           >
-            {shortfall > 0 ? "Custom" : "Award points"}
+            Award points
           </button>
         </div>
       ) : (
@@ -575,7 +620,7 @@ function AdminGrant({
           <button
             type="button"
             disabled={busy}
-            onClick={() => grant(Number(amount))}
+            onClick={() => award(Number(amount))}
             className="eyebrow rounded-lg border-2 border-ink bg-accent/10 px-3 py-1.5 accent-text disabled:opacity-40"
           >
             Award
@@ -594,7 +639,9 @@ function AdminGrant({
         </div>
       )}
       <p className="mt-1 text-[0.6875rem] text-ink-3">
-        Points for {athleteName} this week — counts toward the season.
+        {excused
+          ? `${athleteName} is excused this week — topped up to ${fmtPoints(goal)}.`
+          : `Excuse waives ${athleteName}'s week to ${fmtPoints(goal)}; award adds any amount. Counts toward the season.`}
       </p>
       {error && <p className="mt-1 text-xs font-medium text-run">{error}</p>}
     </div>
