@@ -38,7 +38,7 @@ export interface HallRecord {
   /** Athlete id who holds it, or null if nobody's posted a mark yet. */
   holderId: string | null;
   value: number;
-  unit: "pts" | "km" | "days" | "sessions";
+  unit: "pts" | "km" | "days" | "sessions" | "sports";
   /** When it was set — a day, or a week range. */
   detail: string;
   /** How to re-derive the sessions behind this mark. Absent while unclaimed. */
@@ -67,9 +67,12 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
   const monthPts = new Map<string, number>(); // `athleteId|monthStart` → points
   const dayKm = new Map<string, number>(); // `athleteId|day` → distance km
   const weekKm = new Map<string, number>(); // `athleteId|weekStart` → distance km
+  const monthKm = new Map<string, number>(); // `athleteId|monthStart` → distance km
   const daySessions = new Map<string, number>(); // `athleteId|day` → session count
   const weekSessions = new Map<string, number>(); // `athleteId|weekStart` → session count
   const weekGym = new Map<string, number>(); // `athleteId|weekStart` → gym workout count
+  const monthDays = new Map<string, Set<string>>(); // `athleteId|monthStart` → active days
+  const daySports = new Map<string, Set<string>>(); // `athleteId|day` → disciplines that day
   const athleteDays = new Map<string, Set<string>>(); // athleteId → set of active days
 
   for (const a of activities) {
@@ -123,7 +126,14 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     if (SPORT_UNIT[a.sport] === "km") {
       dayKm.set(dk, (dayKm.get(dk) ?? 0) + a.km);
       weekKm.set(wkk, (weekKm.get(wkk) ?? 0) + a.km);
+      monthKm.set(mok, (monthKm.get(mok) ?? 0) + a.km);
     }
+    let mdays = monthDays.get(mok);
+    if (!mdays) monthDays.set(mok, (mdays = new Set()));
+    mdays.add(a.occurredOn);
+    let dsports = daySports.get(dk);
+    if (!dsports) daySports.set(dk, (dsports = new Set()));
+    dsports.add(a.sport);
     let days = athleteDays.get(a.athleteId);
     if (!days) athleteDays.set(a.athleteId, (days = new Set()));
     days.add(a.occurredOn);
@@ -228,18 +238,42 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
       };
     }
   }
+  let bestKmMonth = emptyPeak();
+  for (const [k, v] of monthKm) {
+    if (v > bestKmMonth.value) {
+      const [holderId, mo] = k.split("|");
+      bestKmMonth = { holderId, value: v, detail: formatMonth(mo), context: { kind: "month", month: mo } };
+    }
+  }
+  let mostActiveMonth = emptyPeak();
+  for (const [k, set] of monthDays) {
+    if (set.size > mostActiveMonth.value) {
+      const [holderId, mo] = k.split("|");
+      mostActiveMonth = { holderId, value: set.size, detail: formatMonth(mo), context: { kind: "month", month: mo } };
+    }
+  }
+  let fullestDay = emptyPeak();
+  for (const [k, set] of daySports) {
+    if (set.size > fullestDay.value) {
+      const [holderId, day] = k.split("|");
+      fullestDay = { holderId, value: set.size, detail: formatDay(day), context: { kind: "day", day } };
+    }
+  }
 
   return [
     { key: "week", label: "Biggest week", glyph: "trophy", unit: "pts", ...bestWeek },
     { key: "month", label: "Biggest month", glyph: "medal", unit: "pts", ...bestMonth },
     { key: "day", label: "Most points in a day", glyph: "bolt", unit: "pts", ...bestDay },
     { key: "session", label: "Biggest single session", glyph: "star", unit: "pts", ...bigDaySession },
+    { key: "kmmonth", label: "Most km in a month", glyph: "compass", unit: "km", ...bestKmMonth },
     { key: "kmweek", label: "Most km in a week", glyph: "mountain", unit: "km", ...bestKmWeek },
     { key: "kmday", label: "Most km in a day", glyph: "target", unit: "km", ...bestKmDay },
+    { key: "fullday", label: "Most disciplines in a day", glyph: "rings", unit: "sports", ...fullestDay },
     { key: "busiest", label: "Busiest week", glyph: "trio", unit: "sessions", ...busiestWeek },
     { key: "busiestday", label: "Busiest day", glyph: "rocket", unit: "sessions", ...busiestDay },
     { key: "gymweek", label: "Most gym workouts", glyph: "dumbbell", unit: "sessions", ...mostGymWeek },
     { key: "streak", label: "Longest streak", glyph: "flame", unit: "days", ...longestStreak },
+    { key: "activemonth", label: "Most active days in a month", glyph: "flag", unit: "days", ...mostActiveMonth },
     { key: "run", label: "Longest run", sport: "run", unit: "km", ...longestRun },
     { key: "ride", label: "Longest ride", sport: "bike", unit: "km", ...longestRide },
     { key: "swim", label: "Longest swim", sport: "swim", unit: "km", ...longestSwim },
