@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, isGrant, type AppState } from "@/lib/types";
-import { addDays, formatDay } from "@/lib/dates";
+import { addDays, formatDay, monthEnd, monthStart } from "@/lib/dates";
 import type { HallRecord } from "@/lib/records";
 import { SportMark } from "./SportMark";
 import { Avatar } from "./Avatar";
@@ -54,6 +54,17 @@ export function RecordSheet({
     if (ctx.kind === "week") {
       const from = ctx.weekStart;
       const to = addDays(from, 6);
+      return mine
+        .filter((a) => a.occurredOn >= from && a.occurredOn <= to)
+        .sort(
+          (x, y) =>
+            x.occurredOn.localeCompare(y.occurredOn) ||
+            x.createdAt.localeCompare(y.createdAt),
+        );
+    }
+    if (ctx.kind === "month") {
+      const from = monthStart(ctx.month);
+      const to = monthEnd(ctx.month);
       return mine
         .filter((a) => a.occurredOn >= from && a.occurredOn <= to)
         .sort(

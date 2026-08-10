@@ -1,7 +1,16 @@
 import type { Activity, Settings, Sport } from "./types";
 import { SPORT_UNIT, isGrant } from "./types";
 import { activityPoints, unscoredGymIds } from "./scoring";
-import { addDays, formatDay, formatRange, weekEnd, weekStart, type DayKey } from "./dates";
+import {
+  addDays,
+  formatDay,
+  formatMonth,
+  formatRange,
+  monthStart,
+  weekEnd,
+  weekStart,
+  type DayKey,
+} from "./dates";
 import type { GlyphName } from "@/components/Glyph";
 
 /**
@@ -15,6 +24,7 @@ import type { GlyphName } from "@/components/Glyph";
 export type RecordContext =
   | { kind: "day"; day: DayKey }
   | { kind: "week"; weekStart: DayKey }
+  | { kind: "month"; month: DayKey }
   | { kind: "activity"; activityId: string }
   | { kind: "streak"; endDay: DayKey; length: number };
 
@@ -54,8 +64,12 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
 
   const dayPts = new Map<string, number>(); // `athleteId|day` → points
   const weekPts = new Map<string, number>(); // `athleteId|weekStart` → points
+  const monthPts = new Map<string, number>(); // `athleteId|monthStart` → points
   const dayKm = new Map<string, number>(); // `athleteId|day` → distance km
+  const weekKm = new Map<string, number>(); // `athleteId|weekStart` → distance km
+  const daySessions = new Map<string, number>(); // `athleteId|day` → session count
   const weekSessions = new Map<string, number>(); // `athleteId|weekStart` → session count
+  const weekGym = new Map<string, number>(); // `athleteId|weekStart` → gym workout count
   const athleteDays = new Map<string, Set<string>>(); // athleteId → set of active days
 
   for (const a of activities) {
@@ -97,12 +111,19 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
 
     const dk = `${a.athleteId}|${a.occurredOn}`;
     dayPts.set(dk, (dayPts.get(dk) ?? 0) + p);
+    daySessions.set(dk, (daySessions.get(dk) ?? 0) + 1);
     const wk = weekStart(a.occurredOn);
     const wkk = `${a.athleteId}|${wk}`;
     weekPts.set(wkk, (weekPts.get(wkk) ?? 0) + p);
-    // Distance only — a flat gym "1 km" shouldn't count toward a km record.
-    if (SPORT_UNIT[a.sport] === "km") dayKm.set(dk, (dayKm.get(dk) ?? 0) + a.km);
     weekSessions.set(wkk, (weekSessions.get(wkk) ?? 0) + 1);
+    if (a.sport === "gym") weekGym.set(wkk, (weekGym.get(wkk) ?? 0) + 1);
+    const mok = `${a.athleteId}|${monthStart(a.occurredOn)}`;
+    monthPts.set(mok, (monthPts.get(mok) ?? 0) + p);
+    // Distance only — a flat gym "1 km" shouldn't count toward a km record.
+    if (SPORT_UNIT[a.sport] === "km") {
+      dayKm.set(dk, (dayKm.get(dk) ?? 0) + a.km);
+      weekKm.set(wkk, (weekKm.get(wkk) ?? 0) + a.km);
+    }
     let days = athleteDays.get(a.athleteId);
     if (!days) athleteDays.set(a.athleteId, (days = new Set()));
     days.add(a.occurredOn);
@@ -146,6 +167,44 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
       };
     }
   }
+  let busiestDay = emptyPeak();
+  for (const [k, v] of daySessions) {
+    if (v > busiestDay.value) {
+      const [holderId, day] = k.split("|");
+      busiestDay = { holderId, value: v, detail: formatDay(day), context: { kind: "day", day } };
+    }
+  }
+  let bestKmWeek = emptyPeak();
+  for (const [k, v] of weekKm) {
+    if (v > bestKmWeek.value) {
+      const [holderId, wk] = k.split("|");
+      bestKmWeek = {
+        holderId,
+        value: v,
+        detail: formatRange([wk, weekEnd(wk)]),
+        context: { kind: "week", weekStart: wk },
+      };
+    }
+  }
+  let bestMonth = emptyPeak();
+  for (const [k, v] of monthPts) {
+    if (v > bestMonth.value) {
+      const [holderId, mo] = k.split("|");
+      bestMonth = { holderId, value: v, detail: formatMonth(mo), context: { kind: "month", month: mo } };
+    }
+  }
+  let mostGymWeek = emptyPeak();
+  for (const [k, v] of weekGym) {
+    if (v > mostGymWeek.value) {
+      const [holderId, wk] = k.split("|");
+      mostGymWeek = {
+        holderId,
+        value: v,
+        detail: formatRange([wk, weekEnd(wk)]),
+        context: { kind: "week", weekStart: wk },
+      };
+    }
+  }
   // Longest run of consecutive days with at least one session.
   let longestStreak = emptyPeak();
   for (const [holderId, daysSet] of athleteDays) {
@@ -172,10 +231,14 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
 
   return [
     { key: "week", label: "Biggest week", glyph: "trophy", unit: "pts", ...bestWeek },
+    { key: "month", label: "Biggest month", glyph: "medal", unit: "pts", ...bestMonth },
     { key: "day", label: "Most points in a day", glyph: "bolt", unit: "pts", ...bestDay },
     { key: "session", label: "Biggest single session", glyph: "star", unit: "pts", ...bigDaySession },
+    { key: "kmweek", label: "Most km in a week", glyph: "mountain", unit: "km", ...bestKmWeek },
     { key: "kmday", label: "Most km in a day", glyph: "target", unit: "km", ...bestKmDay },
     { key: "busiest", label: "Busiest week", glyph: "trio", unit: "sessions", ...busiestWeek },
+    { key: "busiestday", label: "Busiest day", glyph: "rocket", unit: "sessions", ...busiestDay },
+    { key: "gymweek", label: "Most gym workouts", glyph: "dumbbell", unit: "sessions", ...mostGymWeek },
     { key: "streak", label: "Longest streak", glyph: "flame", unit: "days", ...longestStreak },
     { key: "run", label: "Longest run", sport: "run", unit: "km", ...longestRun },
     { key: "ride", label: "Longest ride", sport: "bike", unit: "km", ...longestRide },
