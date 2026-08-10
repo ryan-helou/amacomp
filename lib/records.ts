@@ -25,6 +25,7 @@ export type RecordContext =
   | { kind: "day"; day: DayKey }
   | { kind: "week"; weekStart: DayKey }
   | { kind: "month"; month: DayKey }
+  | { kind: "range"; from: DayKey; to: DayKey }
   | { kind: "activity"; activityId: string }
   | { kind: "streak"; endDay: DayKey; length: number };
 
@@ -38,7 +39,7 @@ export interface HallRecord {
   /** Athlete id who holds it, or null if nobody's posted a mark yet. */
   holderId: string | null;
   value: number;
-  unit: "pts" | "km" | "days" | "sessions" | "sports";
+  unit: "pts" | "km" | "days" | "sessions" | "sports" | "weeks";
   /** When it was set — a day, or a week range. */
   detail: string;
   /** How to re-derive the sessions behind this mark. Absent while unclaimed. */
@@ -56,6 +57,7 @@ const emptyPeak = (): Peak => ({ holderId: null, value: 0, detail: "" });
 export function hallOfFame(activities: Activity[], settings: Settings): HallRecord[] {
   const unscored = unscoredGymIds(activities);
   const pts = (a: Activity) => activityPoints(a, settings, unscored);
+  const goal = settings.weeklyGoal;
 
   let bigDaySession = emptyPeak(); // most points from one logged session
   let longestRun = emptyPeak();
@@ -260,6 +262,85 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     }
   }
 
+  // Longest run of consecutive weeks clearing the quota on earned points — a
+  // gap week (or one that only got there on an admin grant) breaks the streak.
+  let quotaStreak = emptyPeak();
+  {
+    const byAthlete = new Map<string, Map<string, number>>();
+    for (const [k, v] of weekPts) {
+      const [ath, wk] = k.split("|");
+      let m = byAthlete.get(ath);
+      if (!m) byAthlete.set(ath, (m = new Map()));
+      m.set(wk, v);
+    }
+    for (const [ath, weeks] of byAthlete) {
+      const keys = [...weeks.keys()].sort();
+      let run = 0;
+      let best = 0;
+      let bestEnd = "";
+      for (let wk = keys[0]; wk <= keys[keys.length - 1]; wk = addDays(wk, 7)) {
+        if (goal > 0 && (weeks.get(wk) ?? 0) >= goal) {
+          run += 1;
+          if (run > best) {
+            best = run;
+            bestEnd = wk;
+          }
+        } else {
+          run = 0;
+        }
+      }
+      if (best > quotaStreak.value) {
+        const start = addDays(bestEnd, -7 * (best - 1));
+        quotaStreak = {
+          holderId: ath,
+          value: best,
+          detail: formatRange([start, weekEnd(bestEnd)]),
+          context: { kind: "range", from: start, to: weekEnd(bestEnd) },
+        };
+      }
+    }
+  }
+
+  // Fewest days into a week anyone cleared the quota (Mon = 1 … Sun = 7).
+  let fastestQuota = emptyPeak();
+  {
+    const byWeek = new Map<string, { day: string; pts: number }[]>();
+    for (const [k, v] of dayPts) {
+      const [ath, day] = k.split("|");
+      const key = `${ath}|${weekStart(day)}`;
+      let arr = byWeek.get(key);
+      if (!arr) byWeek.set(key, (arr = []));
+      arr.push({ day, pts: v });
+    }
+    let fewest = Infinity;
+    for (const [key, arr] of byWeek) {
+      if (goal <= 0) break;
+      arr.sort((a, b) => a.day.localeCompare(b.day));
+      let cum = 0;
+      let hitDay = "";
+      for (const { day, pts: dp } of arr) {
+        cum += dp;
+        if (cum >= goal) {
+          hitDay = day;
+          break;
+        }
+      }
+      if (!hitDay) continue;
+      const [ath, wk] = key.split("|");
+      let di = 1;
+      for (let cur = wk; cur < hitDay; cur = addDays(cur, 1)) di += 1;
+      if (di < fewest) {
+        fewest = di;
+        fastestQuota = {
+          holderId: ath,
+          value: di,
+          detail: formatRange([wk, weekEnd(wk)]),
+          context: { kind: "week", weekStart: wk },
+        };
+      }
+    }
+  }
+
   return [
     { key: "week", label: "Biggest week", glyph: "trophy", unit: "pts", ...bestWeek },
     { key: "month", label: "Biggest month", glyph: "medal", unit: "pts", ...bestMonth },
@@ -273,6 +354,8 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     { key: "busiestday", label: "Busiest day", glyph: "rocket", unit: "sessions", ...busiestDay },
     { key: "gymweek", label: "Most gym workouts", glyph: "dumbbell", unit: "sessions", ...mostGymWeek },
     { key: "streak", label: "Longest streak", glyph: "flame", unit: "days", ...longestStreak },
+    { key: "quotastreak", label: "Longest quota streak", glyph: "shield", unit: "weeks", ...quotaStreak },
+    { key: "fastquota", label: "Fastest to quota", glyph: "diamond", unit: "days", ...fastestQuota },
     { key: "activemonth", label: "Most active days in a month", glyph: "flag", unit: "days", ...mostActiveMonth },
     { key: "run", label: "Longest run", sport: "run", unit: "km", ...longestRun },
     { key: "ride", label: "Longest ride", sport: "bike", unit: "km", ...longestRide },

@@ -73,6 +73,15 @@ export function RecordSheet({
             x.createdAt.localeCompare(y.createdAt),
         );
     }
+    if (ctx.kind === "range") {
+      return mine
+        .filter((a) => a.occurredOn >= ctx.from && a.occurredOn <= ctx.to)
+        .sort(
+          (x, y) =>
+            x.occurredOn.localeCompare(y.occurredOn) ||
+            x.createdAt.localeCompare(y.createdAt),
+        );
+    }
     // streak — sessions on each day of the run
     const start = addDays(ctx.endDay, -(ctx.length - 1));
     return mine
