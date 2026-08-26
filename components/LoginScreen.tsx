@@ -52,6 +52,11 @@ export function LoginScreen({
             <span className="eyebrow w-12 text-ink">{SPORT_UI[sport].label}</span>
             <span className="font-mono text-sm text-ink-2">
               {settings.multipliers[sport]} pt{settings.multipliers[sport] === 1 ? "" : "s"} / {UNIT_LABEL[SPORT_UNIT[sport]]}
+              {(settings.elevationPer100m?.[sport] ?? 0) > 0 && (
+                <span className="text-ink-3">
+                  {" "}+ {settings.elevationPer100m[sport]} / 100m up
+                </span>
+              )}
             </span>
           </li>
         ))}

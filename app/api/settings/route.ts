@@ -35,6 +35,19 @@ export async function PUT(req: Request) {
     multipliers[sport] = Math.round(n * 100) / 100;
   }
 
+  const rawElevation = (body.elevationPer100m ?? {}) as Record<string, unknown>;
+  const elevationPer100m = {} as Record<Sport, number>;
+  for (const sport of SPORTS) {
+    const n = Number(rawElevation[sport] ?? 0);
+    if (!Number.isFinite(n) || n < 0 || n > MAX_MULTIPLIER) {
+      return NextResponse.json(
+        { error: `${sport} points per 100 m must be between 0 and ${MAX_MULTIPLIER}.` },
+        { status: 400 },
+      );
+    }
+    elevationPer100m[sport] = Math.round(n * 100) / 100;
+  }
+
   const weeklyGoal = Number(body.weeklyGoal);
   if (!Number.isFinite(weeklyGoal) || weeklyGoal < 1 || weeklyGoal > MAX_GOAL) {
     return NextResponse.json(
@@ -54,6 +67,7 @@ export async function PUT(req: Request) {
 
   const settings: Settings = {
     multipliers,
+    elevationPer100m,
     weeklyGoal: Math.round(weeklyGoal * 10) / 10,
     seasonStart: body.seasonStart,
     forfeit,

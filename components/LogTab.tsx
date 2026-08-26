@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
+import {
+  activityPoints, elevationPointsFor, fmtKm, fmtPoints, pointsFor, unscoredGymIds,
+} from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { formatDayRelative, type DayKey } from "@/lib/dates";
 import { SPORT_UNIT, UNIT_LABEL, isGrant, type Activity } from "@/lib/types";
@@ -43,6 +45,7 @@ export function LogTab({
         km: Number(draft.km),
         occurredOn: draft.occurredOn,
         note: draft.note,
+        elevationM: draft.elevation.trim() === "" ? null : Number(draft.elevation),
       }),
     });
     if (err) {
@@ -50,7 +53,12 @@ export function LogTab({
       return;
     }
     const points = fmtPoints(
-      Number(draft.km) * state.settings.multipliers[draft.sport],
+      pointsFor(Number(draft.km), draft.sport, state.settings) +
+        elevationPointsFor(
+          draft.elevation.trim() === "" ? null : Number(draft.elevation),
+          draft.sport,
+          state.settings,
+        ),
     );
     setSaved(`${points} pts added.`);
     setDraft({ ...emptyDraft(refDay), sport: draft.sport });
@@ -66,6 +74,7 @@ export function LogTab({
       km: String(a.km),
       occurredOn: a.occurredOn,
       note: a.note ?? "",
+      elevation: a.elevationM === null ? "" : String(a.elevationM),
     });
   }
 
@@ -78,6 +87,8 @@ export function LogTab({
         km: Number(editDraft.km),
         occurredOn: editDraft.occurredOn,
         note: editDraft.note,
+        elevationM:
+          editDraft.elevation.trim() === "" ? null : Number(editDraft.elevation),
       }),
     });
     if (err) {

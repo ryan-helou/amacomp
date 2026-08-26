@@ -41,6 +41,7 @@ export function ActivitySheet({
       km: SPORT_UNIT[activity.sport] === "flat" ? "1" : String(activity.km),
       occurredOn: activity.occurredOn,
       note: activity.note ?? "",
+      elevation: activity.elevationM === null ? "" : String(activity.elevationM),
     });
     setEditing(true);
   }
@@ -54,6 +55,8 @@ export function ActivitySheet({
         km: Number(editDraft.km),
         occurredOn: editDraft.occurredOn,
         note: editDraft.note,
+        elevationM:
+          editDraft.elevation.trim() === "" ? null : Number(editDraft.elevation),
       }),
     });
     if (err) setEditErr(err);

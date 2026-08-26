@@ -4,7 +4,7 @@ import { currentAthlete, isAdmin } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { isDayKey } from "@/lib/dates";
 import { isSport, SPORT_UNIT } from "@/lib/types";
-import { MAX_KM, parseKm, parseNote } from "@/lib/validate";
+import { MAX_ELEVATION_M, MAX_KM, parseElevation, parseKm, parseNote } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +61,16 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
   if (body.note !== undefined) {
     patch.note = parseNote(body.note);
+  }
+  if (body.elevationM !== undefined) {
+    const elevationM = parseElevation(body.elevationM);
+    if (elevationM === undefined) {
+      return NextResponse.json(
+        { error: `Enter an ascent between 0 and ${MAX_ELEVATION_M} m, or leave it blank.` },
+        { status: 400 },
+      );
+    }
+    patch.elevationM = elevationM;
   }
 
   await getStore().updateActivity(id, patch);

@@ -1,4 +1,4 @@
-import { unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
+import { activityPoints, unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
 import { seasonByNumber, seasonChampions } from "./season";
 import { DEFAULT_SETTINGS, type Activity, type Athlete } from "./types";
 
@@ -25,21 +25,46 @@ function check(label: string, actual: unknown, expected: unknown) {
 const S = DEFAULT_SETTINGS; // gym 30/workout, run 5/km
 
 function gym(id: string, athleteId: string, day: string, createdAt: string): Activity {
-  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", points: null, createdAt };
+  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", points: null, elevationM: null, createdAt };
 }
 function run(id: string, athleteId: string, day: string, km: number): Activity {
-  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", points: null, createdAt: "2026-08-10T10:00:00Z" };
+  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", points: null, elevationM: null, createdAt: "2026-08-10T10:00:00Z" };
 }
 function grant(id: string, athleteId: string, day: string, points: number): Activity {
-  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, createdAt: "2026-08-11T10:00:00Z" };
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, elevationM: null, createdAt: "2026-08-11T10:00:00Z" };
 }
 function excuse(id: string, athleteId: string, day: string, points: number): Activity {
-  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "excuse", points, createdAt: "2026-08-11T10:00:00Z" };
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "excuse", points, elevationM: null, createdAt: "2026-08-11T10:00:00Z" };
 }
 
 const ath = (id: string, name: string): Athlete => ({
   id, name, resetHour: 0, avatarColor: null, avatarGlyph: null, avatarUrl: null,
 });
+
+/** A ride with a known ascent. `elevationM: null` elsewhere means "unknown". */
+function ride(id: string, athleteId: string, day: string, km: number, elevationM: number | null): Activity {
+  return { id, athleteId, sport: "bike", km, occurredOn: day, note: null, source: "strava", points: null, elevationM, createdAt: "2026-08-10T10:00:00Z" };
+}
+
+console.log("\nclimb points");
+{
+  // Defaults: bike 1 pt/km and 1 pt per 100 m; swim/run/gym climb nothing.
+  check("flat 20 km ride is distance only", activityPoints(ride("r1", "a", "2026-08-18", 20, 0), S), 20);
+  check("500 m of ascent adds 5", activityPoints(ride("r2", "a", "2026-08-18", 20, 500), S), 25);
+  check("climb is proportional, not stepped", activityPoints(ride("r3", "a", "2026-08-18", 0.001, 250), S), 2.5 + 0.001);
+  // The distinction the column exists for: unknown must not score as flat.
+  check("unknown ascent scores no climb", activityPoints(ride("r4", "a", "2026-08-18", 20, null), S), 20);
+  check("a sport with rate 0 ignores ascent", activityPoints(
+    { ...run("r5", "a", "2026-08-18", 10), elevationM: 800 }, S), 50);
+  check("negative ascent is ignored, never subtracted", activityPoints(ride("r6", "a", "2026-08-18", 20, -300), S), 20);
+  // Turning climbing on for another discipline is a settings change only.
+  const climbyRun = { ...S, elevationPer100m: { ...S.elevationPer100m, run: 2 } };
+  check("run climbs once the rate is set", activityPoints(
+    { ...run("r7", "a", "2026-08-18", 10), elevationM: 300 }, climbyRun), 50 + 6);
+  // Grants carry flat points and have no session behind them.
+  check("a grant never picks up climb points", activityPoints(
+    { ...grant("r8", "a", "2026-08-18", 40), elevationM: 900 }, S), 40);
+}
 
 console.log("\nunscoredGymIds");
 {

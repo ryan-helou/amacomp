@@ -14,6 +14,25 @@ export function pointsFor(km: number, sport: Sport, settings: Settings): number 
 }
 
 /**
+ * Points for the climbing in a session, on top of the distance points.
+ * Proportional like everything else here — 250 m at 1/100m is 2.5, not 2 — so a
+ * ride is never worth less than the sum of its halves.
+ *
+ * `null` elevation means we don't know (a hand-logged ride, or a Strava pull
+ * from before we stored it) and scores nothing. That's the honest reading: it
+ * can't be treated as flat, and inventing a number would hand out points nobody
+ * earned.
+ */
+export function elevationPointsFor(
+  elevationM: number | null,
+  sport: Sport,
+  settings: Settings,
+): number {
+  if (elevationM === null || !Number.isFinite(elevationM) || elevationM <= 0) return 0;
+  return (elevationM / 100) * (settings.elevationPer100m?.[sport] ?? 0);
+}
+
+/**
  * Points for one activity. Pass the set from `unscoredGymIds` to have
  * over-the-cap gym workouts score zero; omit it when you genuinely want the
  * face value (e.g. the "Worth" preview on the log form, before it's saved).
@@ -26,7 +45,10 @@ export function activityPoints(
   // An admin grant carries its points directly — no sport, no distance.
   if (isGrant(a)) return a.points ?? 0;
   if (unscored?.has(a.id)) return 0;
-  return pointsFor(a.km, a.sport, settings);
+  return (
+    pointsFor(a.km, a.sport, settings) +
+    elevationPointsFor(a.elevationM, a.sport, settings)
+  );
 }
 
 /**

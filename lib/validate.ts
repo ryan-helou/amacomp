@@ -31,6 +31,28 @@ export function parseKm(value: unknown): number | null {
   return Math.round(km * 1000) / 1000; // metre precision is plenty
 }
 
+/** Everest is 8,849 m; nothing in one session should approach it. Generous
+ *  enough for a big alpine day, tight enough to catch a units mix-up (feet
+ *  typed as metres on a long ride lands near this). */
+export const MAX_ELEVATION_M = 10000;
+
+/**
+ * Metres of ascent. Three-way on purpose, because "blank" and "wrong" must not
+ * collapse into the same answer the way they can for km (where null just means
+ * invalid):
+ *   number    — a valid figure. 0 is kept: a genuinely flat ride is not unknown.
+ *   null      — left blank; we don't know the climb, so it scores nothing.
+ *   undefined — supplied but unusable (negative, absurd, not a number). Callers
+ *               must reject this rather than quietly storing null, or a fat
+ *               finger would silently erase a real number.
+ */
+export function parseElevation(value: unknown): number | null | undefined {
+  if (value === null || value === undefined || value === "") return null;
+  const m = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(m) || m < 0 || m > MAX_ELEVATION_M) return undefined;
+  return Math.round(m * 10) / 10;
+}
+
 export function parseNote(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const note = value.trim().slice(0, MAX_NOTE);
