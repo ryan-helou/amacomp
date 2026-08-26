@@ -180,15 +180,34 @@ export function sportOf(a: StravaActivity): Sport | null {
 
 /** Local calendar day (yyyy-mm-dd) the athlete experienced the activity on.
  *  Prefer start_date_local; when only UTC is present, shift by utc_offset so a
- *  7 PM ride doesn't land on tomorrow. */
-export function activityLocalDay(a: StravaActivity): string | null {
-  const local = (a.start_date_local || "").slice(0, 10);
-  if (local) return local;
+ *  7 PM ride doesn't land on tomorrow.
+ *
+ *  `resetHour` is the athlete's day rollover (see `todayWithReset`): at 3, a
+ *  1 AM run still belongs to the previous day — and so to the previous week.
+ *  A hand-logged session already arrives reset-shifted, because the client
+ *  sends its own adjusted "today" as `occurredOn`. Applying the same shift here
+ *  is what keeps an auto-synced session on the day it would have landed on had
+ *  the athlete typed it in; without it the two paths disagree over exactly the
+ *  midnight-to-resetHour window the setting exists for. */
+export function activityLocalDay(a: StravaActivity, resetHour = 0): string | null {
+  // start_date_local is wall-clock time in the athlete's zone (Strava tags it
+  // with a "Z" it doesn't mean). Read the parts and do the arithmetic in UTC so
+  // the result never depends on the server's own time zone.
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(a.start_date_local || "");
+  if (m) {
+    // A date with no clock time gives us nothing to shift — take it as-is.
+    if (m[4] === undefined) return `${m[1]}-${m[2]}-${m[3]}`;
+    const ms =
+      Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - resetHour * 3_600_000;
+    return new Date(ms).toISOString().slice(0, 10);
+  }
   if (!a.start_date) return null;
   const startMs = Date.parse(a.start_date);
   if (Number.isNaN(startMs)) return null;
   const offsetMs = typeof a.utc_offset === "number" ? a.utc_offset * 1000 : 0;
-  return new Date(startMs + offsetMs).toISOString().slice(0, 10);
+  return new Date(startMs + offsetMs - resetHour * 3_600_000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 /** Turn a Strava activity into the shape `importStravaActivity` wants, or null
@@ -196,10 +215,11 @@ export function activityLocalDay(a: StravaActivity): string | null {
 export function toImport(
   athleteId: string,
   a: StravaActivity,
+  resetHour = 0,
 ): { input: NewActivity; stravaId: number } | null {
   const sport = sportOf(a);
   if (!sport || !a.id) return null;
-  const day = activityLocalDay(a);
+  const day = activityLocalDay(a, resetHour);
   if (!day) return null;
 
   const isFlat = SPORT_UNIT[sport] === "flat";
@@ -212,15 +232,18 @@ export function toImport(
   return { input: { athleteId, sport, km, occurredOn: day, note }, stravaId: a.id };
 }
 
-/** Import a batch for one athlete. Returns the ids of the activities newly logged. */
+/** Import a batch for one athlete. Returns the ids of the activities newly logged.
+ *  The athlete's reset hour is read here rather than passed in, so no caller can
+ *  import a batch that ignores their day rollover. */
 export async function importActivities(
   store: Store,
   athleteId: string,
   acts: StravaActivity[],
 ): Promise<string[]> {
+  const resetHour = (await store.getAthlete(athleteId))?.resetHour ?? 0;
   const created: string[] = [];
   for (const a of acts) {
-    const mapped = toImport(athleteId, a);
+    const mapped = toImport(athleteId, a, resetHour);
     if (!mapped) continue;
     const row = await store.importStravaActivity(mapped.input, mapped.stravaId);
     if (row) created.push(row.id);
