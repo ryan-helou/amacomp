@@ -8,6 +8,7 @@ import {
   SPORT_UNIT,
   UNIT_ABBR,
   type Settings,
+  type Sport,
 } from "@/lib/types";
 import { SportMark } from "./SportMark";
 import { Glyph } from "./Glyph";
@@ -20,6 +21,12 @@ import type { League } from "./useLeague";
  * The rules panel. Everyone can read the scoring; only the admin gets inputs —
  * enforced on the server too, this is just the matching interface.
  */
+/** Sport -> its key in the flat `form` object. Kept explicit so the form stays
+ *  a flat record of strings (no nested state) without stringly-typed indexing. */
+const CLIMB_KEY = {
+  swim: "climbSwim", bike: "climbBike", run: "climbRun", gym: "climbGym",
+} as const satisfies Record<Sport, string>;
+
 export function ScoringSheet({
   league,
   onClose,
@@ -39,6 +46,10 @@ export function ScoringSheet({
     bike: String(state.settings.multipliers.bike),
     run: String(state.settings.multipliers.run),
     gym: String(state.settings.multipliers.gym),
+    climbSwim: String(state.settings.elevationPer100m?.swim ?? 0),
+    climbBike: String(state.settings.elevationPer100m?.bike ?? 0),
+    climbRun: String(state.settings.elevationPer100m?.run ?? 0),
+    climbGym: String(state.settings.elevationPer100m?.gym ?? 0),
     weeklyGoal: String(state.settings.weeklyGoal),
     seasonStart: state.settings.seasonStart,
     forfeit: state.settings.forfeit,
@@ -63,6 +74,12 @@ export function ScoringSheet({
         bike: Number(form.bike),
         run: Number(form.run),
         gym: Number(form.gym),
+      },
+      elevationPer100m: {
+        swim: Number(form.climbSwim),
+        bike: Number(form.climbBike),
+        run: Number(form.climbRun),
+        gym: Number(form.climbGym),
       },
       weeklyGoal: Number(form.weeklyGoal),
       seasonStart: form.seasonStart,
@@ -180,7 +197,7 @@ export function ScoringSheet({
           <h3 className="eyebrow text-ink-2">Scoring</h3>
           <p className="mt-1 text-sm text-ink-2">
             {editable
-              ? "Change the points per kilometre or the weekly quota. Every session already logged re-scores under the new rules."
+              ? "Change the points per kilometre, the climbing rate, or the weekly quota. Every session already logged re-scores under the new rules."
               : "These are the league rules. Ryan sets them."}
           </p>
         </div>
@@ -216,6 +233,47 @@ export function ScoringSheet({
               </div>
             );
           })}
+
+          {/* Climbing is a second rate against a different quantity, so it gets
+              its own group rather than a cramped second box per row. Gym is
+              left out: a workout has no ascent. */}
+          <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+            <p className="eyebrow text-ink">Climbing</p>
+            <p className="mt-0.5 text-[0.8125rem] text-ink-2">
+              Points per 100 m of ascent, on top of the distance. Set 0 to switch
+              a discipline off. Only sessions with a known ascent earn it.
+            </p>
+            <div className="mt-3 space-y-2">
+              {SPORT_ORDER.filter((sport) => SPORT_UNIT[sport] !== "flat").map((sport) => {
+                const ui = SPORT_UI[sport];
+                const key = CLIMB_KEY[sport];
+                return (
+                  <div key={sport} className="flex items-center gap-3">
+                    <span className={ui.text}>
+                      <SportMark sport={sport} className="h-4 w-4" />
+                    </span>
+                    <label htmlFor={`climb-${sport}`} className="eyebrow flex-1 text-ink-2">
+                      {ui.label}
+                    </label>
+                    <input
+                      id={`climb-${sport}`}
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      min="0"
+                      readOnly={!editable}
+                      value={form[key]}
+                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                      className={`stamp w-20 rounded-lg border-2 px-2 py-1.5 text-right text-lg text-ink focus:outline-none ${
+                        editable ? "border-ink bg-tile" : "border-transparent bg-transparent"
+                      }`}
+                    />
+                    <span className="eyebrow w-12 text-ink-3">/100m</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="flex items-center gap-3 rounded-xl border-2 border-ink bg-deck-2/50 px-4 py-3">
             <label htmlFor="goal" className="eyebrow flex-1 text-ink">

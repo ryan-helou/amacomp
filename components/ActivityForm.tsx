@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { SPORT_ORDER, fmtPoints, pointsFor } from "@/lib/scoring";
+import { SPORT_ORDER, elevationPointsFor, fmtPoints, pointsFor } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { today, type DayKey } from "@/lib/dates";
-import { BIG_SESSION_KM, MAX_NOTE } from "@/lib/validate";
-import { SPORT_UNIT, UNIT_LABEL, rateLabel, type Settings, type Sport } from "@/lib/types";
+import { BIG_SESSION_KM, MAX_ELEVATION_M, MAX_NOTE } from "@/lib/validate";
+import {
+  SPORT_UNIT, UNIT_LABEL, elevationRateLabel, rateLabel,
+  type Settings, type Sport,
+} from "@/lib/types";
 import { SportMark } from "./SportMark";
 
 export interface ActivityDraft {
@@ -13,10 +16,13 @@ export interface ActivityDraft {
   km: string;
   occurredOn: DayKey;
   note: string;
+  /** Metres of ascent as typed. Empty string = not stated, which scores nothing
+   *  (see `parseElevation`) — it is not the same as a flat "0". */
+  elevation: string;
 }
 
 export function emptyDraft(ref: DayKey = today()): ActivityDraft {
-  return { sport: "run", km: "", occurredOn: ref, note: "" };
+  return { sport: "run", km: "", occurredOn: ref, note: "", elevation: "" };
 }
 
 /** Trim float noise off a typed distance for the confirm copy. */
@@ -51,7 +57,13 @@ export function ActivityForm({
   // A flat discipline (gym) has no amount to enter — the quantity is one workout.
   const km = isFlat ? 1 : Number(draft.km);
   const valid = isFlat || (Number.isFinite(km) && km > 0);
-  const points = valid ? pointsFor(km, draft.sport, settings) : 0;
+  // Climb is only offered where it actually scores, so turning it on for another
+  // discipline in the settings makes the field appear with no code change.
+  const climbRate = settings.elevationPer100m?.[draft.sport] ?? 0;
+  const climbs = !isFlat && climbRate > 0;
+  const elevationM = draft.elevation.trim() === "" ? null : Number(draft.elevation);
+  const climbPoints = climbs ? elevationPointsFor(elevationM, draft.sport, settings) : 0;
+  const points = valid ? pointsFor(km, draft.sport, settings) + climbPoints : 0;
 
   // A distance well past what one session plausibly holds is far more often a
   // typo (100 typed as 1000) than a real ride. One extra tap to confirm — the
@@ -77,7 +89,10 @@ export function ActivityForm({
   function selectSport(sport: Sport) {
     const nextFlat = SPORT_UNIT[sport] === "flat";
     const km = nextFlat ? "1" : isFlat ? "" : draft.km;
-    setDraft({ ...draft, sport, km });
+    // Drop any ascent the new discipline can't score, so switching bike -> run
+    // never leaves an invisible number attached to the log.
+    const keepClimb = !nextFlat && (settings.elevationPer100m?.[sport] ?? 0) > 0;
+    setDraft({ ...draft, sport, km, elevation: keepClimb ? draft.elevation : "" });
   }
 
   return (
@@ -111,6 +126,11 @@ export function ActivityForm({
                 <span className="font-mono text-[0.625rem] leading-none">
                   {rateLabel(settings.multipliers[sport], SPORT_UNIT[sport])}
                 </span>
+                {(settings.elevationPer100m?.[sport] ?? 0) > 0 && (
+                  <span className="font-mono text-[0.5625rem] leading-none opacity-70">
+                    +{elevationRateLabel(settings.elevationPer100m[sport])}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -159,6 +179,33 @@ export function ActivityForm({
           <div className="eyebrow text-ink-3">pts</div>
         </div>
       </div>
+
+      {climbs && (
+        <div>
+          <label htmlFor="elevation" className="eyebrow block text-ink-2">
+            Ascent <span className="text-ink-3">— optional</span>
+          </label>
+          <div className="mt-2 flex items-baseline gap-2 rounded-xl border-2 border-ink-3 bg-tile px-4 py-3 focus-within:border-accent">
+            <input
+              id="elevation"
+              type="number"
+              inputMode="numeric"
+              step="1"
+              min="0"
+              max={MAX_ELEVATION_M}
+              value={draft.elevation}
+              onChange={(e) => setDraft({ ...draft, elevation: e.target.value })}
+              placeholder="0"
+              className="w-full min-w-0 bg-transparent text-lg text-ink placeholder:text-ink-3 focus:outline-none"
+            />
+            <span className="eyebrow shrink-0 text-ink-2">m</span>
+          </div>
+          <p className="mt-1 text-[0.75rem] text-ink-3">
+            {elevationRateLabel(climbRate)} on top of the distance. Strava fills
+            this in on its own — leave it blank if you don&apos;t know.
+          </p>
+        </div>
+      )}
 
       <div>
         <label htmlFor="date" className="eyebrow block text-ink-2">

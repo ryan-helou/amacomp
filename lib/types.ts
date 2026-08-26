@@ -28,6 +28,12 @@ export function rateLabel(multiplier: number, unit: Unit): string {
   return `${multiplier}/${UNIT_ABBR[unit]}`;
 }
 
+/** Compact climb-rate label — "1/100m". Empty string when the sport earns none,
+ *  so call sites can drop it from a list without a conditional of their own. */
+export function elevationRateLabel(rate: number): string {
+  return rate > 0 ? `${rate}/100m` : "";
+}
+
 export interface Athlete {
   id: string;
   name: string;
@@ -109,6 +115,13 @@ export interface Activity {
    * awarded amount; null for logged activities, which score from km × multiplier.
    */
   points: number | null;
+  /**
+   * Metres of ascent, when we know it. Strava reports it per activity; a
+   * hand-logged session only has it if the athlete typed it in. `null` means
+   * unknown (and so scores no climb points) — deliberately distinct from `0`,
+   * which means a genuinely flat session. Always null for grants.
+   */
+  elevationM: number | null;
   createdAt: string;
 }
 
@@ -134,6 +147,14 @@ export const GRANT_SPORT: Sport = "run";
 export interface Settings {
   /** Points per km for distance sports; points per workout for gym. */
   multipliers: Record<Sport, number>;
+  /**
+   * Points per 100 m of ascent, per sport. Kept separate from `multipliers`
+   * because it is a different unit against a different quantity — a ride earns
+   * distance points AND climb points, and the two rates move independently.
+   * Only bike is on by default; the others sit at 0, so turning climbing on for
+   * running later is a settings change rather than a code change.
+   */
+  elevationPer100m: Record<Sport, number>;
   /** Points every athlete is expected to hit each week. */
   weeklyGoal: number;
   /** The competition only counts sessions on/after this local day (`YYYY-MM-DD`). */
@@ -144,6 +165,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   multipliers: { swim: 25, bike: 1, run: 5, gym: 30 },
+  elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
   weeklyGoal: 100,
   seasonStart: "2026-08-03",
   forfeit: "Run a marathon — unless the lads excuse you",

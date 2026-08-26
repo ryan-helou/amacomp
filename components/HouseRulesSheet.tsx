@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SPORT_ORDER, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { SPORT_UNIT, rateLabel, type Settings } from "@/lib/types";
+import { SPORT_UNIT, elevationRateLabel, rateLabel, type Settings } from "@/lib/types";
 import { Glyph } from "./Glyph";
 
 /**
@@ -128,10 +128,10 @@ export function HouseRulesSheet({
         </div>
 
         <p className="mt-5 border-t border-line pt-3 text-center font-mono text-[0.6875rem] text-ink-3">
-          {SPORT_ORDER.map(
-            (s) =>
-              `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(settings.multipliers[s], SPORT_UNIT[s])}`,
-          ).join("  ·  ")}
+          {SPORT_ORDER.map((s) => {
+            const climb = elevationRateLabel(settings.elevationPer100m?.[s] ?? 0);
+            return `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(settings.multipliers[s], SPORT_UNIT[s])}${climb ? ` +${climb}` : ""}`;
+          }).join("  ·  ")}
         </p>
       </div>
     </div>

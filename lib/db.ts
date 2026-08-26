@@ -21,6 +21,8 @@ export interface NewActivity {
   note: string | null;
   /** Flat points override — set only when creating an admin grant. */
   points?: number | null;
+  /** Metres of ascent, or null when unknown. See `Activity.elevationM`. */
+  elevationM?: number | null;
 }
 
 export type ActivityPatch = Partial<Omit<NewActivity, "athleteId">>;
@@ -118,6 +120,7 @@ export function normalizeName(name: string): string {
 function mergeSettings(raw: unknown): Settings {
   const value = (raw ?? {}) as Partial<Settings>;
   const m = (value.multipliers ?? {}) as Partial<Record<Sport, number>>;
+  const e = (value.elevationPer100m ?? {}) as Partial<Record<Sport, number>>;
   const num = (v: unknown, fallback: number) =>
     typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback;
   const isDay = (v: unknown): v is string =>
@@ -128,6 +131,12 @@ function mergeSettings(raw: unknown): Settings {
       bike: num(m.bike, DEFAULT_SETTINGS.multipliers.bike),
       run: num(m.run, DEFAULT_SETTINGS.multipliers.run),
       gym: num(m.gym, DEFAULT_SETTINGS.multipliers.gym),
+    },
+    elevationPer100m: {
+      swim: num(e.swim, DEFAULT_SETTINGS.elevationPer100m.swim),
+      bike: num(e.bike, DEFAULT_SETTINGS.elevationPer100m.bike),
+      run: num(e.run, DEFAULT_SETTINGS.elevationPer100m.run),
+      gym: num(e.gym, DEFAULT_SETTINGS.elevationPer100m.gym),
     },
     weeklyGoal: num(value.weeklyGoal, DEFAULT_SETTINGS.weeklyGoal),
     seasonStart: isDay(value.seasonStart) ? value.seasonStart : DEFAULT_SETTINGS.seasonStart,
@@ -144,6 +153,7 @@ function mergeSettings(raw: unknown): Settings {
 
 const ACTIVITY_COLS = `id, athlete_id, sport, km::float8 AS km,
    to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, note, source, points::float8 AS points,
+   elevation_m::float8 AS elevation_m,
    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at`;
 
 type ActivityRow = {
@@ -155,6 +165,7 @@ type ActivityRow = {
   note: string | null;
   source: string | null;
   points: number | null;
+  elevation_m: number | null;
   created_at: string;
 };
 
@@ -168,6 +179,7 @@ function toActivity(r: ActivityRow): Activity {
     note: r.note,
     source: (r.source as ActivitySource) ?? "manual",
     points: r.points == null ? null : Number(r.points),
+    elevationM: r.elevation_m == null ? null : Number(r.elevation_m),
     createdAt: r.created_at,
   };
 }
@@ -294,6 +306,12 @@ class PgStore implements Store {
         // Flat points override for admin grants; NULL for logged activities.
         await this.pool.query(
           `ALTER TABLE activities ADD COLUMN IF NOT EXISTS points NUMERIC(10,3)`,
+        );
+        // Metres of ascent. Nullable and NULL by default: rows imported before
+        // we captured it are genuinely unknown, not flat, and must not earn
+        // climb points retroactively on a number we made up.
+        await this.pool.query(
+          `ALTER TABLE activities ADD COLUMN IF NOT EXISTS elevation_m NUMERIC(10,1)`,
         );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS settings (
@@ -485,10 +503,11 @@ class PgStore implements Store {
   async createActivity(input: NewActivity, source: ActivitySource = "manual"): Promise<Activity> {
     await this.init();
     const r = await this.pool.query(
-      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points, elevation_m)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING ${ACTIVITY_COLS}`,
-      [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note, source, input.points ?? null],
+      [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note, source,
+       input.points ?? null, input.elevationM ?? null],
     );
     return toActivity(r.rows[0] as ActivityRow);
   }
@@ -501,6 +520,7 @@ class PgStore implements Store {
          km = COALESCE($3, km),
          occurred_on = COALESCE($4::date, occurred_on),
          note = CASE WHEN $5::boolean THEN $6 ELSE note END,
+         elevation_m = CASE WHEN $7::boolean THEN $8 ELSE elevation_m END,
          updated_at = now()
        WHERE id = $1
        RETURNING ${ACTIVITY_COLS}`,
@@ -511,6 +531,8 @@ class PgStore implements Store {
         patch.occurredOn ?? null,
         Object.prototype.hasOwnProperty.call(patch, "note"),
         patch.note ?? null,
+        Object.prototype.hasOwnProperty.call(patch, "elevationM"),
+        patch.elevationM ?? null,
       ],
     );
     return r.rows[0] ? toActivity(r.rows[0] as ActivityRow) : null;
@@ -767,6 +789,7 @@ class MemoryStore implements Store {
       note: input.note,
       source,
       points: input.points ?? null,
+      elevationM: input.elevationM ?? null,
       createdAt: new Date().toISOString(),
     };
     this.activities.push(created);
@@ -781,6 +804,9 @@ class MemoryStore implements Store {
     if (patch.occurredOn !== undefined) found.occurredOn = patch.occurredOn;
     if (Object.prototype.hasOwnProperty.call(patch, "note")) {
       found.note = patch.note ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "elevationM")) {
+      found.elevationM = patch.elevationM ?? null;
     }
     return found;
   }

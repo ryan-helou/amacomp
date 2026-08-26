@@ -139,6 +139,7 @@ export interface StravaActivity {
   start_date_local?: string; // athlete-local ISO
   utc_offset?: number; // seconds east of UTC
   distance?: number; // meters
+  total_elevation_gain?: number; // meters of ascent
   moving_time?: number; // seconds
   elapsed_time?: number; // seconds
 }
@@ -229,7 +230,16 @@ export function toImport(
 
   const name = (a.name || "").trim();
   const note = name ? name.slice(0, 120) : null;
-  return { input: { athleteId, sport, km, occurredOn: day, note }, stravaId: a.id };
+  // Absent (rather than 0) when Strava has no elevation stream for the activity,
+  // so an unknown climb stays unknown instead of scoring as flat.
+  const elevationM =
+    typeof a.total_elevation_gain === "number" && Number.isFinite(a.total_elevation_gain)
+      ? Math.max(0, Math.round(a.total_elevation_gain * 10) / 10)
+      : null;
+  return {
+    input: { athleteId, sport, km, occurredOn: day, note, elevationM },
+    stravaId: a.id,
+  };
 }
 
 /** Import a batch for one athlete. Returns the ids of the activities newly logged.

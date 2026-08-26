@@ -31,6 +31,13 @@ function ran(localIso: string): StravaActivity {
   return { id: 1, sport_type: "Run", distance: 10_000, start_date_local: localIso };
 }
 
+function rode(elevation: number | undefined): StravaActivity {
+  return {
+    id: 2, sport_type: "Ride", distance: 20_000,
+    start_date_local: "2026-08-18T09:00:00Z", total_elevation_gain: elevation,
+  };
+}
+
 /** The day a hand-logged session gets, i.e. what the client puts in
  *  `occurredOn`: `todayWithReset` at that moment. Mirrors lib/dates.ts. */
 function manualDay(y: number, mo: number, d: number, h: number, mi: number, reset: number) {
@@ -102,6 +109,17 @@ console.log("\ntoImport threads the reset hour through");
   check("occurredOn is the reset-shifted day", mapped?.input.occurredOn, "2026-08-23");
   check("still maps the sport", mapped?.input.sport, "run");
   check("km comes from metres", mapped?.input.km, 10);
+}
+
+console.log("\ntoImport carries the ascent");
+{
+  check("elevation comes across in metres", toImport("a", rode(512.4))?.input.elevationM, 512.4);
+  check("a flat ride is 0, not unknown", toImport("a", rode(0))?.input.elevationM, 0);
+  // Strava omits the field when it has no elevation stream. That is genuinely
+  // unknown and must stay null, or a ride would score as certified flat.
+  check("a missing field stays null", toImport("a", rode(undefined))?.input.elevationM, null);
+  check("rounded to a tenth of a metre", toImport("a", rode(311.26))?.input.elevationM, 311.3);
+  check("a negative reading is clamped to 0", toImport("a", rode(-5))?.input.elevationM, 0);
 }
 
 console.log(failures === 0 ? "\nAll strava date tests passed.\n" : `\n${failures} failing.\n`);

@@ -4,7 +4,7 @@ import { currentAthlete } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { isDayKey } from "@/lib/dates";
 import { isSport, SPORT_UNIT } from "@/lib/types";
-import { MAX_KM, parseKm, parseNote } from "@/lib/validate";
+import { MAX_ELEVATION_M, MAX_KM, parseElevation, parseKm, parseNote } from "@/lib/validate";
 import { notifyOvertakes, notifyQuotaHits } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
@@ -36,12 +36,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Pick a valid date." }, { status: 400 });
   }
 
+  // Blank is fine (unknown climb); a supplied-but-nonsense value is not.
+  const elevationM = parseElevation(body.elevationM);
+  if (elevationM === undefined) {
+    return NextResponse.json(
+      { error: `Enter an ascent between 0 and ${MAX_ELEVATION_M} m, or leave it blank.` },
+      { status: 400 },
+    );
+  }
+
   const created = await getStore().createActivity({
     athleteId: me.id,
     sport: body.sport,
     km,
     occurredOn: body.occurredOn,
     note: parseNote(body.note),
+    elevationM,
   });
 
   const state = await readState();
