@@ -47,9 +47,18 @@ export const BIKE_WINDOWS_S = [
   15, 30, 60, 300, 600, 900, 1800, 2700, 3600, 5400, 7200, 10800,
 ] as const;
 
-/** Running: the distances a personal best is quoted at, in metres. */
+/**
+ * Running: the distances a personal best is quoted at, in metres.
+ *
+ * 100 m is deliberately absent. Nobody records a 100 m sprint as an activity, so
+ * the row was really "the fastest 100 m found inside some longer run" — which
+ * for these athletes landed at 3-4 m/s, i.e. jogging, and measured something
+ * different from every other row on the ladder. It also could not be
+ * cross-checked, Strava publishing no 100 m best effort of its own. 400 m is
+ * where both the distance and the verification start being real.
+ */
 export const RUN_DISTANCES_M = [
-  100, 400, 1000, 1609.34, 3218.69, 5000, 10000, 15000, 21097.5, 30000, 42195,
+  400, 1000, 1609.34, 3218.69, 5000, 10000, 15000, 21097.5, 30000, 42195,
 ] as const;
 
 /** Swimming: the distances a personal best is quoted at, in metres. */
@@ -62,7 +71,7 @@ export const BIKE_WINDOW_LABEL: Record<number, string> = {
 };
 
 export const RUN_DISTANCE_LABEL: Record<number, string> = {
-  100: "100 m", 400: "400 m", 1000: "1 km", 1609.34: "1 mile", 3218.69: "2 miles",
+  400: "400 m", 1000: "1 km", 1609.34: "1 mile", 3218.69: "2 miles",
   5000: "5 km", 10000: "10 km", 15000: "15 km", 21097.5: "21.1 km",
   30000: "30 km", 42195: "42.2 km",
 };

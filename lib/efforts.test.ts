@@ -171,8 +171,9 @@ console.log("\neffortsFor — what gets stored");
   const runKeys = Object.keys(effortsFor("run", { time, distance }));
   check("a 6 km run yields bests up to 5 km", runKeys.includes("run:5000"), true);
   check("and none for 10 km", runKeys.includes("run:10000"), false);
-  check("100 m is included — Strava's own best-efforts list has no such entry",
-    runKeys.includes("run:100"), true);
+  // 100 m was dropped: inside a long run it measures jogging, not a sprint.
+  check("100 m is not on the run ladder", runKeys.includes("run:100"), false);
+  check("400 m is where it starts", runKeys.includes("run:400"), true);
   near("the 5 km best is 1000 s",
     effortsFor("run", { time, distance })["run:5000"], 1000, 0.5);
 
@@ -233,7 +234,7 @@ console.log("\nrecordsFor — the league's book");
 
   const marathon = rows.find((r) => r.key === "run:42195")!;
   check("a distance nobody has covered is empty", marathon.entries, []);
-  check("the ladder is the full list of targets", rows.length, 11);
+  check("the ladder is the full list of targets", rows.length, 10);
 }
 
 console.log("\nrecordsFor — only this league's sessions count");
