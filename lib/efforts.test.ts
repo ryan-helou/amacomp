@@ -221,6 +221,34 @@ console.log("\nrecordsFor — cycling is ranked on W/kg, not watts");
   check("the heavier rider is second", row.entries[1].athleteId, "heavy");
 }
 
+console.log("\nrecordsFor — a null pinned weight falls back to the athlete's current one");
+{
+  // THE PRODUCTION CASE. Weight arrives from the same Strava sync that extracts
+  // the efforts, so the first pass has nothing to pin: all 103 live rows stored
+  // null, and the cycling book could never show anything however many people
+  // filled a weight in afterwards. Resolving at read time repairs them.
+  const efforts = [eff(1, "ryan", "bike", "2026-08-10", { "bike:300": 300 }, null)];
+  const noFallback = recordsFor("bike", efforts, SEASON).find((r) => r.key === "bike:300")!;
+  check("with no weight anywhere the row stays empty", noFallback.entries.length, 0);
+
+  const weights = new Map([["ryan", 75]]);
+  const row = recordsFor("bike", efforts, SEASON, weights).find((r) => r.key === "bike:300")!;
+  check("the current weight rescues the record", row.entries.length, 1);
+  near("and it is watts over that weight", row.entries[0].value, 4);
+  check("the weight used is reported", row.entries[0].weightKg, 75);
+  // The explanation must agree with the book, or it says "add a weight" to
+  // someone who already has one.
+  check("and the tab stops claiming a weight is missing",
+    bikeBlockedReason(efforts, SEASON, weights), null);
+  check("while still saying so when none exists",
+    bikeBlockedReason(efforts, SEASON), "no-weight");
+
+  // A pinned weight still wins — a record stays true to the day it was set.
+  const pinned = [eff(2, "ryan", "bike", "2026-08-10", { "bike:300": 300 }, 60)];
+  near("a pinned weight is preferred over today's",
+    recordsFor("bike", pinned, SEASON, weights).find((r) => r.key === "bike:300")!.entries[0].value, 5);
+}
+
 console.log("\nrecordsFor — a ride with no weight can't be ranked");
 {
   const efforts = [eff(1, "ryan", "bike", "2026-08-10", { "bike:60": 400 }, null)];
