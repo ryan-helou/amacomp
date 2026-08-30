@@ -160,36 +160,10 @@ export function ScoringSheet({
           <AvatarPicker league={league} />
         </div>
 
-        <div className="mt-4 rounded-xl border-2 border-line bg-tile px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <label htmlFor="reset" className="eyebrow block text-ink">
-                Your day starts at
-              </label>
-              <p className="mt-0.5 text-[0.8125rem] text-ink-2">
-                Late-night sessions before this count for the day before.
-              </p>
-            </div>
-            <select
-              id="reset"
-              value={String(state.me?.resetHour ?? 0)}
-              disabled={busy}
-              onChange={(e) =>
-                send("/api/session", {
-                  method: "PATCH",
-                  body: JSON.stringify({ resetHour: Number(e.target.value) }),
-                })
-              }
-              className="shrink-0 rounded-lg border-2 border-ink-3 bg-tile px-2 py-2 text-sm text-ink focus:border-accent focus:outline-none"
-            >
-              {[0, 1, 2, 3].map((h) => (
-                <option key={h} value={h}>
-                  {h === 0 ? "12 AM" : `${h} AM`}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        {/* The day rollover used to be a per-athlete picker here. It is now one
+            fixed hour for the whole league (RESET_HOUR) — a shared board only
+            reads as fair when a given moment means the same thing on everyone's
+            screen. The rule is stated in the house rules instead. */}
 
         {/* Scoring sits last: only the admin can change it, so for everyone
             else it's reference material, not a control. */}

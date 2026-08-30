@@ -1,16 +1,20 @@
 import { activityLocalDay, toImport, type StravaActivity } from "./strava";
-import { toDayKey, weekStart } from "./dates";
+import { RESET_HOUR, logDayAt, toDayKey, weekStart } from "./dates";
 
 /**
  * Which day a Strava import lands on decides which WEEK it scores in, so a bug
  * here costs someone a real forfeit — the same reason the scoring rules get a
  * test. Run with `npm test`.
  *
- * The case that matters: an athlete whose day rolls over at 3 AM runs at 1 AM
- * Monday. Hand-logged, that's Sunday (last week), because the client sends its
- * own reset-shifted "today". Auto-synced it used to be Monday, so the same
- * session scored into a different week depending on how it got logged — and
- * since sync fires on every state read, Strava usually won the race.
+ * The case that matters: someone runs at 1 AM Monday. Hand-logged, that's Sunday
+ * (last week), because the client sends its own reset-shifted log day. Auto-synced
+ * it used to be Monday, so the same session scored into a different week depending
+ * on how it got logged — and since sync fires on every state read, Strava usually
+ * won the race.
+ *
+ * The rollover is now the league's single `RESET_HOUR` rather than a per-athlete
+ * setting, so the DEFAULT argument is the one that ships. The explicit-argument
+ * cases below stay to pin the arithmetic itself.
  */
 
 let failures = 0;
@@ -60,8 +64,13 @@ console.log("\nactivityLocalDay — reset hour");
     activityLocalDay(ran("2026-08-24T02:59:00Z"), 3), "2026-08-23");
   check("11:00 PM Sun, reset 3 -> Sunday (evening is never shifted)",
     activityLocalDay(ran("2026-08-23T23:00:00Z"), 3), "2026-08-23");
-  check("defaults to no shift when reset omitted",
-    activityLocalDay(ran("2026-08-24T01:30:00Z")), "2026-08-24");
+  // The default is the league rollover, not 0. A caller that forgets the
+  // argument must not quietly file a 1 AM session into the wrong week.
+  check("defaults to the league rollover, not to no shift",
+    activityLocalDay(ran("2026-08-24T01:30:00Z")), "2026-08-23");
+  check("the default IS RESET_HOUR",
+    activityLocalDay(ran("2026-08-24T01:30:00Z")),
+    activityLocalDay(ran("2026-08-24T01:30:00Z"), RESET_HOUR));
 }
 
 console.log("\nactivityLocalDay — week bucketing (the forfeit)");
@@ -70,6 +79,22 @@ console.log("\nactivityLocalDay — week bucketing (the forfeit)");
     weekStart(activityLocalDay(ran("2026-08-24T01:30:00Z"), 3)!), "2026-08-17");
   check("1:30 AM Mon, reset 0 scores in the new week",
     weekStart(activityLocalDay(ran("2026-08-24T01:30:00Z"), 0)!), "2026-08-24");
+  // As shipped — no argument — a Sunday-night run stays in the week it closed.
+  check("1:30 AM Mon by default scores in the previous week",
+    weekStart(activityLocalDay(ran("2026-08-24T01:30:00Z"))!), "2026-08-17");
+}
+
+console.log("\nan import agrees with the log form's own default day");
+{
+  // The log form defaults `occurredOn` to logDayAt(now). An import of the same
+  // moment must pick that same day, or the two write paths disagree again.
+  for (const [h, mi] of [[0, 15], [1, 30], [2, 59], [3, 0], [5, 57], [23, 0]]) {
+    const hh = String(h).padStart(2, "0");
+    const mm = String(mi).padStart(2, "0");
+    check(`${hh}:${mm} Mon — import matches the form default`,
+      activityLocalDay(ran(`2026-08-24T${hh}:${mm}:00Z`)),
+      logDayAt(new Date(2026, 7, 24, h, mi).getTime()));
+  }
 }
 
 console.log("\nStrava import agrees with a hand-logged session");
@@ -109,6 +134,10 @@ console.log("\ntoImport threads the reset hour through");
   check("occurredOn is the reset-shifted day", mapped?.input.occurredOn, "2026-08-23");
   check("still maps the sport", mapped?.input.sport, "run");
   check("km comes from metres", mapped?.input.km, 10);
+  // importActivities calls toImport with no reset argument, so this is the path
+  // that actually runs in production.
+  check("with no argument it still shifts (the shipped path)",
+    toImport("ath1", ran("2026-08-24T01:30:00Z"))?.input.occurredOn, "2026-08-23");
 }
 
 console.log("\ntoImport carries the ascent");

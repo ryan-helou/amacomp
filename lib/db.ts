@@ -71,7 +71,6 @@ export interface Store {
   findOrCreateAthlete(name: string): Promise<Athlete>;
   getAthlete(id: string): Promise<Athlete | null>;
   listAthletes(): Promise<Athlete[]>;
-  setResetHour(athleteId: string, hour: number): Promise<void>;
   /** Persist an athlete's avatar picks. Either field may be null to clear it. */
   setAvatar(athleteId: string, color: string | null, glyph: string | null): Promise<void>;
   /** Store an uploaded profile photo (base64, no data: prefix). `version` cache-busts. */
@@ -207,7 +206,6 @@ function toStravaConn(r: {
 function toAthlete(r: {
   id: string;
   name: string;
-  reset_hour?: number;
   avatar_color?: string | null;
   avatar_glyph?: string | null;
   strava_photo_url?: string | null;
@@ -219,15 +217,9 @@ function toAthlete(r: {
   const avatarUrl = r.avatar_image_type
     ? `/api/avatar/${r.id}?v=${r.avatar_image_v ?? 0}`
     : (r.strava_photo_url ?? null);
-  // The reset hour used to allow up to 11 AM. When we tightened it to 3, we
-  // didn't migrate the DB — clamping on read makes the new cap take effect for
-  // anyone still holding an old value, without a destructive UPDATE.
-  const rawReset = Number(r.reset_hour ?? 0);
-  const resetHour = Math.max(0, Math.min(3, Number.isFinite(rawReset) ? rawReset : 0));
   return {
     id: r.id,
     name: r.name,
-    resetHour,
     avatarColor: r.avatar_color ?? null,
     avatarGlyph: r.avatar_glyph ?? null,
     avatarUrl,
@@ -235,7 +227,7 @@ function toAthlete(r: {
 }
 
 const ATHLETE_COLS =
-  "id, name, reset_hour, avatar_color, avatar_glyph, strava_photo_url, avatar_image_type, avatar_image_v";
+  "id, name, avatar_color, avatar_glyph, strava_photo_url, avatar_image_type, avatar_image_v";
 
 class PgStore implements Store {
   private pool: PgPool;
@@ -255,9 +247,10 @@ class PgStore implements Store {
             name_lower TEXT UNIQUE NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
-        await this.pool.query(
-          `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS reset_hour INT NOT NULL DEFAULT 0`,
-        );
+        // `athletes.reset_hour` is vestigial: the day rollover is now one fixed
+        // hour for the whole league (RESET_HOUR in lib/dates), so nothing reads
+        // the column. It is left on the production table rather than dropped —
+        // a DROP COLUMN can't be undone and it costs nothing where it sits.
         // Nullable — a null value means "fall back to the default hash".
         await this.pool.query(
           `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS avatar_color TEXT`,
@@ -418,14 +411,6 @@ class PgStore implements Store {
       `SELECT ${ATHLETE_COLS} FROM athletes ORDER BY name`,
     );
     return r.rows.map(toAthlete);
-  }
-
-  async setResetHour(athleteId: string, hour: number): Promise<void> {
-    await this.init();
-    await this.pool.query("UPDATE athletes SET reset_hour = $2 WHERE id = $1", [
-      athleteId,
-      hour,
-    ]);
   }
 
   async setAvatar(
@@ -706,7 +691,6 @@ class MemoryStore implements Store {
     const created: Athlete = {
       id: newId(),
       name: clean,
-      resetHour: 0,
       avatarColor: null,
       avatarGlyph: null,
       avatarUrl: null,
@@ -721,11 +705,6 @@ class MemoryStore implements Store {
 
   async listAthletes() {
     return [...this.athletes].sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  async setResetHour(athleteId: string, hour: number) {
-    const a = this.athletes.find((x) => x.id === athleteId);
-    if (a) a.resetHour = hour;
   }
 
   async setAvatar(athleteId: string, color: string | null, glyph: string | null) {

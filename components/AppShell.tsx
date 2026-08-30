@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { addDays, parseDayKey, todayWithReset, weekStart, type DayKey } from "@/lib/dates";
+import { addDays, logToday, parseDayKey, today, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, standingsFor } from "@/lib/scoring";
 import { reigningChampionId, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
 import type { AppState } from "@/lib/types";
@@ -48,9 +48,15 @@ const TABS: { id: Tab; label: string }[] = [
 export function AppShell({
   initial,
   serverToday,
+  serverLogDay,
 }: {
   initial: AppState;
+  /** The real calendar day on the server — what the app shows. */
   serverToday: DayKey;
+  /** The day a session logged right now counts for; differs from `serverToday`
+   *  only between midnight and the 3 AM rollover. Rendered server-side too, so
+   *  the log form doesn't flash the wrong date during that window. */
+  serverLogDay: DayKey;
 }) {
   const league = useLeague(initial);
   const { state, busy, send } = league;
@@ -61,31 +67,40 @@ export function AppShell({
   // Start from the server's day so the first client render matches the markup,
   // then hand over to the device's own calendar. A home-screen app is usually
   // resumed rather than loaded, so waking up re-reads both the date and the board.
-  // Each athlete's day can roll over later than midnight (their resetHour), so
-  // "today" is the device clock shifted back by that many hours.
-  const resetHour = state.me?.resetHour ?? 0;
+  //
+  // TWO days, not one. `refDay` is the real calendar day and drives everything
+  // the athlete looks at, so the new week opens at midnight for everyone.
+  // `logDay` is the day a session logged right now counts for, and holds on the
+  // old day until the 3 AM rollover — see RESET_HOUR in lib/dates. They differ
+  // for three hours a night, and that gap is the whole feature: on Monday at
+  // 1 AM the board has already turned over while the run you just did still
+  // scores in the week that ended.
   const [refDay, setRefDay] = useState<DayKey>(serverToday);
+  const [logDay, setLogDay] = useState<DayKey>(serverLogDay);
   useEffect(() => {
     // The device clock is the source of truth for "today". Reconcile the
     // server-rendered day with it on mount (the one legitimate setState here),
-    // then re-sync the date and refetch whenever the home-screen app resumes.
+    // then re-sync the dates and refetch whenever the home-screen app resumes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRefDay(todayWithReset(resetHour));
+    setRefDay(today());
+    setLogDay(logToday());
     function onVisible() {
       if (document.visibilityState !== "visible") return;
-      setRefDay(todayWithReset(resetHour));
+      setRefDay(today());
+      setLogDay(logToday());
       send("/api/session");
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [send, resetHour]);
+  }, [send]);
 
   // Pull-to-refresh + resume both do the same thing: re-read the calendar day
   // and refetch the whole board.
   const refresh = useCallback(async () => {
-    setRefDay(todayWithReset(resetHour));
+    setRefDay(today());
+    setLogDay(logToday());
     await send("/api/session");
-  }, [send, resetHour]);
+  }, [send]);
 
   // Week standing for the signed-in athlete — drives the header total and the
   // one-time "you hit quota" confetti.
@@ -301,8 +316,8 @@ export function AppShell({
       )}
 
       <main className="flex-1 px-5 pb-28 pt-5">
-        {tab === "log" && <LogTab league={league} refDay={refDay} />}
-        {tab === "week" && <WeekTab league={league} refDay={refDay} />}
+        {tab === "log" && <LogTab league={league} refDay={refDay} logDay={logDay} />}
+        {tab === "week" && <WeekTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
         {tab === "titles" && <TitlesTab state={state} refDay={refDay} />}
         {tab === "feed" && <FeedTab league={league} refDay={refDay} />}

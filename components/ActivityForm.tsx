@@ -41,6 +41,7 @@ export function ActivityForm({
   onSubmit,
   onCancel,
   maxDate,
+  dateHint,
 }: {
   settings: Settings;
   draft: ActivityDraft;
@@ -51,6 +52,9 @@ export function ActivityForm({
   onSubmit: () => void;
   onCancel?: () => void;
   maxDate: DayKey;
+  /** Optional note under the date, explaining a default the athlete didn't pick —
+   *  currently the pre-3 AM rollover, where "today" files as yesterday. */
+  dateHint?: string | null;
 }) {
   const unit = SPORT_UNIT[draft.sport];
   const isFlat = unit === "flat";
@@ -223,6 +227,9 @@ export function ActivityForm({
           // native date control; min-h keeps it the same height as the others.
           className="mt-2 block min-h-[52px] w-full appearance-none rounded-xl border-2 border-ink-3 bg-tile px-4 py-3 text-ink [color-scheme:light] focus:border-accent focus:outline-none"
         />
+        {dateHint && (
+          <p className="mt-1.5 text-[0.8125rem] text-ink-2">{dateHint}</p>
+        )}
       </div>
 
       <div>

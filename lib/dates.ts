@@ -14,17 +14,47 @@ export function toDayKey(d: Date): DayKey {
   return `${y}-${m}-${day}`;
 }
 
-export function today(): DayKey {
-  return toDayKey(new Date());
-}
+/**
+ * The league's day rollover. A session finished before 3 AM belongs to the day —
+ * and so the week — that is ending, not the one starting. It is the same hour
+ * for everyone, so two people who rode together at 1 AM always score in the same
+ * week. Fixed rather than per-athlete: a shared board only reads as fair if a
+ * given moment means the same thing on everybody's screen.
+ *
+ * It only ever shifts a session BACKWARD. Nothing can be pushed into a later day.
+ */
+export const RESET_HOUR = 3;
 
 /**
- * The current day for an athlete whose day rolls over at `resetHour` (local).
- * Shifting "now" back by that many hours means, e.g. with resetHour 3, anything
- * before 3 AM still reads as the previous day.
+ * Two clocks, deliberately kept apart — this is the whole point of the module.
+ *
+ * `viewDayAt` is the real calendar day. The boards, the week ring and the feed's
+ * "Today" follow it, so the new week opens for everyone at midnight, on time.
+ *
+ * `logDayAt` is the day a session finished *now* should be filed under, and it
+ * stays on the old day until RESET_HOUR. So for the first three hours of Monday
+ * the board already shows the new week while a 1 AM run still counts toward the
+ * week that just ended — which is how a Sunday night is actually lived.
+ *
+ * Both take an explicit instant so the behaviour is testable without mocking the
+ * clock; the zero-argument wrappers below are what the app calls.
  */
-export function todayWithReset(resetHour: number): DayKey {
-  return toDayKey(new Date(Date.now() - resetHour * 3_600_000));
+export function viewDayAt(ms: number): DayKey {
+  return toDayKey(new Date(ms));
+}
+
+export function logDayAt(ms: number): DayKey {
+  return toDayKey(new Date(ms - RESET_HOUR * 3_600_000));
+}
+
+/** The calendar day right now — what the app SHOWS. */
+export function today(): DayKey {
+  return viewDayAt(Date.now());
+}
+
+/** The day a session logged right now COUNTS for. */
+export function logToday(): DayKey {
+  return logDayAt(Date.now());
 }
 
 export function isDayKey(v: unknown): v is DayKey {
