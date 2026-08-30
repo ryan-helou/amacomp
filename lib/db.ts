@@ -104,8 +104,16 @@ export interface Store {
   setWeight(athleteId: string, kg: number | null): Promise<void>;
   // Personal bests, extracted from Strava streams — see lib/efforts.ts.
   listEfforts(): Promise<ActivityEfforts[]>;
-  /** The Strava activity ids we have already looked at, so a sync never pays for
-   *  the same streams twice. Includes ones that yielded nothing. */
+  /**
+   * The Strava activity ids a sync should skip, so it never pays for the same
+   * streams twice.
+   *
+   * An activity that yielded nothing is skipped too — but only for a while. A
+   * ride genuinely has no streams for good, whereas a rate-limited fetch that
+   * slipped through as "empty" would otherwise be filed as having set no records
+   * forever. Re-examining the empty ones once a day costs almost nothing (nearly
+   * every Strava-imported session has streams) and repairs that silently.
+   */
   listEffortStravaIds(athleteId: string): Promise<Set<number>>;
   saveEfforts(row: ActivityEfforts): Promise<void>;
   // Push
@@ -752,7 +760,9 @@ class PgStore implements Store {
   async listEffortStravaIds(athleteId: string): Promise<Set<number>> {
     await this.init();
     const r = await this.pool.query(
-      "SELECT strava_id FROM strava_efforts WHERE athlete_id = $1",
+      `SELECT strava_id FROM strava_efforts
+        WHERE athlete_id = $1
+          AND (bests <> '{}'::jsonb OR fetched_at > now() - interval '12 hours')`,
       [athleteId],
     );
     return new Set(r.rows.map((x) => Number(x.strava_id)));
@@ -1002,6 +1012,8 @@ class MemoryStore implements Store {
     return [...this.efforts.values()];
   }
   async listEffortStravaIds(athleteId: string) {
+    // No `fetched_at` here and no real Strava behind it, so the retry window the
+    // Postgres store applies has nothing to act on locally.
     return new Set(
       [...this.efforts.values()].filter((e) => e.athleteId === athleteId).map((e) => e.stravaId),
     );
