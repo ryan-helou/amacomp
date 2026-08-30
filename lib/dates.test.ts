@@ -1,4 +1,4 @@
-import { RESET_HOUR, logDayAt, viewDayAt, weekStart } from "./dates";
+import { LEAGUE_TZ, RESET_HOUR, dayKeyInZone, logDayAt, viewDayAt, weekStart } from "./dates";
 
 /**
  * The two clocks. The board turns over at midnight so the new week opens on
@@ -106,6 +106,33 @@ console.log("\nA month boundary is just another midnight");
   // 1 Sep 2026 at 1 AM belongs to 31 Aug — the month board must not claim it.
   check("1 AM on the 1st shows September", viewDayAt(at(2026, 9, 1, 1, 0)), "2026-09-01");
   check("1 AM on the 1st counts for August", logDayAt(at(2026, 9, 1, 1, 0)), "2026-08-31");
+}
+
+console.log("\nthe server's day is the league's, not the container's");
+{
+  // 02:00 UTC on Monday 31 August is 22:00 on SUNDAY the 30th in Montreal. A
+  // Railway container runs UTC unless told otherwise, so a server that trusts its
+  // own clock spends the last four hours of every evening rendering tomorrow —
+  // tomorrow's week on the board, and after a rate change, tomorrow's points.
+  const lateSunday = Date.parse("2026-08-31T02:00:00Z");
+  check("Montreal still calls it Sunday", dayKeyInZone(lateSunday, LEAGUE_TZ), "2026-08-30");
+  check("UTC has already rolled over", dayKeyInZone(lateSunday, "Etc/UTC"), "2026-08-31");
+  // And so the two disagree about which WEEK it is — the expensive version.
+  check("which is a whole week apart", [
+    weekStart(dayKeyInZone(lateSunday, LEAGUE_TZ)),
+    weekStart(dayKeyInZone(lateSunday, "Etc/UTC")),
+  ], ["2026-08-24", "2026-08-31"]);
+
+  // Mid-afternoon the two agree, which is why the bug is invisible most of the day.
+  const midday = Date.parse("2026-08-30T16:00:00Z");
+  check("at midday they agree", dayKeyInZone(midday, LEAGUE_TZ), "2026-08-30");
+
+  // The whole point: the answer does not depend on the host's own zone, so it
+  // cannot regress when someone forgets an environment variable.
+  check("the zone argument decides, not the process",
+    dayKeyInZone(lateSunday, LEAGUE_TZ), "2026-08-30");
+  check("and it survives a date-line zone",
+    dayKeyInZone(lateSunday, "Pacific/Kiritimati"), "2026-08-31");
 }
 
 console.log(failures === 0 ? "\nAll date tests passed.\n" : `\n${failures} failing.\n`);

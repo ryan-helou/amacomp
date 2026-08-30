@@ -3,7 +3,7 @@ import { getStore } from "@/lib/db";
 import { readState } from "@/lib/state";
 import { notifyOvertakes, notifyQuotaHits, pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, standingsForRange, fmtPoints } from "@/lib/scoring";
-import { addDays, parseDayKey, today, weekStart } from "@/lib/dates";
+import { addDays, leagueToday, parseDayKey, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
 import { stravaConfigured, syncAthlete, syncEfforts } from "@/lib/strava";
 import { seasonByNumber, seasonFor } from "@/lib/season";
@@ -98,7 +98,7 @@ export async function GET(req: Request) {
   }
 
   const state = await readState();
-  const now = today();
+  const now = leagueToday();
   const activities = state.activities;
 
   if (job === "results") {

@@ -57,6 +57,45 @@ export function logToday(): DayKey {
   return logDayAt(Date.now());
 }
 
+/**
+ * The city the league keeps time by.
+ *
+ * On the CLIENT the device clock is the source of truth and these are not used —
+ * an athlete's phone knows what day it is. On the SERVER there is no device, and
+ * `new Date()` follows whatever zone the container was started in. Railway
+ * containers run UTC unless told otherwise, which makes the server's day roll
+ * over at 8 PM Montreal: server-rendered markup would show tomorrow's week, and
+ * tomorrow's scoring rates, for the last four hours of every evening.
+ *
+ * Setting TZ on the service fixes that too, but only for as long as nobody
+ * forgets it on the next environment. Deriving the day from a named zone in code
+ * cannot be forgotten, and makes the correct behaviour a property of the app
+ * rather than of its deployment.
+ */
+export const LEAGUE_TZ = "America/Toronto";
+
+/** The calendar day at `ms` in a named zone, whatever the host's own clock says. */
+export function dayKeyInZone(ms: number, timeZone: string): DayKey {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(ms));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** Server-side `today()` — the league's calendar day, not the container's. */
+export function leagueToday(): DayKey {
+  return dayKeyInZone(Date.now(), LEAGUE_TZ);
+}
+
+/** Server-side `logToday()` — the league's scoring day, not the container's. */
+export function leagueLogToday(): DayKey {
+  return dayKeyInZone(Date.now() - RESET_HOUR * 3_600_000, LEAGUE_TZ);
+}
+
 export function isDayKey(v: unknown): v is DayKey {
   if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
   const [y, m, d] = v.split("-").map(Number);
