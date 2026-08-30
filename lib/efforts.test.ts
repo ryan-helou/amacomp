@@ -84,19 +84,62 @@ console.log("\nbestTimeForDistance — the start edge is interpolated");
   near("400 m at 6 m/s is 66.67 s", bestTimeForDistance(time, distance, 400), 400 / 6);
 }
 
-console.log("\nbestTimeForDistance — a long pause breaks the effort");
+console.log("\nbestTimeForDistance — a pause makes an effort SLOW, not absent");
 {
-  // 250 m, stop for a minute, another 250 m. The athlete never covered 400 m
-  // without stopping, so there is no 400 m best — and certainly not one that
-  // treats the pause as distance covered instantly.
+  // 250 m, stop for a minute, another 250 m.
+  //
+  // This used to assert that 400 m and 500 m produced nothing, on the theory
+  // that a pause should break the effort. That was wrong, and it cost a real
+  // record: a gap only ever ADDS elapsed seconds, so a window spanning one is
+  // slow and can never be a false best — while refusing it means a long run
+  // whose stream has any gap yields no long-distance record at all.
   const time: number[] = [];
   const distance: number[] = [];
   for (let k = 0; k <= 50; k++) { time.push(k); distance.push(k * 5); }
   for (let k = 0; k <= 50; k++) { time.push(110 + k); distance.push(250 + k * 5); }
-  near("250 m inside one stretch is 50 s", bestTimeForDistance(time, distance, 250), 50);
-  check("400 m spanning the pause is not a best",
-    bestTimeForDistance(time, distance, 400), null);
-  check("nor is the 500 m total", bestTimeForDistance(time, distance, 500), null);
+  near("250 m inside one stretch is still 50 s", bestTimeForDistance(time, distance, 250), 50);
+  // 400 m starting at the 100 m mark and ending at the finish: 20 s -> 160 s.
+  near("400 m across the pause is found, and carries the pause",
+    bestTimeForDistance(time, distance, 400), 140);
+  near("the full 500 m likewise", bestTimeForDistance(time, distance, 500), 160);
+}
+
+console.log("\nbestTimeForDistance — a thinned stream must not lose the distance");
+{
+  // THE PRODUCTION BUG. Strava thins the streams of long activities, so a half
+  // marathon arrives with gaps in it. Splitting on those gaps broke the run into
+  // pieces, none of which covered 21.1 km, and the record silently vanished — a
+  // 21.15 km run produced no half-marathon best while a shorter 21.11 km one did.
+  const time: number[] = [];
+  const distance: number[] = [];
+  let t = 0, d = 0;
+  for (let k = 0; k < 7100; k++) {
+    // A 20-second thinning every twenty minutes, still at running pace.
+    const step = k > 0 && k % 1200 === 0 ? 20 : 1;
+    t += step; d += 3 * step;
+    time.push(t); distance.push(d);
+  }
+  check("the run really is past a half marathon", distance[distance.length - 1] > 21097.5, true);
+  const hm = bestTimeForDistance(time, distance, 21097.5);
+  check("and the half marathon best exists", hm !== null, true);
+  near("at 3 m/s it is ~7032 s", hm!, 21097.5 / 3, 25);
+  check("the 15 km best exists too", bestTimeForDistance(time, distance, 15000) !== null, true);
+}
+
+console.log("\nbestTimeForDistance — a GPS teleport is excluded");
+{
+  // A reacquisition drops 60 m into a single second: 60 m/s, five times faster
+  // than a human sprints. A window containing it must not become the record.
+  const time: number[] = [];
+  const distance: number[] = [];
+  for (let k = 0; k <= 200; k++) { time.push(k); distance.push(k * 3); }
+  // Teleport at t=100, then carry on.
+  for (let k = 101; k <= 200; k++) distance[k] += 60;
+  const best = bestTimeForDistance(time, distance, 100);
+  // Clean running is 3 m/s, so 100 m takes ~33.3 s. Anything far under that came
+  // from the jump.
+  check("the teleport does not set the record", best !== null && best > 30, true);
+  near("it reads as honest running pace", best!, 100 / 3, 1);
 }
 
 console.log("\nbestPowerForWindow — a steady ride");

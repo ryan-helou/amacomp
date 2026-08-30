@@ -16,11 +16,21 @@ import type { Sport } from "./types";
  *   - cycling — the HIGHEST average power held for a duration, over body weight.
  */
 
-/** A break longer than this ends a segment. A stopped clock at a café or a
- *  traffic light must not be averaged into a power number, and a paused run
- *  must not count as distance covered in no time. Bests are computed inside
- *  each contiguous segment and the best across segments wins. */
+/** A break longer than this ends a segment, FOR POWER ONLY. Watts are held from
+ *  each sample to the next, so a gap would otherwise fabricate energy: a stopped
+ *  clock at a café with the last sample reading 250 W would bank it for the
+ *  whole break. Distance does not use this — see `bestTimeForDistance`. */
 const MAX_SAMPLE_GAP_S = 10;
+
+/**
+ * The fastest a sample step can plausibly be before it is a recording artifact
+ * rather than an athlete. GPS reacquisition can add tens of metres between two
+ * samples, which would otherwise read as a blistering short-distance best.
+ *
+ * Set well above what a human does — the 100 m world record averages about
+ * 10.4 m/s — so this rejects teleports without ever touching a real sprint.
+ */
+const MAX_PLAUSIBLE_MPS: Record<string, number> = { run: 12, swim: 3 };
 
 export interface Streams {
   /** Elapsed seconds from the start, non-decreasing. */
@@ -89,25 +99,50 @@ function segments(time: number[]): [number, number][] {
 
 /**
  * The fastest time, in seconds, to cover `target` metres — or null if the
- * session never covered that distance in one unbroken stretch.
+ * session never covered that distance.
  *
  * Two pointers over a non-decreasing distance series. The start edge is
  * interpolated between samples so the window measures the target exactly: at a
  * 1 Hz sample rate a runner covers three metres a tick, and taking the first
  * sample past the line instead would cost a 100 m best several percent.
+ *
+ * DELIBERATELY NOT SEGMENTED BY TIME GAPS, unlike power. A gap in the time
+ * stream only ever ADDS elapsed seconds to a window, so it can make an effort
+ * look slower and never faster — there is nothing to protect against. Splitting
+ * on gaps did real damage instead: Strava thins the streams of long activities,
+ * so a half marathon would break into pieces and, with no single piece covering
+ * 21.1 km, the record silently disappeared. That is exactly what happened to a
+ * 21.15 km run in production, which produced no half-marathon best at all while
+ * a shorter 21.11 km run did.
+ *
+ * What IS guarded is a distance JUMP: a window containing a step faster than the
+ * sport can plausibly move is a GPS artifact, and is excluded.
  */
 export function bestTimeForDistance(
   time: number[],
   distance: number[],
   target: number,
+  sport: string = "run",
 ): number | null {
   if (target <= 0) return null;
+  const ceiling = MAX_PLAUSIBLE_MPS[sport] ?? MAX_PLAUSIBLE_MPS.run;
   let best: number | null = null;
-  for (const [lo, hi] of segments(time)) {
-    let i = lo;
-    for (let j = lo; j <= hi; j++) {
+  {
+    const lo0 = 0, hi = time.length - 1;
+    let i = lo0;
+    // The start of the current stretch containing no implausible step. A window
+    // may never reach back across one.
+    let clean = 0;
+    for (let j = lo0; j <= hi; j++) {
+      if (j > 0) {
+        const dt = time[j] - time[j - 1];
+        const dd = distance[j] - distance[j - 1];
+        if (dd > 0 && (dt <= 0 || dd / dt > ceiling)) clean = j;
+      }
+      if (i < clean) i = clean;
       // Push the start as late as it can go while still covering the target.
       while (i + 1 <= j && distance[j] - distance[i + 1] >= target) i++;
+      if (i < clean) i = clean;
       if (distance[j] - distance[i] < target) continue;
       // Exact crossing between sample i and i+1, where the athlete was still
       // exactly `target` short of where they are at j.
@@ -194,7 +229,7 @@ export function effortsFor(sport: Sport, streams: Streams): Record<string, numbe
   const distance = streams.distance;
   if (!targets || !distance || distance.length !== time.length) return out;
   for (const target of targets) {
-    const best = bestTimeForDistance(time, distance, target);
+    const best = bestTimeForDistance(time, distance, target, sport);
     if (best !== null) out[`${sport}:${target}`] = Math.round(best * 100) / 100;
   }
   return out;
