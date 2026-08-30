@@ -126,7 +126,7 @@ export function ActivityForm({
                 type="button"
                 aria-pressed={on}
                 onClick={() => selectSport(sport)}
-                className={`flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 transition-all ${ui.soft} ${ui.text} ${
+                className={`flex flex-col items-center gap-1.5 rounded-xl border py-3 transition-all ${ui.soft} ${ui.text} ${
                   on
                     ? `${ui.border} scale-[1.03] shadow-sm`
                     : "border-transparent opacity-75"
@@ -154,14 +154,14 @@ export function ActivityForm({
             {isFlat ? "Session" : "Distance"}
           </label>
           {isFlat ? (
-            <div className="mt-2 flex items-center gap-2 rounded-xl border-2 border-ink bg-tile px-4 py-3.5">
+            <div className="mt-2 flex items-center gap-2 rounded-xl pane border border-line-2 bg-tile px-4 py-3.5">
               <span className={SPORT_UI[draft.sport].text}>
                 <SportMark sport={draft.sport} className="h-5 w-5" />
               </span>
               <span className="text-lg font-semibold text-ink">One workout</span>
             </div>
           ) : (
-            <div className="mt-2 flex items-baseline gap-2 rounded-xl border-2 border-ink bg-tile px-4 py-2.5">
+            <div className="mt-2 flex items-baseline gap-2 rounded-xl pane border border-line-2 bg-tile px-4 py-2.5">
               <input
                 id="km"
                 type="number"
@@ -196,7 +196,7 @@ export function ActivityForm({
           <label htmlFor="elevation" className="eyebrow block text-ink-2">
             Ascent <span className="text-ink-3">— optional</span>
           </label>
-          <div className="mt-2 flex items-baseline gap-2 rounded-xl border-2 border-ink-3 bg-tile px-4 py-3 focus-within:border-accent">
+          <div className="mt-2 flex items-baseline gap-2 rounded-xl pane border border-line-2 bg-tile px-4 py-3 focus-within:border-accent">
             <input
               id="elevation"
               type="number"
@@ -232,7 +232,7 @@ export function ActivityForm({
           }
           // appearance-none stops iOS Safari from stripping the border off a
           // native date control; min-h keeps it the same height as the others.
-          className="mt-2 block min-h-[52px] w-full appearance-none rounded-xl border-2 border-ink-3 bg-tile px-4 py-3 text-ink [color-scheme:light] focus:border-accent focus:outline-none"
+          className="mt-2 block min-h-[52px] w-full appearance-none rounded-xl pane border border-line-2 bg-tile px-4 py-3 text-ink [color-scheme:light] focus:border-accent focus:outline-none"
         />
         {dateHint && (
           <p className="mt-1.5 text-[0.8125rem] text-ink-2">{dateHint}</p>
@@ -249,7 +249,7 @@ export function ActivityForm({
           maxLength={MAX_NOTE}
           onChange={(e) => setDraft({ ...draft, note: e.target.value })}
           placeholder="Brick session, hills, leg day…"
-          className="mt-2 w-full rounded-xl border-2 border-ink-3 bg-tile px-4 py-3 text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none"
+          className="mt-2 w-full rounded-xl pane border border-line-2 bg-tile px-4 py-3 text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none"
         />
       </div>
 
@@ -262,7 +262,7 @@ export function ActivityForm({
       {confirmingBig && (
         <div
           role="status"
-          className="rounded-xl border-2 border-gold/50 bg-gold/10 px-4 py-3"
+          className="rounded-xl border border-gold/50 bg-gold/10 px-4 py-3"
         >
           <p className="eyebrow text-gold">That&apos;s a big one</p>
           <p className="mt-1 text-[0.8125rem] text-ink-2">
@@ -278,7 +278,7 @@ export function ActivityForm({
           <button
             type="button"
             onClick={onCancel}
-            className="eyebrow flex-1 rounded-xl border-2 border-line bg-tile px-4 py-3.5 text-ink-2"
+            className="eyebrow flex-1 rounded-xl pane border border-line bg-tile px-4 py-3.5 text-ink-2"
           >
             Cancel
           </button>

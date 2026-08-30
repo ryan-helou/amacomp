@@ -1,28 +1,48 @@
 @import "tailwindcss";
 
 /*
-  Amagoh — a pool-deck palette. Pale chlorinated tile, deep navy ink, and one
-  colour per discipline so the sport is legible before you read a word.
+  AmaComp. A pool deck under glass.
+
+  The material is glass over a lit room. Every surface you touch is a thin
+  translucent pane that takes its colour from whatever is behind it, catches a
+  highlight along its top edge, and casts a shadow onto the deck. Behind all of
+  it sits a fixed wash of light, so a panel moving over it changes as it moves.
+
+  Ported from Manna, including its two load-bearing rules:
+
+  1. ONE blurring layer per stack. A card blurs the backdrop; the rows inside it
+     are flat translucent fills. Blur inside blur reads as fog and costs a
+     repaint on every scrolled frame.
+
+  2. BLUR ON A FIXED ELEMENT IS THE KNOWN HAZARD. iOS repaints a
+     backdrop-filtered fixed bar at a stale position during momentum scroll, so
+     it detaches and floats over the middle of the screen. THIS APP IS WHERE
+     THAT BUG WAS FIRST SEEN — the old tab bar did it over the leaderboard,
+     which is why the bar has been solid ever since.
+
+     The tab island is a deliberate exception, mitigated exactly the way Manna
+     mitigates it: the filter sits on a NON-FIXED child of the fixed wrapper,
+     the island owns its own compositing layer through translateZ(0) and
+     will-change, and `--island` is opaque enough that the blur does less work
+     than it looks like.
+
+     THE ESCAPE HATCH, if the bar ever floats mid-screen again: delete the two
+     backdrop-filter lines from `glass-island` and raise `--island` toward 0.92.
+     Everything else stays. NOTHING ELSE IN THIS APP MAY TAKE A BACKDROP-FILTER
+     WHILE FIXED OR STICKY — the header is sticky, so it stays opaque.
+
+  Glass only exists against something. A near-white pane on a near-white deck is
+  paper, whatever the blur is doing, so every ground here is a mid tone. That is
+  the single biggest visual change from the old flat deck.
 */
 @theme {
-  --color-deck: #e6eef1;
-  --color-deck-2: #d5e3e8;
-  --color-tile: #ffffff;
-  --color-ink: #0d2231;
-  --color-ink-2: #4d6a7d;
-  --color-ink-3: #8aa3b1;
-  --color-line: #c3d5dc;
-
+  /* The disciplines. Fixed across every colourway on purpose: a sport's colour
+     is what makes it legible before you read a word, so it is identity rather
+     than decoration and does not move when the scheme does. */
   --color-swim: #0d93bd;
   --color-bike: #d98217;
   --color-run: #d93b30;
   --color-gym: #6d4fc4;
-  --color-gold: #b08307;
-  --color-good: #14806b;
-
-  /* Vibrant interactive accent — primary actions, active states, progress. */
-  --color-accent: #3d5aff;
-  --color-accent-2: #8b3df5;
 
   --font-display: var(--font-archivo), "Arial Black", system-ui, sans-serif;
   --font-body: var(--font-public-sans), system-ui, sans-serif;
@@ -30,49 +50,317 @@
   --font-stat: var(--font-bebas), var(--font-archivo), system-ui, sans-serif;
 }
 
+/* ---------------------------------------------------------------------------
+   Colourways.
+
+   Deck is the base, so anyone who never touches the setting gets it with no
+   attribute on the html element and no flash. Every other scheme is an override
+   keyed on `data-palette`, stamped by ThemeScript before first paint.
+
+   Only COLOUR moves between schemes. The structural glass tokens (edge, sheen,
+   blur, shadow, grain) belong to the material rather than the palette and live
+   once, below.
+   --------------------------------------------------------------------------- */
+
+/* Deck — the pool at midday. The original identity, taken to a mid tone so the
+   panes have something to sit on. */
 :root {
+  --deck: #c2d5de;
+  --deck-2: rgb(13 34 49 / 0.07);
+  --tile: rgb(255 255 255 / 0.6);
+  --ink: #0b1f2d;
+  --ink-2: #3f5f74;
+  --ink-3: #63808f;
+  --line: rgb(13 34 49 / 0.16);
+  --line-2: rgb(13 34 49 / 0.3);
+  --accent: #2f4be8;
+  --accent-soft: rgb(47 75 232 / 0.14);
+  --accent-2: #7b31e0;
+  --on-accent: #ffffff;
+  --gold: #96700a;
+  --good: #0d6f5c;
+  --lamp: rgb(255 255 255 / 0.92);
+  --floor: rgb(9 38 56 / 0.28);
+  --raised: rgb(250 253 255 / 0.9);
+  --island: rgb(255 255 255 / 0.84);
+}
+
+/* Slate — an overcast morning session. */
+:root[data-palette="slate"] {
+  --deck: #ccd2da;
+  --deck-2: rgb(25 33 46 / 0.07);
+  --tile: rgb(255 255 255 / 0.6);
+  --ink: #141a24;
+  --ink-2: #4a5566;
+  --ink-3: #6e7887;
+  --line: rgb(25 33 46 / 0.16);
+  --line-2: rgb(25 33 46 / 0.3);
+  --accent: #3b57d6;
+  --accent-soft: rgb(59 87 214 / 0.14);
+  --accent-2: #7145d8;
+  --on-accent: #ffffff;
+  --gold: #8a6a12;
+  --good: #17685a;
+  --lamp: rgb(255 255 255 / 0.9);
+  --floor: rgb(18 26 38 / 0.28);
+  --raised: rgb(251 252 254 / 0.9);
+  --island: rgb(255 255 255 / 0.84);
+}
+
+/* Carbon — the track at night. The darkest scheme without being a dark mode:
+   pale ink on a graphite ground, so the panes read as lit rather than printed. */
+:root[data-palette="carbon"] {
+  --deck: #2b3138;
+  --deck-2: rgb(236 242 248 / 0.06);
+  --tile: rgb(236 244 250 / 0.09);
+  --ink: #f2f6fa;
+  --ink-2: #aab6c1;
+  --ink-3: #7d8996;
+  --line: rgb(236 242 248 / 0.14);
+  --line-2: rgb(236 242 248 / 0.24);
+  --accent: #7d95ff;
+  --accent-soft: rgb(125 149 255 / 0.18);
+  --accent-2: #b98cff;
+  --on-accent: #10141a;
+  --gold: #e0b64a;
+  --good: #4fbfa4;
+  --lamp: rgb(214 230 245 / 0.16);
+  --floor: rgb(0 0 0 / 0.5);
+  --raised: rgb(38 44 51 / 0.94);
+  --island: rgb(45 52 60 / 0.9);
+}
+
+/* Clay — a hot road, late in the ride. */
+:root[data-palette="clay"] {
+  --deck: #dbc9bd;
+  --deck-2: rgb(74 46 32 / 0.08);
+  --tile: rgb(255 252 249 / 0.6);
+  --ink: #241610;
+  --ink-2: #63483a;
+  --ink-3: #87695a;
+  --line: rgb(74 46 32 / 0.16);
+  --line-2: rgb(74 46 32 / 0.3);
+  --accent: #b8471f;
+  --accent-soft: rgb(184 71 31 / 0.14);
+  --accent-2: #d97316;
+  --on-accent: #fffaf6;
+  --gold: #8a6408;
+  --good: #38702c;
+  --lamp: rgb(255 250 245 / 0.92);
+  --floor: rgb(70 40 26 / 0.26);
+  --raised: rgb(255 251 247 / 0.9);
+  --island: rgb(255 252 249 / 0.84);
+}
+
+/* Moss — a trail run under cover. */
+:root[data-palette="moss"] {
+  --deck: #c7d1bc;
+  --deck-2: rgb(44 58 34 / 0.08);
+  --tile: rgb(252 255 249 / 0.6);
+  --ink: #131a0e;
+  --ink-2: #4c5b3f;
+  --ink-3: #6f7d61;
+  --line: rgb(44 58 34 / 0.16);
+  --line-2: rgb(44 58 34 / 0.3);
+  --accent: #3f7a34;
+  --accent-soft: rgb(63 122 52 / 0.14);
+  --accent-2: #6d9c1f;
+  --on-accent: #fbfdf7;
+  --gold: #8a6a0a;
+  --good: #3f7a34;
+  --lamp: rgb(253 255 249 / 0.92);
+  --floor: rgb(38 52 30 / 0.26);
+  --raised: rgb(252 255 249 / 0.9);
+  --island: rgb(252 255 249 / 0.84);
+}
+
+/* Plum — the last hour of a night ride. */
+:root[data-palette="plum"] {
+  --deck: #cec5db;
+  --deck-2: rgb(52 34 68 / 0.08);
+  --tile: rgb(254 252 255 / 0.6);
+  --ink: #1c1226;
+  --ink-2: #574468;
+  --ink-3: #7a6a8a;
+  --line: rgb(52 34 68 / 0.16);
+  --line-2: rgb(52 34 68 / 0.3);
+  --accent: #6d34c8;
+  --accent-soft: rgb(109 52 200 / 0.14);
+  --accent-2: #b1349b;
+  --on-accent: #fdfaff;
+  --gold: #8a6a0a;
+  --good: #1f7061;
+  --lamp: rgb(254 252 255 / 0.92);
+  --floor: rgb(44 28 58 / 0.26);
+  --raised: rgb(254 252 255 / 0.9);
+  --island: rgb(254 252 255 / 0.84);
+}
+
+/* The material. Shared by every scheme — this is the glass, not the colour. */
+:root {
+  --grain: 0.05;
+  --glass-edge: rgb(255 255 255 / 0.9);
+  --glass-inner: rgb(255 255 255 / 0.34);
+  --sheen: rgb(255 255 255 / 0.5);
+  --glass-shadow: 0 20px 44px -18px rgb(10 30 45 / 0.4),
+    0 3px 10px -5px rgb(10 30 45 / 0.24);
+  --blur: 26px;
+
   color-scheme: light;
   --lane-h: 4.5rem;
 }
 
-html,
-body {
-  background: var(--color-deck);
-  color: var(--color-ink);
+/* Carbon is a dark ground, so its glass is lit from a dark room rather than a
+   bright one: a fainter edge, a fainter sheen, a deeper shadow. */
+:root[data-palette="carbon"] {
+  --glass-edge: rgb(226 240 255 / 0.3);
+  --glass-inner: rgb(226 240 255 / 0.05);
+  --sheen: rgb(226 240 255 / 0.12);
+  --glass-shadow: 0 22px 48px -18px rgb(0 0 0 / 0.66),
+    0 2px 10px -6px rgb(0 0 0 / 0.48);
+  --grain: 0.06;
+
+  color-scheme: dark;
 }
 
-/* A soft colour wash instead of a flat grey deck — cool at the crown,
-   settling into the pool-deck tone lower down. */
-body {
-  background-image: radial-gradient(
-      130% 55% at 8% -8%,
-      color-mix(in srgb, var(--color-accent) 16%, transparent) 0%,
-      transparent 46%
-    ),
-    radial-gradient(
-      120% 55% at 100% 0%,
-      color-mix(in srgb, var(--color-gym) 14%, transparent) 0%,
-      transparent 42%
-    );
-  background-attachment: fixed;
+@theme inline {
+  --color-deck: var(--deck);
+  --color-deck-2: var(--deck-2);
+  --color-tile: var(--tile);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-gold: var(--gold);
+  --color-good: var(--good);
 }
 
-/* Gradient fills used across the app to bring in colour. */
+/* ---------------------------------------------------------------------------
+   The room behind the glass.
+   --------------------------------------------------------------------------- */
+
+html {
+  background-color: var(--deck);
+}
+
+/*
+  A fixed pane of light rather than `background-attachment: fixed`, which iOS
+  treats as a suggestion — the old deck used exactly that. One overhead light
+  and a floor, in the scheme's own hue, giving a tall pane something to grade
+  across as it travels. The grain is what stops a gradient this wide from
+  banding on a phone.
+*/
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--deck);
+  background-image: radial-gradient(150% 62% at 50% -24%, var(--lamp) 0%, transparent 74%),
+    linear-gradient(180deg, transparent 44%, var(--floor) 100%);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--grain);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* ---------------------------------------------------------------------------
+   The panes.
+   --------------------------------------------------------------------------- */
+
+/*
+  A card. Blurs what is behind it, lifts off the deck, and catches a highlight
+  along its top edge. The saturation boost is most of what separates glass from
+  grey plastic: it pulls colour out of the backdrop instead of averaging it away.
+*/
+@utility glass {
+  background-image: linear-gradient(154deg, var(--sheen) 0%, transparent 44%, transparent 100%);
+  backdrop-filter: blur(var(--blur)) saturate(180%) brightness(1.06);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 0 var(--glass-edge),
+    inset 0 0 0 1px var(--glass-inner);
+}
+
+/*
+  A list row, a tile, a small card. Everything a pane needs EXCEPT the blur: the
+  lit top edge, the sheen across the face, the shadow onto the deck. The fill is
+  already translucent, so it takes its colour from the room behind it.
+
+  This is what most surfaces use. Blur is reserved for the few places one layer
+  of it is worth a repaint on every scrolled frame — a leaderboard of six lanes
+  each blurring its own backdrop is the fog rule broken six times over.
+*/
+@utility pane {
+  background-image: linear-gradient(154deg, var(--sheen) 0%, transparent 46%);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 0 var(--glass-edge);
+}
+
+/*
+  Sheets and menus: nearer the eye, so denser, blurred harder, deeper shadow.
+  These sit above a scrim and must stay legible over whatever is behind them.
+*/
+@utility glass-raised {
+  background-color: var(--raised);
+  background-image: linear-gradient(154deg, var(--sheen) 0%, transparent 46%);
+  backdrop-filter: blur(40px) saturate(190%);
+  box-shadow: 0 32px 64px -24px rgb(0 0 0 / 0.5), inset 0 1px 0 0 var(--glass-edge);
+}
+
+/*
+  The tab island: a pane floating clear of the bottom edge rather than a bar
+  ruled off against it. READ THE HAZARD NOTE AT THE TOP OF THIS FILE before
+  touching the filter here — this app is where that bug was first seen.
+*/
+@utility glass-island {
+  background-color: var(--island);
+  background-image: linear-gradient(158deg, var(--sheen) 0%, transparent 48%);
+  backdrop-filter: blur(30px) saturate(190%);
+  box-shadow: 0 20px 44px -14px rgb(0 0 0 / 0.44), 0 4px 12px -6px rgb(0 0 0 / 0.3),
+    inset 0 1px 0 0 var(--glass-edge);
+}
+
+/*
+  The compositing layer, kept on the FIXED WRAPPER rather than on the island.
+
+  The wrapper is empty, so promoting it costs nothing, and it keeps the two
+  halves of the iOS mitigation cleanly apart: the fixed element owns the layer
+  and does not blur, the island owns the filter and is not fixed.
+
+  NOTE, because it cost an hour: do NOT hand-write `-webkit-backdrop-filter`
+  alongside `backdrop-filter` in these utilities. Lightning CSS collapses the
+  pair and keeps only the prefixed line, so the standard property never reaches
+  the browser and NOTHING BLURS — silently, in every scheme, with the fill and
+  shadow still applying so it merely looks like flat plastic rather than broken.
+  Declare the standard property alone and let the build add the prefix.
+*/
+@utility island-layer {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Light through the glass rather than another pane of it, so the primary action
+   reads as the lit object on the screen. Keeps AmaComp's blue-to-violet run. */
 .accent-fill {
-  background-image: linear-gradient(
-    130deg,
-    var(--color-accent) 0%,
-    var(--color-accent-2) 100%
-  );
-  color: #fff;
+  background-image: linear-gradient(130deg, var(--accent) 0%, var(--accent-2) 100%);
+  color: var(--on-accent);
+  box-shadow: 0 10px 26px -10px color-mix(in srgb, var(--accent) 60%, transparent),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.3);
 }
 
 .accent-text {
-  background-image: linear-gradient(
-    120deg,
-    var(--color-accent) 0%,
-    var(--color-accent-2) 100%
-  );
+  background-image: linear-gradient(120deg, var(--accent) 0%, var(--accent-2) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -90,6 +378,7 @@ body {
 
 body {
   font-family: var(--font-body);
+  color: var(--ink);
   /* Home-screen apps sit under the notch and over the home indicator. */
   padding-top: env(safe-area-inset-top);
   overscroll-behavior-y: none;

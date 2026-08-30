@@ -121,7 +121,7 @@ export function WeekTab({
             type="button"
             onClick={() => setWeekRef(addDays(viewedWeekStart, -1))}
             aria-label="Previous week"
-            className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-line bg-tile text-ink-2 active:bg-tile/70"
+            className="flex h-9 w-9 items-center justify-center rounded-full pane border border-line bg-tile text-ink-2 active:bg-tile/70"
           >
             <Chevron dir="left" />
           </button>
@@ -134,14 +134,14 @@ export function WeekTab({
             onClick={() => setWeekRef(addDays(viewedWeekStart, 7))}
             aria-label="Next week"
             disabled={!canGoForward}
-            className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-line bg-tile text-ink-2 active:bg-tile/70 disabled:opacity-30"
+            className="flex h-9 w-9 items-center justify-center rounded-full pane border border-line bg-tile text-ink-2 active:bg-tile/70 disabled:opacity-30"
           >
             <Chevron dir="right" />
           </button>
         </div>
 
         {inWeekGrace && isCurrentWeek && (
-          <p className="mt-3 w-full rounded-xl border-2 border-line bg-tile px-4 py-2.5 text-center text-[0.8125rem] text-ink-2">
+          <p className="mt-3 w-full rounded-xl pane border border-line bg-tile px-4 py-2.5 text-center text-[0.8125rem] text-ink-2">
             New week&apos;s open. Anything logged before{" "}
             <span className="font-semibold text-ink">{RESET_HOUR} AM</span> still counts
             for last week.
@@ -230,7 +230,7 @@ export function WeekTab({
       </section>
 
       {h2h && (
-        <section className="rounded-2xl border-2 border-ink bg-tile p-4">
+        <section className="rounded-2xl pane border border-line-2 bg-tile p-4">
           <p className="eyebrow text-ink-2">
             {h2h.leading ? "Chasing you" : "Right ahead of you"}
           </p>
@@ -290,7 +290,7 @@ export function WeekTab({
             return (
               <li
                 key={row.athlete.id}
-                className={`overflow-hidden rounded-xl border-2 bg-tile ${
+                className={`overflow-hidden rounded-xl border bg-tile ${
                   isMe ? "border-ink" : "border-line"
                 }`}
               >
@@ -464,7 +464,7 @@ export function WeekTab({
       </section>
 
       {showRecap && recap && (
-        <section className="rounded-2xl border-2 border-gold/40 bg-gold/5 p-4">
+        <section className="rounded-2xl border border-gold/40 bg-gold/5 p-4">
           <div className="flex items-baseline justify-between">
             <h2 className="eyebrow text-gold">Last week</h2>
             <span className="font-mono text-xs text-ink-3">{recap.rangeLabel}</span>
@@ -617,7 +617,7 @@ function AdminGrant({
               type="button"
               disabled={busy}
               onClick={excuse}
-              className="eyebrow rounded-lg border-2 border-ink bg-tile px-3 py-1.5 text-ink disabled:opacity-40"
+              className="eyebrow rounded-lg pane border border-line-2 bg-tile px-3 py-1.5 text-ink disabled:opacity-40"
             >
               {shortfall > 0 ? `Excuse week (+${fmtPoints(shortfall)})` : "Excuse week"}
             </button>
@@ -639,13 +639,13 @@ function AdminGrant({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Points"
-            className="w-24 rounded-lg border-2 border-ink bg-tile px-2 py-1.5 text-sm text-ink focus:outline-none"
+            className="w-24 rounded-lg pane border border-line-2 bg-tile px-2 py-1.5 text-sm text-ink focus:outline-none"
           />
           <button
             type="button"
             disabled={busy}
             onClick={() => award(Number(amount))}
-            className="eyebrow rounded-lg border-2 border-ink bg-accent/10 px-3 py-1.5 accent-text disabled:opacity-40"
+            className="eyebrow rounded-lg border border-line-2 bg-accent/10 px-3 py-1.5 accent-text disabled:opacity-40"
           >
             Award
           </button>

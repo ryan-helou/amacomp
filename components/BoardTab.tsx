@@ -126,7 +126,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
         <div
           role="tablist"
           aria-label="Leaderboard period"
-          className="flex gap-1 rounded-xl border-2 border-line bg-tile p-1"
+          className="flex gap-1 rounded-xl pane border border-line bg-tile p-1"
         >
           {PERIOD_TABS.map((p) => (
             <button
@@ -158,7 +158,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
             aria-selected={sport === "all"}
             aria-label="All disciplines"
             onClick={() => setSport("all")}
-            className={`flex h-9 flex-1 items-center justify-center rounded-lg border-2 transition-colors ${
+            className={`flex h-9 flex-1 items-center justify-center rounded-lg border transition-colors ${
               sport === "all" ? "border-ink bg-ink text-tile" : "border-line bg-tile text-ink-3"
             }`}
           >
@@ -174,7 +174,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                 aria-selected={on}
                 aria-label={ui.label}
                 onClick={() => setSport(s)}
-                className={`flex h-9 flex-1 items-center justify-center rounded-lg border-2 transition-colors ${
+                className={`flex h-9 flex-1 items-center justify-center rounded-lg border transition-colors ${
                   on ? `${ui.border} ${ui.bg} text-white` : `border-line bg-tile ${ui.text}`
                 }`}
               >
@@ -196,7 +196,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
 
       {sport === "all" ? (
         !anyPoints ? (
-          <p className="rounded-2xl border-2 border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
+          <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
             No points in this window yet. The lanes fill as sessions come in.
           </p>
         ) : (
@@ -219,7 +219,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           </ol>
         )
       ) : !anySport ? (
-        <p className="rounded-2xl border-2 border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
+        <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
           No {SPORT_UI[sport].label.toLowerCase()} logged in this window yet.
         </p>
       ) : (

@@ -15,6 +15,7 @@ import { Glyph } from "./Glyph";
 import { NotificationSetup } from "./NotificationSetup";
 import { StravaSetup } from "./StravaSetup";
 import { Avatar } from "./Avatar";
+import { PalettePicker } from "./PalettePicker";
 import type { League } from "./useLeague";
 
 /**
@@ -133,7 +134,7 @@ export function ScoringSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Scoring"
-        className="relative max-h-[88dvh] overflow-y-auto rounded-t-3xl border-t-2 border-ink bg-deck px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5"
+        className="relative max-h-[88dvh] overflow-y-auto glass-raised rounded-t-3xl border-t border-line-2 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5"
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-3" />
 
@@ -147,7 +148,7 @@ export function ScoringSheet({
         {/* The rules deserve a labelled door, not just the "?" in the header. */}
         <button
           onClick={onOpenRules}
-          className="mt-4 flex w-full items-center gap-3 rounded-xl border-2 border-ink bg-tile px-4 py-3 text-left"
+          className="mt-4 flex w-full items-center gap-3 rounded-xl pane border border-line-2 bg-tile px-4 py-3 text-left"
         >
           <span className="text-gold">
             <Glyph name="trophy" className="h-5 w-5" />
@@ -185,10 +186,12 @@ export function ScoringSheet({
           <AvatarPicker league={league} />
         </div>
 
+        <PalettePicker />
+
         {/* Weight — only ever used to divide watts into W/kg for the Records
             tab. Pulled from Strava on connect where it's set; this is the
             override, and the only way in for anyone Strava has nothing for. */}
-        <div className="mt-4 rounded-xl border-2 border-line bg-tile px-4 py-3">
+        <div className="mt-4 rounded-xl pane border border-line bg-tile px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <label htmlFor="weight" className="eyebrow block text-ink">
@@ -218,7 +221,7 @@ export function ScoringSheet({
                     body: JSON.stringify({ weightKg: next }),
                   });
                 }}
-                className="w-20 rounded-lg border-2 border-ink-3 bg-tile px-2 py-2 text-right text-sm text-ink focus:border-accent focus:outline-none"
+                className="w-20 rounded-lg pane border border-line-2 bg-tile px-2 py-2 text-right text-sm text-ink focus:border-accent focus:outline-none"
               />
               <span className="eyebrow text-ink-3">kg</span>
             </div>
@@ -240,7 +243,7 @@ export function ScoringSheet({
               : "These are the league rules. Ryan sets them."}
           </p>
           {upcoming.length > 0 && (
-            <div className="mt-3 rounded-xl border-2 border-accent/40 bg-accent/5 px-4 py-3">
+            <div className="mt-3 rounded-xl border border-accent/40 bg-accent/5 px-4 py-3">
               <p className="eyebrow text-ink">Already scheduled</p>
               <ul className="mt-1.5 space-y-1">
                 {upcoming.map((change) => (
@@ -278,7 +281,7 @@ export function ScoringSheet({
             return (
               <div
                 key={sport}
-                className="flex items-center gap-3 rounded-xl border-2 border-line bg-tile px-4 py-3"
+                className="flex items-center gap-3 rounded-xl pane border border-line bg-tile px-4 py-3"
               >
                 <span className={ui.text}>
                   <SportMark sport={sport} className="h-5 w-5" />
@@ -295,7 +298,7 @@ export function ScoringSheet({
                   readOnly={!editable}
                   value={form[sport]}
                   onChange={(e) => setForm({ ...form, [sport]: e.target.value })}
-                  className={`stamp w-20 rounded-lg border-2 px-2 py-1.5 text-right text-xl text-ink focus:outline-none ${
+                  className={`stamp w-20 rounded-lg border px-2 py-1.5 text-right text-xl text-ink focus:outline-none ${
                     editable ? "border-ink bg-tile" : "border-transparent bg-transparent"
                   }`}
                 />
@@ -307,7 +310,7 @@ export function ScoringSheet({
           {/* Climbing is a second rate against a different quantity, so it gets
               its own group rather than a cramped second box per row. Gym is
               left out: a workout has no ascent. */}
-          <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+          <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
             <p className="eyebrow text-ink">Climbing</p>
             <p className="mt-0.5 text-[0.8125rem] text-ink-2">
               Points per 100 m of ascent, on top of the distance. Set 0 to switch
@@ -334,7 +337,7 @@ export function ScoringSheet({
                       readOnly={!editable}
                       value={form[key]}
                       onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                      className={`stamp w-20 rounded-lg border-2 px-2 py-1.5 text-right text-lg text-ink focus:outline-none ${
+                      className={`stamp w-20 rounded-lg border px-2 py-1.5 text-right text-lg text-ink focus:outline-none ${
                         editable ? "border-ink bg-tile" : "border-transparent bg-transparent"
                       }`}
                     />
@@ -345,7 +348,7 @@ export function ScoringSheet({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-xl border-2 border-ink bg-deck-2/50 px-4 py-3">
+          <div className="flex items-center gap-3 rounded-xl border border-line-2 bg-deck-2/50 px-4 py-3">
             <label htmlFor="goal" className="eyebrow flex-1 text-ink">
               Weekly quota
             </label>
@@ -358,14 +361,14 @@ export function ScoringSheet({
               readOnly={!editable}
               value={form.weeklyGoal}
               onChange={(e) => setForm({ ...form, weeklyGoal: e.target.value })}
-              className={`stamp w-20 rounded-lg border-2 px-2 py-1.5 text-right text-xl text-ink focus:outline-none ${
+              className={`stamp w-20 rounded-lg border px-2 py-1.5 text-right text-xl text-ink focus:outline-none ${
                 editable ? "border-ink bg-tile" : "border-transparent bg-transparent"
               }`}
             />
             <span className="eyebrow w-12 text-ink-3">pts</span>
           </div>
 
-          <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+          <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
             <label htmlFor="season" className="eyebrow block text-ink-2">
               Kickoff date
             </label>
@@ -375,7 +378,7 @@ export function ScoringSheet({
               readOnly={!editable}
               value={form.seasonStart}
               onChange={(e) => setForm({ ...form, seasonStart: e.target.value })}
-              className={`mt-2 block w-full appearance-none rounded-lg border-2 px-3 py-2 text-ink [color-scheme:light] focus:outline-none ${
+              className={`mt-2 block w-full appearance-none rounded-lg border px-3 py-2 text-ink [color-scheme:light] focus:outline-none ${
                 editable ? "border-ink-3 bg-tile focus:border-accent" : "border-transparent bg-transparent"
               }`}
             />
@@ -384,7 +387,7 @@ export function ScoringSheet({
             </p>
           </div>
 
-          <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+          <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
             <label htmlFor="forfeit" className="eyebrow block text-ink-2">
               Loser&apos;s forfeit
             </label>
@@ -396,7 +399,7 @@ export function ScoringSheet({
               value={form.forfeit}
               onChange={(e) => setForm({ ...form, forfeit: e.target.value })}
               placeholder="What the weekly loser owes"
-              className={`mt-2 block w-full rounded-lg border-2 px-3 py-2 text-ink focus:outline-none ${
+              className={`mt-2 block w-full rounded-lg border px-3 py-2 text-ink focus:outline-none ${
                 editable ? "border-ink-3 bg-tile focus:border-accent" : "border-transparent bg-transparent px-0"
               }`}
             />
@@ -435,7 +438,7 @@ export function ScoringSheet({
               await send("/api/session", { method: "DELETE" });
               onClose();
             }}
-            className="eyebrow mt-3 w-full rounded-xl border-2 border-line bg-tile px-4 py-3 text-ink-2"
+            className="eyebrow mt-3 w-full rounded-xl pane border border-line bg-tile px-4 py-3 text-ink-2"
           >
             Sign out
           </button>
@@ -495,7 +498,7 @@ function AvatarPicker({ league }: { league: League }) {
   }
 
   return (
-    <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+    <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
       <div className="flex items-center gap-3">
         <Avatar athlete={previewAthlete} me className="h-12 w-12 text-sm" />
         <div className="min-w-0 flex-1">
@@ -520,7 +523,7 @@ function AvatarPicker({ league }: { league: League }) {
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          className="eyebrow flex-1 rounded-lg border-2 border-line bg-tile px-3 py-2.5 text-ink-2 transition-transform active:scale-95 disabled:opacity-40"
+          className="eyebrow flex-1 rounded-lg pane border border-line bg-tile px-3 py-2.5 text-ink-2 transition-transform active:scale-95 disabled:opacity-40"
         >
           {busy ? "Working…" : hasUploaded ? "Change photo" : "Upload photo"}
         </button>
@@ -551,7 +554,7 @@ function AvatarPicker({ league }: { league: League }) {
                 disabled={busy}
                 onClick={() => saveColor(c)}
                 style={{ backgroundColor: c }}
-                className={`h-9 w-full rounded-lg border-2 transition-transform active:scale-95 disabled:opacity-40 ${
+                className={`h-9 w-full rounded-lg border transition-transform active:scale-95 disabled:opacity-40 ${
                   active ? "border-ink" : "border-transparent"
                 }`}
               />

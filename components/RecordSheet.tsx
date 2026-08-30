@@ -108,7 +108,7 @@ export function RecordSheet({
         role="dialog"
         aria-modal="true"
         aria-label={record.label}
-        className="relative flex max-h-[88dvh] flex-col rounded-t-3xl border-t-2 border-ink bg-deck"
+        className="relative flex max-h-[88dvh] flex-col glass-raised rounded-t-3xl border-t border-line-2"
       >
         <div className="shrink-0 px-5 pt-3">
           <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-3" />
@@ -138,7 +138,7 @@ export function RecordSheet({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
           {contributing.length === 0 ? (
-            <p className="rounded-2xl border-2 border-dashed border-line px-4 py-8 text-center text-sm text-ink-2">
+            <p className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-2">
               The sessions behind this record are no longer in the log.
             </p>
           ) : (
@@ -198,7 +198,7 @@ export function RecordSheet({
                   For a single-activity or km record, "total" is the record itself. */}
               {(record.unit === "pts" || record.unit === "sessions") &&
                 contributing.length > 1 && (
-                  <div className="mt-3 flex items-baseline justify-between border-t-2 border-ink pt-2 font-mono text-xs">
+                  <div className="mt-3 flex items-baseline justify-between border-t border-line-2 pt-2 font-mono text-xs">
                     <span className="text-ink-2">Total</span>
                     <span className="text-ink">
                       {record.unit === "pts"

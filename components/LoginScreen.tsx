@@ -90,7 +90,7 @@ export function LoginScreen({
           autoCapitalize="words"
           enterKeyHint="go"
           placeholder="Ryan"
-          className="mt-2 w-full rounded-xl border-2 border-ink bg-tile px-4 py-3.5 text-lg text-ink placeholder:text-ink-3 focus:outline-none focus-visible:outline-3 focus-visible:outline-ink"
+          className="mt-2 w-full rounded-xl pane border border-line-2 bg-tile px-4 py-3.5 text-lg text-ink placeholder:text-ink-3 focus:outline-none focus-visible:outline-3 focus-visible:outline-ink"
         />
 
         {error && (

@@ -126,7 +126,7 @@ export function LogTab({
     <div className="space-y-8">
       <section>
         <h2 className="eyebrow text-ink-2">Log a session</h2>
-        <div className="mt-3 rounded-2xl border-2 border-line bg-deck-2/40 p-4">
+        <div className="mt-3 rounded-2xl border border-line bg-deck-2/40 p-4">
           <ActivityForm
             settings={state.settings}
             draft={draft}
@@ -156,7 +156,7 @@ export function LogTab({
         </div>
 
         {mine.length === 0 ? (
-          <p className="mt-3 rounded-2xl border-2 border-dashed border-line px-4 py-8 text-center text-sm text-ink-2">
+          <p className="mt-3 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-2">
             Nothing logged yet. Your first session goes on the board above.
           </p>
         ) : (
@@ -169,7 +169,7 @@ export function LogTab({
                 return (
                   <li
                     key={a.id}
-                    className="rounded-2xl border-2 border-ink bg-tile p-4"
+                    className="rounded-2xl pane border border-line-2 bg-tile p-4"
                   >
                     <p className="eyebrow mb-3 text-ink-2">Edit session</p>
                     <ActivityForm
@@ -190,7 +190,7 @@ export function LogTab({
               return (
                 <li
                   key={a.id}
-                  className="rounded-2xl border-2 border-line bg-tile px-4 py-3"
+                  className="rounded-2xl pane border border-line bg-tile px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
                     <span className={ui.text}>

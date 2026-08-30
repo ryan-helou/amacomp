@@ -277,7 +277,7 @@ export function AppShell({
     <ProfileProvider state={state} refDay={refDay} championId={championId}>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
-      <header className="sticky top-0 z-30 border-b-2 border-ink bg-deck px-5 pb-3 pt-4">
+      <header className="sticky top-0 z-30 border-b border-line-2 bg-deck px-5 pb-3 pt-4">
         <div className="flex items-center justify-between">
           <div>
             <button
@@ -312,7 +312,7 @@ export function AppShell({
             <button
               onClick={() => setScoringOpen(true)}
               aria-label="Settings"
-              className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-line bg-tile text-ink-2"
+              className="flex h-10 w-10 items-center justify-center rounded-full pane border border-line bg-tile text-ink-2"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -341,7 +341,7 @@ export function AppShell({
         </div>
       )}
 
-      <main className="flex-1 px-5 pb-28 pt-5">
+      <main className="flex-1 px-5 pb-32 pt-5">
         {tab === "log" && <LogTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "week" && <WeekTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
@@ -349,14 +349,30 @@ export function AppShell({
         {tab === "records" && <RecordsTab state={state} refDay={refDay} />}
       </main>
 
-      {/* Solid background + its own compositing layer: iOS WebKit mis-repaints a
-          fixed bar that has backdrop-blur during momentum scroll (it detaches
-          mid-screen); translateZ(0) keeps it pinned. */}
+      {/* The tab island.
+
+          THE WRAPPER IS WHAT IS FIXED, AND IT IS EMPTY: no background, no
+          filter, nothing to repaint. The island inside it is an ordinary
+          element that happens to sit there. That is the whole mitigation for
+          the iOS bug this app is where we first saw — a backdrop-filtered FIXED
+          bar gets repainted at a stale position during momentum scroll and
+          floats over the middle of the leaderboard. The island owns its own
+          compositing layer (translateZ(0) + will-change, in `glass-island`) and
+          `--island` is opaque enough that the blur does less work than it looks
+          like. The escape hatch is written at the top of globals.css.
+
+          The offset sits INSIDE the safe area on purpose: a little below what
+          the inset reserves, which on a phone with a home indicator leaves
+          roughly 14px of screen under the island. Lower stops being a styling
+          question — the indicator occupies about the bottom 13px and the system
+          swipe intercepts touches over it, so going further would eat taps on
+          the outer tabs. On a device with no inset the max() keeps a small gap
+          so it still reads as floating rather than welded to the edge. */}
       <nav
         aria-label="Sections"
-        className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md border-t-2 border-ink bg-deck px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 [transform:translateZ(0)]"
+        className="island-layer pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md px-3 pb-[max(0.35rem,calc(env(safe-area-inset-bottom)-1.25rem))]"
       >
-        <div className="flex">
+        <div className="glass-island pointer-events-auto flex gap-1 rounded-[1.75rem] border border-line p-1.5">
           {TABS.map((t) => {
             const on = tab === t.id;
             return (
@@ -364,19 +380,23 @@ export function AppShell({
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 aria-current={on ? "page" : undefined}
-                className="flex flex-1 flex-col items-center gap-1.5 py-1.5"
+                /* The active tab has a shape, not just a colour — at this size a
+                   tinted label alone is easy to miss on a moving background. */
+                className={`flex flex-1 items-center justify-center rounded-[1.35rem] py-2.5 transition-colors ${
+                  on ? "border border-accent/30 bg-accent-soft" : "border border-transparent"
+                }`}
               >
+                {/* Deliberately NOT `.eyebrow`: that class lives outside
+                    Tailwind's layer and wins on source order, so its 0.14em
+                    tracking cannot be overridden here — and five labels at that
+                    tracking do not fit across a 375px island. */}
                 <span
-                  className={`eyebrow ${on ? "accent-text" : "text-ink-3"}`}
+                  className={`font-display text-[0.625rem] font-bold uppercase leading-none tracking-[0.05em] ${
+                    on ? "accent-text" : "text-ink-3"
+                  }`}
                 >
                   {t.label}
                 </span>
-                <span
-                  aria-hidden
-                  className={`h-1 w-7 rounded-full transition-colors ${
-                    on ? "accent-fill" : "bg-transparent"
-                  }`}
-                />
               </button>
             );
           })}
@@ -385,7 +405,7 @@ export function AppShell({
 
       {stravaMsg && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 mx-auto w-full max-w-md px-5">
-          <div className="rounded-xl border-2 border-ink bg-deck px-4 py-3 text-sm font-medium text-ink shadow-lg">
+          <div className="rounded-xl border border-line-2 bg-deck px-4 py-3 text-sm font-medium text-ink shadow-lg">
             {stravaMsg}
           </div>
         </div>
@@ -393,7 +413,7 @@ export function AppShell({
 
       {crownMsg && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 mx-auto w-full max-w-md px-5">
-          <div className="flex items-center gap-2 rounded-xl border-2 border-gold bg-deck px-4 py-3 text-sm font-medium text-ink shadow-lg">
+          <div className="flex items-center gap-2 rounded-xl border border-gold bg-deck px-4 py-3 text-sm font-medium text-ink shadow-lg">
             <span className="text-gold">
               <Glyph name="trophy" className="h-5 w-5" />
             </span>

@@ -134,7 +134,7 @@ export function AthleteSheet({
         role="dialog"
         aria-modal="true"
         aria-label={`${athlete.name} profile`}
-        className="relative max-h-[88dvh] overflow-y-auto rounded-t-3xl border-t-2 border-ink bg-deck px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5"
+        className="relative max-h-[88dvh] overflow-y-auto glass-raised rounded-t-3xl border-t border-line-2 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5"
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ink-3" />
 
@@ -203,7 +203,7 @@ export function AthleteSheet({
           <Stat label="Total km" value={fmtKm(data.allTime?.km ?? 0)} />
           <Stat label="Active days" value={String(data.activeDays)} />
         </div>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl border-2 border-line bg-tile px-4 py-3 font-mono text-xs">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl pane border border-line bg-tile px-4 py-3 font-mono text-xs">
           {SPORT_ORDER.map((s) => {
             const amount = data.allTime?.kmBySport[s] ?? 0;
             if (amount <= 0) return null;
@@ -329,7 +329,7 @@ export function AthleteSheet({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+    <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
       <div className="stamp text-2xl text-ink">{value}</div>
       <div className="eyebrow mt-0.5 text-ink-3">{label}</div>
     </div>
@@ -347,7 +347,7 @@ function RankTile({
 }) {
   const ranked = points > 0 && rank != null;
   return (
-    <div className="rounded-xl border-2 border-line bg-tile px-3 py-3">
+    <div className="rounded-xl pane border border-line bg-tile px-3 py-3">
       <div className={`stamp text-2xl ${ranked ? "text-ink" : "text-ink-3"}`}>
         {ranked ? `#${rank}` : "—"}
       </div>
@@ -371,7 +371,7 @@ function PB({
   sport?: "run" | "bike" | "swim";
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border-2 border-line bg-tile px-3.5 py-2.5">
+    <div className="flex items-center justify-between gap-2 rounded-xl pane border border-line bg-tile px-3.5 py-2.5">
       <span className="eyebrow text-ink-3">{label}</span>
       <span className="whitespace-nowrap">
         <span className={`stamp text-lg ${sport ? SPORT_UI[sport].text : "text-ink"}`}>{value}</span>
@@ -396,7 +396,7 @@ function BadgeTile({ badge }: { badge: Badge }) {
   return (
     <div
       title={badge.what}
-      className={`relative flex flex-col items-center rounded-2xl border-2 px-3 py-3.5 text-center ${
+      className={`relative flex flex-col items-center rounded-2xl border px-3 py-3.5 text-center ${
         earned ? "" : "border-line bg-tile opacity-70"
       }`}
       style={earned && t ? { borderColor: t.color, background: t.bg } : undefined}
@@ -411,7 +411,7 @@ function BadgeTile({ badge }: { badge: Badge }) {
       )}
 
       <div
-        className="flex h-12 w-12 items-center justify-center rounded-full border-2"
+        className="flex h-12 w-12 items-center justify-center rounded-full border"
         style={
           earned && t
             ? { borderColor: t.color, background: t.bg, color: t.color, boxShadow: `0 0 16px ${t.glow}` }
