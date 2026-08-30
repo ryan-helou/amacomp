@@ -5,7 +5,7 @@ import {
   activityPoints, elevationPointsFor, fmtKm, fmtPoints, pointsFor, unscoredGymIds,
 } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { formatDayRelative, type DayKey } from "@/lib/dates";
+import { RESET_HOUR, formatDay, formatDayRelative, weekStart, type DayKey } from "@/lib/dates";
 import { SPORT_UNIT, UNIT_LABEL, isGrant, type Activity } from "@/lib/types";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { SportMark } from "./SportMark";
@@ -15,16 +15,21 @@ import type { League } from "./useLeague";
 export function LogTab({
   league,
   refDay,
+  logDay,
 }: {
   league: League;
+  /** The real calendar day — the latest date a session may be filed under. */
   refDay: DayKey;
+  /** The day a session logged right now counts for. Before the 3 AM rollover
+   *  that is still yesterday, which is what a new log defaults to. */
+  logDay: DayKey;
 }) {
   const { state, busy, send } = league;
-  const [draft, setDraft] = useState<ActivityDraft>(() => emptyDraft(refDay));
+  const [draft, setDraft] = useState<ActivityDraft>(() => emptyDraft(logDay));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<ActivityDraft>(() => emptyDraft(refDay));
+  const [editDraft, setEditDraft] = useState<ActivityDraft>(() => emptyDraft(logDay));
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
@@ -61,7 +66,7 @@ export function LogTab({
         ),
     );
     setSaved(`${points} pts added.`);
-    setDraft({ ...emptyDraft(refDay), sport: draft.sport });
+    setDraft({ ...emptyDraft(logDay), sport: draft.sport });
     setTimeout(() => setSaved(null), 2600);
   }
 
@@ -104,6 +109,18 @@ export function LogTab({
     setConfirmDelete(null);
   }
 
+  // Between midnight and the rollover the board has already turned over but a
+  // session still counts for the day that ended, so the form's date looks
+  // "wrong" unless we say why. Only shown while the draft is on that default —
+  // once they move the date themselves the explanation no longer applies.
+  const inGraceWindow = logDay !== refDay;
+  const dateHint =
+    inGraceWindow && draft.occurredOn === logDay
+      ? `Before ${RESET_HOUR} AM, so this counts for ${formatDay(logDay)}${
+          weekStart(logDay) !== weekStart(refDay) ? " — last week" : ""
+        }. Change the date to put it on today instead.`
+      : null;
+
   return (
     <div className="space-y-8">
       <section>
@@ -118,6 +135,7 @@ export function LogTab({
             submitLabel="Add to the board"
             onSubmit={create}
             maxDate={refDay}
+            dateHint={dateHint}
           />
         </div>
         {saved && (

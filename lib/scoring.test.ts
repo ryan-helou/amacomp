@@ -38,7 +38,7 @@ function excuse(id: string, athleteId: string, day: string, points: number): Act
 }
 
 const ath = (id: string, name: string): Athlete => ({
-  id, name, resetHour: 0, avatarColor: null, avatarGlyph: null, avatarUrl: null,
+  id, name, avatarColor: null, avatarGlyph: null, avatarUrl: null,
 });
 
 /** A ride with a known ascent. `elevationM: null` elsewhere means "unknown". */

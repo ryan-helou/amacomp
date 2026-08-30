@@ -36,15 +36,14 @@ export async function PATCH(req: Request) {
   if (!me) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
 
   const body = (await req.json().catch(() => ({}))) as {
-    resetHour?: unknown;
     avatarColor?: unknown;
     avatarGlyph?: unknown;
   };
   const store = getStore();
 
-  // Avatar and resetHour come through the same endpoint so the settings sheet
-  // can dispatch either without a second route. Each field is optional; whichever
-  // was sent gets applied, and unknown/null values fall back to the default hash.
+  // Avatar fields come through this endpoint so the settings sheet doesn't need
+  // a second route. Each field is optional; whichever was sent gets applied, and
+  // unknown/null values fall back to the default hash.
   const hasAvatar =
     Object.prototype.hasOwnProperty.call(body, "avatarColor") ||
     Object.prototype.hasOwnProperty.call(body, "avatarGlyph");
@@ -71,19 +70,6 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Pick a valid colour and symbol." }, { status: 400 });
     }
     await store.setAvatar(me.id, color, glyph);
-  }
-
-  if (Object.prototype.hasOwnProperty.call(body, "resetHour")) {
-    const hour = Number(body.resetHour);
-    // Capped at 3 AM — later than that and a 5 AM run counts for yesterday,
-    // which stops being intuitive and starts looking like cheating the reset.
-    if (!Number.isInteger(hour) || hour < 0 || hour > 3) {
-      return NextResponse.json(
-        { error: "Pick an hour between midnight and 3 AM." },
-        { status: 400 },
-      );
-    }
-    await store.setResetHour(me.id, hour);
   }
 
   return NextResponse.json(await readState());

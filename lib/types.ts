@@ -37,13 +37,6 @@ export function elevationRateLabel(rate: number): string {
 export interface Athlete {
   id: string;
   name: string;
-  /**
-   * Hour (0–3, local) at which this athlete's day — and so their week — rolls
-   * over. 0 = midnight. Set to 3 for the night owls, so a 2 AM session still
-   * counts toward the day/week that's ending. Capped at 3: later than that,
-   * a morning run for the same day starts feeling like it's cheating the reset.
-   */
-  resetHour: number;
   /** Chosen lane colour (hex from AVATAR_PALETTE), or null to use the default hash.
    *  Still used to tint the feed + back the initials fallback. */
   avatarColor: string | null;

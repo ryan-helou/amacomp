@@ -9,7 +9,9 @@ import {
   standingsFor,
   unscoredGymIds,
 } from "@/lib/scoring";
-import { addDays, formatRange, periodRange, weekStart, type DayKey } from "@/lib/dates";
+import {
+  RESET_HOUR, addDays, formatRange, periodRange, weekStart, type DayKey,
+} from "@/lib/dates";
 import { SPORT_UNIT, isGrant, isExcuse, type Activity } from "@/lib/types";
 import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import {
@@ -25,7 +27,17 @@ import { SportMark } from "./SportMark";
 import { AthleteName, useReigningChampion } from "./ProfileContext";
 import type { League } from "./useLeague";
 
-export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) {
+export function WeekTab({
+  league,
+  refDay,
+  logDay,
+}: {
+  league: League;
+  /** The real calendar day — which week the tab opens on. */
+  refDay: DayKey;
+  /** The day a session logged right now counts for (see RESET_HOUR). */
+  logDay: DayKey;
+}) {
   const { state, send, busy } = league;
   // Athletes want to look at where they finished a past week — a leaderboard's
   // no fun if it evaporates on Monday. Nav is local to this tab; the rest of
@@ -40,6 +52,10 @@ export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) 
   );
   const weekLabel =
     weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : `${-weekOffset} weeks ago`;
+  // The board turns over at midnight but the scoring day doesn't until 3 AM, so
+  // for those few hours the fresh week on screen and where a session would land
+  // disagree. Say so plainly rather than letting it read as a lost log.
+  const inWeekGrace = weekStart(logDay) !== weekStart(refDay);
 
   const standings = useMemo(
     () => standingsFor(state.athletes, state.activities, state.settings, "week", weekRef),
@@ -123,6 +139,14 @@ export function WeekTab({ league, refDay }: { league: League; refDay: DayKey }) 
             <Chevron dir="right" />
           </button>
         </div>
+
+        {inWeekGrace && isCurrentWeek && (
+          <p className="mt-3 w-full rounded-xl border-2 border-line bg-tile px-4 py-2.5 text-center text-[0.8125rem] text-ink-2">
+            New week&apos;s open. Anything logged before{" "}
+            <span className="font-semibold text-ink">{RESET_HOUR} AM</span> still counts
+            for last week.
+          </p>
+        )}
 
         {/* Week is the landing tab, so the board needs to be reachable without
             scrolling. The ring is the hero once there's a score to show, but a

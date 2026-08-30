@@ -1,6 +1,7 @@
 import "server-only";
 import type { NewActivity, Store, StravaConn, StravaTokens } from "./db";
 import { SPORT_UNIT, type Sport } from "./types";
+import { RESET_HOUR } from "./dates";
 
 /**
  * Strava import — OAuth, token refresh, and turning a synced activity into a
@@ -183,14 +184,16 @@ export function sportOf(a: StravaActivity): Sport | null {
  *  Prefer start_date_local; when only UTC is present, shift by utc_offset so a
  *  7 PM ride doesn't land on tomorrow.
  *
- *  `resetHour` is the athlete's day rollover (see `todayWithReset`): at 3, a
- *  1 AM run still belongs to the previous day — and so to the previous week.
- *  A hand-logged session already arrives reset-shifted, because the client
- *  sends its own adjusted "today" as `occurredOn`. Applying the same shift here
+ *  `resetHour` is the league's day rollover (see `RESET_HOUR` / `logDayAt`): at
+ *  3, a 1 AM run still belongs to the previous day — and so to the previous
+ *  week. A hand-logged session already arrives reset-shifted, because the client
+ *  sends its own adjusted log day as `occurredOn`. Applying the same shift here
  *  is what keeps an auto-synced session on the day it would have landed on had
  *  the athlete typed it in; without it the two paths disagree over exactly the
- *  midnight-to-resetHour window the setting exists for. */
-export function activityLocalDay(a: StravaActivity, resetHour = 0): string | null {
+ *  midnight-to-RESET_HOUR window the rule exists for. It defaults to the league
+ *  hour rather than to 0 so that forgetting the argument cannot silently file a
+ *  session into the wrong week — the parameter stays only so tests can pin it. */
+export function activityLocalDay(a: StravaActivity, resetHour = RESET_HOUR): string | null {
   // start_date_local is wall-clock time in the athlete's zone (Strava tags it
   // with a "Z" it doesn't mean). Read the parts and do the arithmetic in UTC so
   // the result never depends on the server's own time zone.
@@ -216,7 +219,7 @@ export function activityLocalDay(a: StravaActivity, resetHour = 0): string | nul
 export function toImport(
   athleteId: string,
   a: StravaActivity,
-  resetHour = 0,
+  resetHour = RESET_HOUR,
 ): { input: NewActivity; stravaId: number } | null {
   const sport = sportOf(a);
   if (!sport || !a.id) return null;
@@ -243,17 +246,16 @@ export function toImport(
 }
 
 /** Import a batch for one athlete. Returns the ids of the activities newly logged.
- *  The athlete's reset hour is read here rather than passed in, so no caller can
- *  import a batch that ignores their day rollover. */
+ *  The day rollover is the league's (`RESET_HOUR`), the same one the log form
+ *  applies, so a synced session and a typed one land on the same day. */
 export async function importActivities(
   store: Store,
   athleteId: string,
   acts: StravaActivity[],
 ): Promise<string[]> {
-  const resetHour = (await store.getAthlete(athleteId))?.resetHour ?? 0;
   const created: string[] = [];
   for (const a of acts) {
-    const mapped = toImport(athleteId, a, resetHour);
+    const mapped = toImport(athleteId, a);
     if (!mapped) continue;
     const row = await store.importStravaActivity(mapped.input, mapped.stravaId);
     if (row) created.push(row.id);

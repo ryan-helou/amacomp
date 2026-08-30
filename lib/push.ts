@@ -2,7 +2,7 @@ import "server-only";
 import webpush from "web-push";
 import { getStore, type PushSub } from "./db";
 import { fmtPoints, standingsForRange } from "./scoring";
-import { periodRange, today } from "./dates";
+import { logToday, periodRange, today, weekStart } from "./dates";
 import type { Activity, Athlete, Settings } from "./types";
 
 /**
@@ -91,13 +91,19 @@ export async function notifyOvertakes(
 ): Promise<void> {
   if (!ensureConfigured()) return;
   if (newActivityIds.length === 0) return;
-  const range = periodRange("week", today());
   const fresh = new Set(newActivityIds);
-  // Only an activity inside the current week can move the weekly board.
-  const movesThisWeek = allActivities.some(
-    (a) => fresh.has(a.id) && a.occurredOn >= range[0] && a.occurredOn <= range[1],
-  );
-  if (!movesThisWeek) return;
+  // Two weeks can be "live" at once: before the 3 AM rollover the board already
+  // shows the new week while a session still lands in the one that ended, so a
+  // range taken straight off the clock would miss the overtake it caused. Take
+  // the week from the activity instead — but only if it's one of those two, so a
+  // backfilled session from a month ago doesn't push about a long-settled week.
+  const liveWeeks = new Set([weekStart(today()), weekStart(logToday())]);
+  const moved = allActivities
+    .filter((a) => fresh.has(a.id) && liveWeeks.has(weekStart(a.occurredOn)))
+    .map((a) => a.occurredOn)
+    .sort();
+  if (moved.length === 0) return;
+  const range = periodRange("week", moved[moved.length - 1]);
 
   const before = allActivities.filter((a) => !fresh.has(a.id));
   const aRank = new Map(
