@@ -52,7 +52,7 @@ export function HouseRulesSheet({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-ink/40" />
+      <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-scrim" />
       <div
         role="dialog"
         aria-modal="true"

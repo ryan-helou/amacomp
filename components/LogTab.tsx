@@ -245,7 +245,7 @@ export function LogTab({
                         <button
                           onClick={() => remove(a.id)}
                           disabled={busy}
-                          className="eyebrow rounded-lg bg-run px-3 py-1.5 text-tile disabled:opacity-40"
+                          className="eyebrow rounded-lg bg-run px-3 py-1.5 text-white disabled:opacity-40"
                         >
                           Delete
                         </button>

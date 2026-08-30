@@ -135,7 +135,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
               aria-selected={period === p.id}
               onClick={() => setPeriod(p.id)}
               className={`eyebrow flex-1 rounded-lg py-2.5 transition-colors ${
-                period === p.id ? "bg-ink text-tile" : "text-ink-2"
+                period === p.id ? "bg-ink text-on-ink" : "text-ink-2"
               }`}
             >
               {p.label}
@@ -159,7 +159,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
             aria-label="All disciplines"
             onClick={() => setSport("all")}
             className={`flex h-9 flex-1 items-center justify-center rounded-lg border transition-colors ${
-              sport === "all" ? "border-ink bg-ink text-tile" : "border-line bg-tile text-ink-3"
+              sport === "all" ? "border-ink bg-ink text-on-ink" : "border-line bg-tile text-ink-3"
             }`}
           >
             <Glyph name="trio" className="h-[18px] w-[18px]" />
