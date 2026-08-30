@@ -46,6 +46,36 @@ export interface Athlete {
    *  (fall back to coloured initials). The image bytes are served by /api/avatar, not
    *  carried in this payload. */
   avatarUrl: string | null;
+  /** Body weight in kg, for the cycling W/kg records. Pulled from the Strava
+   *  profile on connect and overridable by hand. `null` means unknown, which is
+   *  not the same as light — a rider with no weight gets no W/kg rather than a
+   *  made-up one. */
+  weightKg: number | null;
+}
+
+/**
+ * One activity's personal bests, extracted from its Strava streams.
+ *
+ * Keyed by Strava's activity id rather than ours: `activities` has no
+ * `strava_id` column, and the `strava_imports` ledger maps the id to an athlete
+ * and nothing else, so there is no way back from a logged row to its source.
+ * Carrying the athlete, sport and date here makes the record self-contained.
+ */
+export interface ActivityEfforts {
+  stravaId: number;
+  athleteId: string;
+  sport: Sport;
+  /** Local day, so records can be filtered to the season the same way points are. */
+  occurredOn: string;
+  /**
+   * `"<sport>:<target>"` -> seconds (run/swim) or watts (bike). An activity that
+   * produced nothing stores an empty object, which is what stops it from being
+   * fetched again on every sync.
+   */
+  bests: Record<string, number>;
+  /** The rider's weight when this was recorded, so a W/kg record stays true to
+   *  the day it was set rather than shifting when they next stand on a scale. */
+  weightKg: number | null;
 }
 
 // Twelve colours the athlete can pick from — deliberately kept apart from the
@@ -223,6 +253,8 @@ export interface AppState {
   activities: Activity[];
   settings: Settings;
   strava: StravaStatus;
+  /** Personal bests, one entry per Strava activity that produced any. */
+  efforts: ActivityEfforts[];
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {

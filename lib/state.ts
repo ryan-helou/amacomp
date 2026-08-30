@@ -39,11 +39,12 @@ function maybeBackgroundSyncStrava(store: Store, conn: StravaConn): void {
 export async function readState(): Promise<AppState> {
   const store = getStore();
   const me = await currentAthlete();
-  const [athletes, activities, settings, conn] = await Promise.all([
+  const [athletes, activities, settings, conn, efforts] = await Promise.all([
     store.listAthletes(),
     store.listActivities(),
     store.getSettings(),
     me ? store.getStravaByAthlete(me.id) : Promise.resolve(null),
+    store.listEfforts(),
   ]);
   if (conn) maybeBackgroundSyncStrava(store, conn);
   return {
@@ -57,5 +58,8 @@ export async function readState(): Promise<AppState> {
       connected: !!conn,
       lastSyncAtISO: conn?.lastSyncAtISO ?? null,
     },
+    // A season of bests is a few hundred small numbers, so they ride along with
+    // everything else and the Records tab computes locally like every other board.
+    efforts,
   };
 }

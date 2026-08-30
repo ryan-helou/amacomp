@@ -185,6 +185,46 @@ export function ScoringSheet({
           <AvatarPicker league={league} />
         </div>
 
+        {/* Weight — only ever used to divide watts into W/kg for the Records
+            tab. Pulled from Strava on connect where it's set; this is the
+            override, and the only way in for anyone Strava has nothing for. */}
+        <div className="mt-4 rounded-xl border-2 border-line bg-tile px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="weight" className="eyebrow block text-ink">
+                Your weight
+              </label>
+              <p className="mt-0.5 text-[0.8125rem] text-ink-2">
+                Only used for the watts-per-kilo records. Blank leaves them unset.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <input
+                id="weight"
+                type="number"
+                inputMode="decimal"
+                min={25}
+                max={250}
+                step="0.1"
+                defaultValue={state.me?.weightKg ?? ""}
+                disabled={busy}
+                onBlur={(e) => {
+                  const raw = e.target.value.trim();
+                  const next = raw === "" ? null : Number(raw);
+                  if (next !== null && !Number.isFinite(next)) return;
+                  if ((state.me?.weightKg ?? null) === next) return;
+                  void send("/api/session", {
+                    method: "PATCH",
+                    body: JSON.stringify({ weightKg: next }),
+                  });
+                }}
+                className="w-20 rounded-lg border-2 border-ink-3 bg-tile px-2 py-2 text-right text-sm text-ink focus:border-accent focus:outline-none"
+              />
+              <span className="eyebrow text-ink-3">kg</span>
+            </div>
+          </div>
+        </div>
+
         {/* The day rollover used to be a per-athlete picker here. It is now one
             fixed hour for the whole league (RESET_HOUR) — a shared board only
             reads as fair when a given moment means the same thing on everyone's
