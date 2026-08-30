@@ -11,7 +11,7 @@ import { LoginScreen } from "./LoginScreen";
 import { LogTab } from "./LogTab";
 import { WeekTab } from "./WeekTab";
 import { BoardTab } from "./BoardTab";
-import { FeedTab } from "./FeedTab";
+import { RecordsTab } from "./RecordsTab";
 import { TitlesTab } from "./TitlesTab";
 import { ScoringSheet } from "./ScoringSheet";
 import { HouseRulesSheet } from "./HouseRulesSheet";
@@ -22,7 +22,7 @@ import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
 import { ProfileProvider, AthleteName } from "./ProfileContext";
 
-type Tab = "log" | "week" | "board" | "titles" | "feed";
+type Tab = "log" | "week" | "board" | "titles" | "records";
 
 const MONTHS_LONG = [
   "January", "February", "March", "April", "May", "June",
@@ -35,15 +35,15 @@ function formatKickoff(key: DayKey): string {
   return `${MONTHS_LONG[d.getMonth()]} ${d.getDate()}`;
 }
 
-// Log sits dead-centre so it's under the thumb — it's the primary action. Its
-// neighbours are the tabs you'd hop to right after logging: Week (am I hitting
-// quota?) and Board (where do I stand?). Feed and Titles bracket the edges as
-// the social and aspirational tabs.
+// Log sits dead-centre so it's under the thumb — it's the primary action. To its
+// left are the two "where do I stand right now" tabs, Week then Board; to its
+// right the two long-game ones, Records then Titles. Reading left to right the
+// nav goes from this week to all time.
 const TABS: { id: Tab; label: string }[] = [
-  { id: "feed", label: "Feed" },
   { id: "week", label: "Week" },
-  { id: "log", label: "Log" },
   { id: "board", label: "Board" },
+  { id: "log", label: "Log" },
+  { id: "records", label: "Records" },
   { id: "titles", label: "Titles" },
 ];
 
@@ -346,7 +346,7 @@ export function AppShell({
         {tab === "week" && <WeekTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
         {tab === "titles" && <TitlesTab state={state} refDay={refDay} />}
-        {tab === "feed" && <FeedTab league={league} refDay={refDay} />}
+        {tab === "records" && <RecordsTab state={state} refDay={refDay} />}
       </main>
 
       {/* Solid background + its own compositing layer: iOS WebKit mis-repaints a

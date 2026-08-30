@@ -5,16 +5,23 @@ import { notifyOvertakes, notifyQuotaHits, pushEnabled, sendToAthlete } from "@/
 import { standingsFor, standingsForRange, fmtPoints } from "@/lib/scoring";
 import { addDays, parseDayKey, today, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
-import { stravaConfigured, syncAthlete } from "@/lib/strava";
+import { stravaConfigured, syncAthlete, syncEfforts } from "@/lib/strava";
 import { seasonByNumber, seasonFor } from "@/lib/season";
 
 export const dynamic = "force-dynamic";
+
+/** Stream requests per athlete per tick. Strava allows 100 requests per 15
+ *  minutes across an app AmaComp SHARES with Trifecta, so six athletes at five
+ *  each leaves plenty of headroom; the half-hourly cron finishes a season's
+ *  backfill within a day and keeps up trivially after that. */
+const EFFORT_BUDGET_PER_ATHLETE = 5;
 
 /**
  * Scheduled work, triggered by an external cron (GitHub Actions) hitting this
  * endpoint with the shared secret. The notify jobs are idempotent per week via
  * the `meta` store, so a double-fire never double-notifies.
- *   ?job=strava   — every 30 min: pull each linked athlete's new activities
+ *   ?job=strava   — every 30 min: pull each linked athlete's new activities, and
+ *                   fill in a few personal bests from their streams
  *   ?job=midweek  — Thursday: nudge whoever's last or off the quota pace
  *   ?job=season   — daily: announce a new season + crown the last one's champion
  *   ?job=results  — Monday: last week's champion + forfeit list
@@ -37,7 +44,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, skipped: "strava not configured" });
     }
     const conns = await store.listStravaConns();
+    const { seasonStart } = await store.getSettings();
     let athletes = 0;
+    let efforts = 0;
     const importedBy = new Map<string, string[]>();
     for (const conn of conns) {
       try {
@@ -46,6 +55,14 @@ export async function GET(req: Request) {
         athletes += 1;
       } catch {
         // One dead connection (revoked, rate-limited) shouldn't stop the rest.
+      }
+      try {
+        // Personal bests cost one request per activity, so each tick takes a
+        // small bite and the backfill finishes over several. Kept on the cron
+        // rather than the app-open sync so nobody waits on it to see the board.
+        efforts += await syncEfforts(store, conn, seasonStart, EFFORT_BUDGET_PER_ATHLETE);
+      } catch {
+        // Same again — a rate-limited or revoked athlete must not stall the rest.
       }
     }
 
@@ -73,7 +90,7 @@ export async function GET(req: Request) {
         ).catch(() => {});
       }
     }
-    return NextResponse.json({ ok: true, athletes, imported });
+    return NextResponse.json({ ok: true, athletes, imported, efforts });
   }
 
   if (!pushEnabled()) {

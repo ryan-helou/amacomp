@@ -38,6 +38,7 @@ export async function PATCH(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     avatarColor?: unknown;
     avatarGlyph?: unknown;
+    weightKg?: unknown;
   };
   const store = getStore();
 
@@ -70,6 +71,24 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Pick a valid colour and symbol." }, { status: 400 });
     }
     await store.setAvatar(me.id, color, glyph);
+  }
+
+  // Body weight, for the cycling W/kg records. Explicit null clears it back to
+  // unknown, which is a real state — it stops those records being computed
+  // rather than computing them against a guess.
+  if (Object.prototype.hasOwnProperty.call(body, "weightKg")) {
+    if (body.weightKg === null) {
+      await store.setWeight(me.id, null);
+    } else {
+      const kg = Number(body.weightKg);
+      if (!Number.isFinite(kg) || kg < 25 || kg > 250) {
+        return NextResponse.json(
+          { error: "Give a weight in kilograms, between 25 and 250." },
+          { status: 400 },
+        );
+      }
+      await store.setWeight(me.id, Math.round(kg * 10) / 10);
+    }
   }
 
   return NextResponse.json(await readState());

@@ -2,6 +2,7 @@ import "server-only";
 import type { NewActivity, Store, StravaConn, StravaTokens } from "./db";
 import { SPORT_UNIT, type Sport } from "./types";
 import { RESET_HOUR } from "./dates";
+import { effortsFor, type Streams } from "./efforts";
 
 /**
  * Strava import — OAuth, token refresh, and turning a synced activity into a
@@ -261,6 +262,112 @@ export async function importActivities(
     if (row) created.push(row.id);
   }
   return created;
+}
+
+/**
+ * The athlete's body weight in kg from their Strava profile, or null.
+ *
+ * Only on the DETAILED athlete, which is why this is its own request rather than
+ * something read off the token exchange. Strava returns 0 when the athlete never
+ * set one; that is "unknown", not "weightless".
+ */
+export async function fetchAthleteWeight(accessToken: string): Promise<number | null> {
+  const res = await fetch(`${API_BASE}/athlete`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const j = (await res.json()) as { weight?: unknown };
+  const kg = Number(j.weight);
+  return Number.isFinite(kg) && kg > 0 ? Math.round(kg * 100) / 100 : null;
+}
+
+/**
+ * The second-by-second streams a personal best is computed from.
+ *
+ * Returns null when Strava has no streams for the activity — a manually entered
+ * ride, or one recorded without GPS. A 404 here is an ordinary answer, not a
+ * failure, and the caller stores an empty result so it is never fetched again.
+ */
+export async function fetchStreams(
+  accessToken: string,
+  stravaId: number,
+): Promise<Streams | null> {
+  const p = new URLSearchParams({ keys: "time,distance,watts", key_by_type: "true" });
+  const res = await fetch(`${API_BASE}/activities/${stravaId}/streams?${p.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const j = (await res.json()) as Record<string, { data?: unknown } | undefined>;
+  const nums = (key: string): number[] | undefined => {
+    const data = j[key]?.data;
+    return Array.isArray(data) ? data.map((v) => Number(v)) : undefined;
+  };
+  const time = nums("time");
+  if (!time || time.length < 2) return null;
+  return { time, distance: nums("distance"), watts: nums("watts") };
+}
+
+/**
+ * Fill in personal bests for one athlete, a few activities at a time.
+ *
+ * Streams are one request per activity, and Strava allows 100 requests every 15
+ * minutes across an app that AmaComp shares with Trifecta — so this takes a
+ * small budget per run and lets the half-hourly cron finish the backfill over
+ * several ticks rather than spending the whole allowance at once and locking
+ * both apps out. Everything examined is recorded, including activities that
+ * produced nothing, so the same streams are never paid for twice.
+ *
+ * Only activities from `seasonStart` onward are considered: the records are the
+ * league's, and the league started when it started.
+ */
+export async function syncEfforts(
+  store: Store,
+  conn: StravaConn,
+  seasonStart: string,
+  budget = 5,
+): Promise<number> {
+  const token = await validAccessToken(store, conn);
+
+  // Weight is needed to turn watts into W/kg. Refreshed only when we don't have
+  // one, so a hand-typed override isn't overwritten by a stale Strava profile.
+  const athlete = await store.getAthlete(conn.athleteId);
+  let weightKg = athlete?.weightKg ?? null;
+  if (weightKg === null) {
+    weightKg = await fetchAthleteWeight(token);
+    if (weightKg !== null) await store.setWeight(conn.athleteId, weightKg);
+  }
+
+  const afterEpoch = Math.floor(Date.parse(`${seasonStart}T00:00:00Z`) / 1000) - 86400;
+  const acts = await fetchRecentActivities(token, afterEpoch, 100);
+  const seen = await store.listEffortStravaIds(conn.athleteId);
+
+  let done = 0;
+  for (const a of acts) {
+    if (done >= budget) break;
+    if (!a.id || seen.has(a.id)) continue;
+    const sport = sportOf(a);
+    // Gym is flat — one workout, no distance and no curve to extract.
+    if (!sport || sport === "gym") continue;
+    const day = activityLocalDay(a);
+    if (!day || day < seasonStart) continue;
+
+    const streams = await fetchStreams(token, a.id);
+    const bests = streams ? effortsFor(sport, streams) : {};
+    await store.saveEfforts({
+      stravaId: a.id,
+      athleteId: conn.athleteId,
+      sport,
+      occurredOn: day,
+      bests,
+      // Pinned at extraction time, so a W/kg record stays true to the day it was
+      // set rather than shifting every time the rider steps on a scale.
+      weightKg,
+    });
+    done++;
+  }
+  return done;
 }
 
 /** Pull one athlete's recent activities and import the new ones. Returns the

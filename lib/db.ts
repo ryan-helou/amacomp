@@ -4,6 +4,7 @@ import {
   SPORTS,
   type Activity,
   type ActivitySource,
+  type ActivityEfforts,
   type Athlete,
   type RateChange,
   type Settings,
@@ -99,6 +100,14 @@ export interface Store {
   deleteStrava(athleteId: string): Promise<void>;
   /** Log a Strava activity once. Returns the new row, or null if already imported. */
   importStravaActivity(input: NewActivity, stravaId: number): Promise<Activity | null>;
+  /** Body weight in kg for the W/kg records; null clears it back to unknown. */
+  setWeight(athleteId: string, kg: number | null): Promise<void>;
+  // Personal bests, extracted from Strava streams — see lib/efforts.ts.
+  listEfforts(): Promise<ActivityEfforts[]>;
+  /** The Strava activity ids we have already looked at, so a sync never pays for
+   *  the same streams twice. Includes ones that yielded nothing. */
+  listEffortStravaIds(athleteId: string): Promise<Set<number>>;
+  saveEfforts(row: ActivityEfforts): Promise<void>;
   // Push
   savePushSub(athleteId: string, sub: PushSub): Promise<void>;
   deletePushSub(endpoint: string): Promise<void>;
@@ -252,6 +261,7 @@ function toStravaConn(r: {
 function toAthlete(r: {
   id: string;
   name: string;
+  weight_kg?: string | number | null;
   avatar_color?: string | null;
   avatar_glyph?: string | null;
   strava_photo_url?: string | null;
@@ -263,17 +273,48 @@ function toAthlete(r: {
   const avatarUrl = r.avatar_image_type
     ? `/api/avatar/${r.id}?v=${r.avatar_image_v ?? 0}`
     : (r.strava_photo_url ?? null);
+  const weight = r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg);
   return {
     id: r.id,
     name: r.name,
+    // Unknown stays null. A zero or nonsense weight would divide a power record
+    // into nonsense, so it is treated as "not set" rather than trusted.
+    weightKg: weight !== null && Number.isFinite(weight) && weight > 0 ? weight : null,
     avatarColor: r.avatar_color ?? null,
     avatarGlyph: r.avatar_glyph ?? null,
     avatarUrl,
   };
 }
 
+function toEfforts(r: {
+  strava_id: string | number;
+  athlete_id: string;
+  sport: string;
+  occurred_on: string;
+  bests: unknown;
+  weight_kg?: string | number | null;
+}): ActivityEfforts {
+  const weight = r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg);
+  const raw = (r.bests ?? {}) as Record<string, unknown>;
+  const bests: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const n = Number(v);
+    // A stored best that won't parse is dropped rather than defaulted — a made-up
+    // number here would be published as somebody's record.
+    if (Number.isFinite(n) && n > 0) bests[k] = n;
+  }
+  return {
+    stravaId: Number(r.strava_id),
+    athleteId: r.athlete_id,
+    sport: r.sport as Sport,
+    occurredOn: r.occurred_on,
+    bests,
+    weightKg: weight !== null && Number.isFinite(weight) && weight > 0 ? weight : null,
+  };
+}
+
 const ATHLETE_COLS =
-  "id, name, avatar_color, avatar_glyph, strava_photo_url, avatar_image_type, avatar_image_v";
+  "id, name, weight_kg, avatar_color, avatar_glyph, strava_photo_url, avatar_image_type, avatar_image_v";
 
 class PgStore implements Store {
   private pool: PgPool;
@@ -293,6 +334,11 @@ class PgStore implements Store {
             name_lower TEXT UNIQUE NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
+        // Body weight, for the cycling W/kg records. Nullable: unknown is a real
+        // and common state, and it must not be confused with a light rider.
+        await this.pool.query(
+          `ALTER TABLE athletes ADD COLUMN IF NOT EXISTS weight_kg NUMERIC(5,2)`,
+        );
         // `athletes.reset_hour` is vestigial: the day rollover is now one fixed
         // hour for the whole league (RESET_HOUR in lib/dates), so nothing reads
         // the column. It is left on the production table rather than dropped —
@@ -413,6 +459,19 @@ class PgStore implements Store {
         // Ledger of every Strava activity we've already imported. Kept separate
         // from `activities` so deleting an imported log doesn't make the poller
         // re-create it on the next tick.
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS strava_efforts (
+            strava_id BIGINT PRIMARY KEY,
+            athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            sport TEXT NOT NULL,
+            occurred_on DATE NOT NULL,
+            bests JSONB NOT NULL,
+            weight_kg NUMERIC(5,2),
+            fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
+        await this.pool.query(
+          `CREATE INDEX IF NOT EXISTS strava_efforts_athlete_idx ON strava_efforts (athlete_id)`,
+        );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS strava_imports (
             strava_id BIGINT PRIMARY KEY,
@@ -672,6 +731,45 @@ class PgStore implements Store {
     return this.createActivity(input, "strava");
   }
 
+  async setWeight(athleteId: string, kg: number | null): Promise<void> {
+    await this.init();
+    await this.pool.query("UPDATE athletes SET weight_kg = $2 WHERE id = $1", [
+      athleteId,
+      kg,
+    ]);
+  }
+
+  async listEfforts(): Promise<ActivityEfforts[]> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT strava_id, athlete_id, sport,
+              to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, bests, weight_kg
+         FROM strava_efforts`,
+    );
+    return r.rows.map(toEfforts);
+  }
+
+  async listEffortStravaIds(athleteId: string): Promise<Set<number>> {
+    await this.init();
+    const r = await this.pool.query(
+      "SELECT strava_id FROM strava_efforts WHERE athlete_id = $1",
+      [athleteId],
+    );
+    return new Set(r.rows.map((x) => Number(x.strava_id)));
+  }
+
+  async saveEfforts(row: ActivityEfforts): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `INSERT INTO strava_efforts (strava_id, athlete_id, sport, occurred_on, bests, weight_kg)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+       ON CONFLICT (strava_id) DO UPDATE
+         SET bests = EXCLUDED.bests, weight_kg = EXCLUDED.weight_kg, fetched_at = now()`,
+      [row.stravaId, row.athleteId, row.sport, row.occurredOn,
+       JSON.stringify(row.bests), row.weightKg],
+    );
+  }
+
   async savePushSub(athleteId: string, sub: PushSub): Promise<void> {
     await this.init();
     await this.pool.query(
@@ -737,6 +835,7 @@ class MemoryStore implements Store {
     const created: Athlete = {
       id: newId(),
       name: clean,
+      weightKg: null,
       avatarColor: null,
       avatarGlyph: null,
       avatarUrl: null,
@@ -891,6 +990,24 @@ class MemoryStore implements Store {
     if (this.stravaImports.has(stravaId)) return null;
     this.stravaImports.add(stravaId);
     return this.createActivity(input, "strava");
+  }
+
+  private efforts = new Map<number, ActivityEfforts>(); // strava id → bests
+
+  async setWeight(athleteId: string, kg: number | null) {
+    const a = this.athletes.find((x) => x.id === athleteId);
+    if (a) a.weightKg = kg;
+  }
+  async listEfforts() {
+    return [...this.efforts.values()];
+  }
+  async listEffortStravaIds(athleteId: string) {
+    return new Set(
+      [...this.efforts.values()].filter((e) => e.athleteId === athleteId).map((e) => e.stravaId),
+    );
+  }
+  async saveEfforts(row: ActivityEfforts) {
+    this.efforts.set(row.stravaId, row);
   }
 
   private subs = new Map<string, StoredSub>(); // endpoint → sub
