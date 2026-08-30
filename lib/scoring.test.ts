@@ -1,6 +1,8 @@
-import { activityPoints, unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
+import { activityPoints, ratesOn, unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
+import { getStore } from "./db";
+import { periodRange } from "./dates";
 import { seasonByNumber, seasonChampions } from "./season";
-import { DEFAULT_SETTINGS, type Activity, type Athlete } from "./types";
+import { DEFAULT_SETTINGS, type Activity, type Athlete, type Settings } from "./types";
 
 /**
  * Scoring rules are the one part of this app where a bug costs someone a real
@@ -64,6 +66,85 @@ console.log("\nclimb points");
   // Grants carry flat points and have no session behind them.
   check("a grant never picks up climb points", activityPoints(
     { ...grant("r8", "a", "2026-08-18", 40), elevationM: 900 }, S), 40);
+}
+
+console.log("\ndated rate changes — the past does not move");
+{
+  // Mirrors the LIVE production settings row (swim 20 / bike 1 / run 5 / gym 5,
+  // climb 1 per 100 m on the bike) rather than DEFAULT_SETTINGS, whose base
+  // numbers are stale. Ryan's change: run 4/km and swim 15/km from Mon 31 Aug.
+  const PROD: Settings = {
+    multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
+    elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
+    rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
+    weeklyGoal: 100,
+    seasonStart: "2026-08-03",
+    forfeit: "Run a marathon",
+  };
+
+  check("before the change, run is still 5/km", ratesOn("2026-08-30", PROD).multipliers.run, 5);
+  check("before the change, swim is still 20/km", ratesOn("2026-08-30", PROD).multipliers.swim, 20);
+  check("on the day itself, run is 4/km (from is inclusive)",
+    ratesOn("2026-08-31", PROD).multipliers.run, 4);
+  check("on the day itself, swim is 15/km", ratesOn("2026-08-31", PROD).multipliers.swim, 15);
+  check("after the change, run stays 4/km", ratesOn("2026-09-14", PROD).multipliers.run, 4);
+
+  // A partial change must not disturb the sports it doesn't name. Writing all
+  // four rates into the entry would have reset bike and gym to stale numbers.
+  check("bike is untouched by the change", ratesOn("2026-09-14", PROD).multipliers.bike, 1);
+  check("gym is untouched by the change", ratesOn("2026-09-14", PROD).multipliers.gym, 5);
+  check("the bike climb rate is untouched",
+    ratesOn("2026-09-14", PROD).elevationPer100m.bike, 1);
+
+  // The headline: the SAME session scores differently either side of the line,
+  // and a session already logged keeps exactly what it earned.
+  check("10 km run on Sun 30 Aug scores 50",
+    activityPoints(run("d1", "a", "2026-08-30", 10), PROD), 50);
+  check("10 km run on Mon 31 Aug scores 40",
+    activityPoints(run("d2", "a", "2026-08-31", 10), PROD), 40);
+  check("2 km swim on Sun 30 Aug scores 40",
+    activityPoints({ ...run("d3", "a", "2026-08-30", 2), sport: "swim" as const }, PROD), 40);
+  check("2 km swim on Mon 31 Aug scores 30",
+    activityPoints({ ...run("d4", "a", "2026-08-31", 2), sport: "swim" as const }, PROD), 30);
+  // A ride is unaffected either side, climb included.
+  check("a 20 km ride with 500 m up scores 25 on both sides", [
+    activityPoints(ride("d5", "a", "2026-08-30", 20, 500), PROD),
+    activityPoints(ride("d6", "a", "2026-08-31", 20, 500), PROD),
+  ], [25, 25]);
+
+  // Because the change lands on a Monday, no single week straddles two eras —
+  // which is exactly why "the week of the 31st" is a clean place to move a rate.
+  const oldWeek = standingsForRange([ath("a", "A")],
+    [run("w1", "a", "2026-08-24", 10), run("w2", "a", "2026-08-30", 10)],
+    PROD, periodRange("week", "2026-08-26"));
+  check("the week before scores entirely at 5/km", oldWeek[0].points, 100);
+  const newWeek = standingsForRange([ath("a", "A")],
+    [run("w3", "a", "2026-08-31", 10), run("w4", "a", "2026-09-06", 10)],
+    PROD, periodRange("week", "2026-09-02"));
+  check("the week after scores entirely at 4/km", newWeek[0].points, 80);
+}
+
+console.log("\ndated rate changes — stacking and hygiene");
+{
+  const base: Settings = {
+    multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
+    elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
+    rateChanges: [
+      { from: "2026-08-31", multipliers: { run: 4 } },
+      { from: "2026-10-01", multipliers: { run: 3 } },
+    ],
+    weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
+  };
+  check("between the two changes, the first one holds", ratesOn("2026-09-15", base).multipliers.run, 4);
+  check("after the second, the newest wins", ratesOn("2026-10-02", base).multipliers.run, 3);
+  check("before any change, the base holds", ratesOn("2026-08-01", base).multipliers.run, 5);
+
+  // No changes at all must behave exactly like the old single-rate model.
+  const flat: Settings = { ...base, rateChanges: [] };
+  check("no changes -> base rates everywhere", [
+    ratesOn("2020-01-01", flat).multipliers.run,
+    ratesOn("2099-01-01", flat).multipliers.run,
+  ], [5, 5]);
 }
 
 console.log("\nunscoredGymIds");
@@ -250,5 +331,66 @@ console.log("\nseason window starts at kickoff, not the 1st");
   check("champion's points exclude warm-up", live.champion?.points, 20);
 }
 
-console.log(failures === 0 ? "\nAll passed.\n" : `\n${failures} FAILED\n`);
-process.exit(failures === 0 ? 0 : 1);
+// The store round-trip is async, so it runs last and owns the summary — the
+// runner's CJS transform has no top-level await.
+async function storedRateChangesAreNormalised() {
+  console.log("\nstored rate changes are normalised on read");
+  // The store is the in-memory one (no DATABASE_URL under test), and it runs the
+  // same mergeSettings as Postgres does.
+  const store = getStore();
+  await store.setSettings({
+    multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
+    elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
+    rateChanges: [
+      { from: "2026-10-01", multipliers: { run: 3 } },
+      { from: "2026-08-31", multipliers: { run: 4 } },
+      { from: "not-a-date", multipliers: { run: 99 } } as never,
+      { from: "2026-09-09" } as never,
+      { from: "2026-09-10", multipliers: { run: -1 } } as never,
+    ],
+    weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
+  });
+  const back = await store.getSettings();
+  check("sorted oldest-first", back.rateChanges.map((c) => c.from), ["2026-08-31", "2026-10-01"]);
+  check("a bad date is dropped, not defaulted",
+    back.rateChanges.some((c) => c.multipliers?.run === 99), false);
+  check("a change that moves nothing is dropped",
+    back.rateChanges.some((c) => c.from === "2026-09-09"), false);
+  check("a negative rate is dropped rather than applied",
+    back.rateChanges.some((c) => c.from === "2026-09-10"), false);
+
+  // PRODUCTION FIDELITY. The live settings row was written before rate changes
+  // existed, so it has no `rateChanges` key at all — exactly like this object.
+  // The change has to reach production through the same merge that carried
+  // `elevationPer100m` there, and it must not disturb the live bike/gym rates,
+  // which differ from the stale numbers in DEFAULT_SETTINGS.
+  await store.setSettings({
+    multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
+    elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
+    weeklyGoal: 100,
+    seasonStart: "2026-08-03",
+    forfeit: "Run a marathon",
+  } as never);
+  const prod = await store.getSettings();
+  check("a row with no rateChanges picks up the scheduled change",
+    prod.rateChanges, [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }]);
+  check("Sun 30 Aug on the live row: swim 20 / bike 1 / run 5 / gym 5", [
+    ratesOn("2026-08-30", prod).multipliers.swim,
+    ratesOn("2026-08-30", prod).multipliers.bike,
+    ratesOn("2026-08-30", prod).multipliers.run,
+    ratesOn("2026-08-30", prod).multipliers.gym,
+  ], [20, 1, 5, 5]);
+  check("Mon 31 Aug on the live row: swim 15 / bike 1 / run 4 / gym 5", [
+    ratesOn("2026-08-31", prod).multipliers.swim,
+    ratesOn("2026-08-31", prod).multipliers.bike,
+    ratesOn("2026-08-31", prod).multipliers.run,
+    ratesOn("2026-08-31", prod).multipliers.gym,
+  ], [15, 1, 4, 5]);
+  check("the live bike climb rate survives the merge",
+    ratesOn("2026-08-31", prod).elevationPer100m.bike, 1);
+}
+
+storedRateChangesAreNormalised().then(() => {
+  console.log(failures === 0 ? "\nAll passed.\n" : `\n${failures} FAILED\n`);
+  process.exit(failures === 0 ? 0 : 1);
+});

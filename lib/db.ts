@@ -1,9 +1,11 @@
 import type { Pool as PgPool } from "pg";
 import {
   DEFAULT_SETTINGS,
+  SPORTS,
   type Activity,
   type ActivitySource,
   type Athlete,
+  type RateChange,
   type Settings,
   type Sport,
 } from "./types";
@@ -116,6 +118,49 @@ export function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, " ");
 }
 
+/**
+ * Normalise the dated rate changes off a stored settings blob.
+ *
+ * A malformed entry is DROPPED rather than defaulted: an unreadable rate change
+ * has no safe fallback — guessing a number would re-score real weeks — so the
+ * only honest reading is that it isn't there. Entries are sorted oldest-first,
+ * which is what makes the newest applicable change win in `ratesOn`.
+ *
+ * Absent entirely (the state of the production row until the first admin save),
+ * it falls back to `DEFAULT_SETTINGS.rateChanges` the same way every other key
+ * here does.
+ */
+function mergeRateChanges(raw: unknown): RateChange[] {
+  if (!Array.isArray(raw)) return DEFAULT_SETTINGS.rateChanges;
+  const rate = (v: unknown): number | undefined =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : undefined;
+  const partial = (v: unknown): Partial<Record<Sport, number>> | undefined => {
+    if (!v || typeof v !== "object") return undefined;
+    const src = v as Record<string, unknown>;
+    const out: Partial<Record<Sport, number>> = {};
+    for (const sport of SPORTS) {
+      const n = rate(src[sport]);
+      if (n !== undefined) out[sport] = n;
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+  };
+
+  const changes: RateChange[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const e = entry as Record<string, unknown>;
+    const from = e.from;
+    if (typeof from !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(from)) continue;
+    const multipliers = partial(e.multipliers);
+    const elevationPer100m = partial(e.elevationPer100m);
+    // A change that moves nothing is noise; leaving it in would only make the
+    // admin sheet's "what changed when" list harder to read.
+    if (!multipliers && !elevationPer100m) continue;
+    changes.push({ from, ...(multipliers && { multipliers }), ...(elevationPer100m && { elevationPer100m }) });
+  }
+  return changes.sort((a, b) => a.from.localeCompare(b.from));
+}
+
 function mergeSettings(raw: unknown): Settings {
   const value = (raw ?? {}) as Partial<Settings>;
   const m = (value.multipliers ?? {}) as Partial<Record<Sport, number>>;
@@ -137,6 +182,7 @@ function mergeSettings(raw: unknown): Settings {
       run: num(e.run, DEFAULT_SETTINGS.elevationPer100m.run),
       gym: num(e.gym, DEFAULT_SETTINGS.elevationPer100m.gym),
     },
+    rateChanges: mergeRateChanges(value.rateChanges),
     weeklyGoal: num(value.weeklyGoal, DEFAULT_SETTINGS.weeklyGoal),
     seasonStart: isDay(value.seasonStart) ? value.seasonStart : DEFAULT_SETTINGS.seasonStart,
     forfeit:

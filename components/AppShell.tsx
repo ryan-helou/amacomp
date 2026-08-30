@@ -239,6 +239,7 @@ export function AppShell({
     return (
       <LoginScreen
         settings={state.settings}
+        refDay={refDay}
         busy={busy}
         onSubmit={(name) =>
           send("/api/session", { method: "POST", body: JSON.stringify({ name }) })
@@ -377,12 +378,17 @@ export function AppShell({
       )}
 
       {rulesOpen && (
-        <HouseRulesSheet settings={state.settings} onClose={() => setRulesOpen(false)} />
+        <HouseRulesSheet
+          settings={state.settings}
+          refDay={refDay}
+          onClose={() => setRulesOpen(false)}
+        />
       )}
 
       {scoringOpen && (
         <ScoringSheet
           league={league}
+          refDay={refDay}
           onClose={() => setScoringOpen(false)}
           onOpenRules={() => {
             setScoringOpen(false);

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
 import { currentAthlete, isAdmin } from "@/lib/session";
 import { readState } from "@/lib/state";
-import { SPORTS, type Settings, type Sport } from "@/lib/types";
-import { isDayKey } from "@/lib/dates";
+import { SPORTS, type RateChange, type Settings, type Sport } from "@/lib/types";
+import { isDayKey, today } from "@/lib/dates";
+import { ratesOn } from "@/lib/scoring";
 
 export const dynamic = "force-dynamic";
 
@@ -65,9 +66,44 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Give the forfeit some words." }, { status: 400 });
   }
 
+  // A rate edit takes effect FROM TODAY — it does not rewrite the season.
+  //
+  // The base rates are left exactly as they are and the difference is recorded
+  // as a dated change, so every week already ridden keeps the points it was
+  // ridden for, along with the forfeit it did or didn't trigger. Saving the same
+  // numbers back records nothing.
+  const current = await getStore().getSettings();
+  const from = today();
+  const effective = ratesOn(from, current);
+  const movedMultipliers: Partial<Record<Sport, number>> = {};
+  const movedElevation: Partial<Record<Sport, number>> = {};
+  for (const sport of SPORTS) {
+    if (multipliers[sport] !== effective.multipliers[sport]) {
+      movedMultipliers[sport] = multipliers[sport];
+    }
+    if (elevationPer100m[sport] !== effective.elevationPer100m[sport]) {
+      movedElevation[sport] = elevationPer100m[sport];
+    }
+  }
+  const moved =
+    Object.keys(movedMultipliers).length > 0 || Object.keys(movedElevation).length > 0;
+
+  // Drop any change already dated today so a run of edits in one sitting settles
+  // on the final numbers instead of stacking up entries nobody can read.
+  const rateChanges: RateChange[] = (current.rateChanges ?? []).filter((c) => c.from !== from);
+  if (moved) {
+    rateChanges.push({
+      from,
+      ...(Object.keys(movedMultipliers).length > 0 && { multipliers: movedMultipliers }),
+      ...(Object.keys(movedElevation).length > 0 && { elevationPer100m: movedElevation }),
+    });
+    rateChanges.sort((a, b) => a.from.localeCompare(b.from));
+  }
+
   const settings: Settings = {
-    multipliers,
-    elevationPer100m,
+    multipliers: current.multipliers,
+    elevationPer100m: current.elevationPer100m,
+    rateChanges,
     weeklyGoal: Math.round(weeklyGoal * 10) / 10,
     seasonStart: body.seasonStart,
     forfeit,

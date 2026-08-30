@@ -5,6 +5,7 @@ import {
   SPORT_ORDER,
   fmtKm,
   fmtPoints,
+  ratesOn,
   standingsForRange,
   type Standing,
 } from "@/lib/scoring";
@@ -242,8 +243,9 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
 
       <p className="pt-1 text-center font-mono text-xs text-ink-3">
         {SPORT_ORDER.map((s) => {
-          const climb = elevationRateLabel(state.settings.elevationPer100m?.[s] ?? 0);
-          return `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(state.settings.multipliers[s], SPORT_UNIT[s])}${climb ? ` +${climb}` : ""}`;
+          const rates = ratesOn(refDay, state.settings);
+          const climb = elevationRateLabel(rates.elevationPer100m?.[s] ?? 0);
+          return `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(rates.multipliers[s], SPORT_UNIT[s])}${climb ? ` +${climb}` : ""}`;
         }).join("  ·  ")}
       </p>
       <p className="text-center text-[0.6875rem] text-ink-3">Tap a lane for badges &amp; stats</p>

@@ -137,8 +137,30 @@ export function isExcuse(a: Activity): boolean {
  */
 export const GRANT_SPORT: Sport = "run";
 
+/**
+ * A dated change to the scoring rates, applying from `from` (inclusive) onward.
+ *
+ * Deliberately a PARTIAL override: a change that only names `run` moves run and
+ * leaves every other rate exactly as it was. Naming all four would mean a change
+ * written today silently re-asserts the other three, so a later correction to
+ * bike would be undone by this entry the moment it was applied.
+ */
+export interface RateChange {
+  /** Local day (`YYYY-MM-DD`) the new rates start counting, inclusive. */
+  from: string;
+  /** Points per km (per workout for gym), for the sports this change touches. */
+  multipliers?: Partial<Record<Sport, number>>;
+  /** Points per 100 m of ascent, for the sports this change touches. */
+  elevationPer100m?: Partial<Record<Sport, number>>;
+}
+
 export interface Settings {
-  /** Points per km for distance sports; points per workout for gym. */
+  /**
+   * The BASE rates — points per km for distance sports, per workout for gym.
+   * These are the rates in force from the start of time until the first entry in
+   * `rateChanges`. They are not necessarily today's rates: read those with
+   * `ratesOn(day, settings)`.
+   */
   multipliers: Record<Sport, number>;
   /**
    * Points per 100 m of ascent, per sport. Kept separate from `multipliers`
@@ -148,6 +170,16 @@ export interface Settings {
    * running later is a settings change rather than a code change.
    */
   elevationPer100m: Record<Sport, number>;
+  /**
+   * Rate changes, each applying from its own date forward, oldest first.
+   *
+   * Points are still derived at read time, but from the rates that were in force
+   * on the day the session happened rather than from one global set. That is the
+   * difference between "we changed the rules" and "we rewrote what everyone
+   * earned": a week already ridden keeps the points it was ridden for, and the
+   * forfeit it did or didn't trigger stands.
+   */
+  rateChanges: RateChange[];
   /** Points every athlete is expected to hit each week. */
   weeklyGoal: number;
   /** The competition only counts sessions on/after this local day (`YYYY-MM-DD`). */
@@ -159,6 +191,16 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   multipliers: { swim: 25, bike: 1, run: 5, gym: 30 },
   elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
+  // Ryan's call on 2026-08-30: run drops to 4/km and swim to 15/km from the week
+  // of Monday 31 August, with everything before it left exactly as scored.
+  //
+  // It lives here rather than in a migration because the stored settings row
+  // only carries the keys it has ever been saved with, and `mergeSettings` fills
+  // the rest from this object — the same route `elevationPer100m` took to
+  // production. The first admin save writes it into the row for real. Note this
+  // is a PARTIAL change: bike and gym are untouched, so the live 1/km and
+  // 5/workout survive even though the base numbers above are stale.
+  rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
   weeklyGoal: 100,
   seasonStart: "2026-08-03",
   forfeit: "Run a marathon — unless the lads excuse you",

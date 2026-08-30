@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SPORT_ORDER, fmtPoints } from "@/lib/scoring";
+import { SPORT_ORDER, fmtPoints, ratesOn } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { RESET_HOUR } from "@/lib/dates";
+import { RESET_HOUR, type DayKey } from "@/lib/dates";
 import { SPORT_UNIT, elevationRateLabel, rateLabel, type Settings } from "@/lib/types";
 import { Glyph } from "./Glyph";
 
@@ -15,9 +15,12 @@ import { Glyph } from "./Glyph";
  */
 export function HouseRulesSheet({
   settings,
+  refDay,
   onClose,
 }: {
   settings: Settings;
+  /** Today — the charter quotes the rates in force now. */
+  refDay: DayKey;
   onClose: () => void;
 }) {
   const startY = useRef<number | null>(null);
@@ -137,8 +140,9 @@ export function HouseRulesSheet({
 
         <p className="mt-5 border-t border-line pt-3 text-center font-mono text-[0.6875rem] text-ink-3">
           {SPORT_ORDER.map((s) => {
-            const climb = elevationRateLabel(settings.elevationPer100m?.[s] ?? 0);
-            return `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(settings.multipliers[s], SPORT_UNIT[s])}${climb ? ` +${climb}` : ""}`;
+            const rates = ratesOn(refDay, settings);
+            const climb = elevationRateLabel(rates.elevationPer100m?.[s] ?? 0);
+            return `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(rates.multipliers[s], SPORT_UNIT[s])}${climb ? ` +${climb}` : ""}`;
           }).join("  ·  ")}
         </p>
       </div>

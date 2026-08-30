@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { SPORT_ORDER } from "@/lib/scoring";
+import { SPORT_ORDER, ratesOn } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import {
   AVATAR_PALETTE,
   SPORT_UNIT,
   UNIT_ABBR,
-  type Settings,
   type Sport,
 } from "@/lib/types";
+import { formatDay, type DayKey } from "@/lib/dates";
 import { SportMark } from "./SportMark";
 import { Glyph } from "./Glyph";
 import { NotificationSetup } from "./NotificationSetup";
@@ -21,6 +21,17 @@ import type { League } from "./useLeague";
  * The rules panel. Everyone can read the scoring; only the admin gets inputs —
  * enforced on the server too, this is just the matching interface.
  */
+
+/** What a save sends. Notably NOT a whole `Settings`: the base rates and the
+ *  dated change list are the server's to work out, so this shape can't carry
+ *  them and a save can't rewrite the season by accident. */
+interface SettingsInput {
+  multipliers: Record<Sport, number>;
+  elevationPer100m: Record<Sport, number>;
+  weeklyGoal: number;
+  seasonStart: string;
+  forfeit: string;
+}
 /** Sport -> its key in the flat `form` object. Kept explicit so the form stays
  *  a flat record of strings (no nested state) without stringly-typed indexing. */
 const CLIMB_KEY = {
@@ -29,10 +40,14 @@ const CLIMB_KEY = {
 
 export function ScoringSheet({
   league,
+  refDay,
   onClose,
   onOpenRules,
 }: {
   league: League;
+  /** Today. The inputs show the rates in force NOW, and a save takes effect from
+   *  here forward — the base rates in `settings` may be an older era's. */
+  refDay: DayKey;
   onClose: () => void;
   /** Swap this sheet for the House Rules one — the rules are the clearest
    *  explainer in the app and the header "?" is easy to miss. */
@@ -41,15 +56,23 @@ export function ScoringSheet({
   const { state, busy, send } = league;
   const editable = state.isAdmin;
 
+  // Seed from the rates in force TODAY, not the base rates — after a dated
+  // change those are two different things, and the box has to show what is
+  // actually being scored right now.
+  const liveRates = ratesOn(refDay, state.settings);
+  // Changes that haven't started yet, so the admin can see what is already
+  // queued instead of scheduling a second one on top of it.
+  const upcoming = (state.settings.rateChanges ?? []).filter((c) => c.from > refDay);
+
   const [form, setForm] = useState(() => ({
-    swim: String(state.settings.multipliers.swim),
-    bike: String(state.settings.multipliers.bike),
-    run: String(state.settings.multipliers.run),
-    gym: String(state.settings.multipliers.gym),
-    climbSwim: String(state.settings.elevationPer100m?.swim ?? 0),
-    climbBike: String(state.settings.elevationPer100m?.bike ?? 0),
-    climbRun: String(state.settings.elevationPer100m?.run ?? 0),
-    climbGym: String(state.settings.elevationPer100m?.gym ?? 0),
+    swim: String(liveRates.multipliers.swim),
+    bike: String(liveRates.multipliers.bike),
+    run: String(liveRates.multipliers.run),
+    gym: String(liveRates.multipliers.gym),
+    climbSwim: String(liveRates.elevationPer100m?.swim ?? 0),
+    climbBike: String(liveRates.elevationPer100m?.bike ?? 0),
+    climbRun: String(liveRates.elevationPer100m?.run ?? 0),
+    climbGym: String(liveRates.elevationPer100m?.gym ?? 0),
     weeklyGoal: String(state.settings.weeklyGoal),
     seasonStart: state.settings.seasonStart,
     forfeit: state.settings.forfeit,
@@ -68,7 +91,9 @@ export function ScoringSheet({
   async function save() {
     setError(null);
     setSaved(false);
-    const payload: Settings = {
+    // Only the editable fields go over the wire. The server keeps the base rates
+    // and records any change as dated, so this deliberately can't send one.
+    const payload: SettingsInput = {
       multipliers: {
         swim: Number(form.swim),
         bike: Number(form.bike),
@@ -171,9 +196,40 @@ export function ScoringSheet({
           <h3 className="eyebrow text-ink-2">Scoring</h3>
           <p className="mt-1 text-sm text-ink-2">
             {editable
-              ? "Change the points per kilometre, the climbing rate, or the weekly quota. Every session already logged re-scores under the new rules."
+              ? "Change the points per kilometre, the climbing rate, or the weekly quota. New rates count from today forward — weeks already ridden keep the points they were ridden for."
               : "These are the league rules. Ryan sets them."}
           </p>
+          {upcoming.length > 0 && (
+            <div className="mt-3 rounded-xl border-2 border-accent/40 bg-accent/5 px-4 py-3">
+              <p className="eyebrow text-ink">Already scheduled</p>
+              <ul className="mt-1.5 space-y-1">
+                {upcoming.map((change) => (
+                  <li key={change.from} className="text-[0.8125rem] text-ink-2">
+                    <span className="font-semibold text-ink">
+                      From {formatDay(change.from)}
+                    </span>
+                    {" — "}
+                    {SPORT_ORDER.filter(
+                      (sport) =>
+                        change.multipliers?.[sport] !== undefined ||
+                        change.elevationPer100m?.[sport] !== undefined,
+                    )
+                      .map((sport) => {
+                        const bits: string[] = [];
+                        const m = change.multipliers?.[sport];
+                        if (m !== undefined) {
+                          bits.push(`${m} pts/${UNIT_ABBR[SPORT_UNIT[sport]]}`);
+                        }
+                        const e = change.elevationPer100m?.[sport];
+                        if (e !== undefined) bits.push(`${e}/100m`);
+                        return `${SPORT_UI[sport].label.toLowerCase()} ${bits.join(" + ")}`;
+                      })
+                      .join(" · ")}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="mt-3 space-y-3">
