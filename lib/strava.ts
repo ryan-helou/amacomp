@@ -285,9 +285,16 @@ export async function fetchAthleteWeight(accessToken: string): Promise<number | 
 /**
  * The second-by-second streams a personal best is computed from.
  *
- * Returns null when Strava has no streams for the activity — a manually entered
- * ride, or one recorded without GPS. A 404 here is an ordinary answer, not a
- * failure, and the caller stores an empty result so it is never fetched again.
+ * Returns null only when Strava DEFINITIVELY has no streams — a manually entered
+ * ride, or one recorded without GPS. That is an ordinary answer and the caller
+ * records it so the activity is never fetched again.
+ *
+ * Anything else throws. The distinction matters more than it looks: a 429 means
+ * "you asked too often", and treating that as "this ride has no data" would
+ * permanently file a real ride as having set no records, with nothing to signal
+ * it. Rate limits are shared with Trifecta and easy to hit during a backfill, so
+ * the failure mode is not hypothetical — a transient error must leave the
+ * activity untouched for the next tick to pick up.
  */
 export async function fetchStreams(
   accessToken: string,
@@ -298,7 +305,10 @@ export async function fetchStreams(
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
-  if (!res.ok) return null;
+  // 404 is Strava saying the activity has no streams. 401/429/5xx are Strava
+  // saying it won't tell us right now, which is not the same thing at all.
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Strava streams ${res.status}`);
   const j = (await res.json()) as Record<string, { data?: unknown } | undefined>;
   const nums = (key: string): number[] | undefined => {
     const data = j[key]?.data;
@@ -353,6 +363,10 @@ export async function syncEfforts(
     const day = activityLocalDay(a);
     if (!day || day < seasonStart) continue;
 
+    // A transient failure here throws and ends this athlete's run for the tick,
+    // deliberately: it must not be recorded as "examined and empty", and there
+    // is no point burning the rest of the budget on an endpoint that is already
+    // refusing us. The next tick resumes where this one stopped.
     const streams = await fetchStreams(token, a.id);
     const bests = streams ? effortsFor(sport, streams) : {};
     await store.saveEfforts({
