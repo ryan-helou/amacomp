@@ -341,7 +341,7 @@ export function AppShell({
         </div>
       )}
 
-      <main className="flex-1 px-5 pb-32 pt-5">
+      <main className="flex-1 px-5 pb-36 pt-5">
         {tab === "log" && <LogTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "week" && <WeekTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
@@ -361,18 +361,18 @@ export function AppShell({
           `--island` is opaque enough that the blur does less work than it looks
           like. The escape hatch is written at the top of globals.css.
 
-          The offset sits INSIDE the safe area on purpose: a little below what
-          the inset reserves, which on a phone with a home indicator leaves
-          roughly 14px of screen under the island. Lower stops being a styling
-          question — the indicator occupies about the bottom 13px and the system
-          swipe intercepts touches over it, so going further would eat taps on
-          the outer tabs. On a device with no inset the max() keeps a small gap
-          so it still reads as floating rather than welded to the edge. */}
+          The offset clears the safe area rather than sitting inside it, so the
+          island reads as floating well clear of the edge: about 26px of screen
+          under it on a phone with a home indicator, and 12px on a device with
+          no inset. The floor here is the indicator itself — it occupies roughly
+          the bottom 13px and the system swipe intercepts touches over it, so
+          dropping much below this starts eating taps on the outer tabs rather
+          than just looking tighter. Raising it is always safe. */}
       <nav
         aria-label="Sections"
-        className="island-layer pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md px-3 pb-[max(0.35rem,calc(env(safe-area-inset-bottom)-1.25rem))]"
+        className="island-layer pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md px-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)-0.5rem))]"
       >
-        <div className="glass-island pointer-events-auto flex gap-1 rounded-[1.75rem] border border-line p-1.5">
+        <div className="glass-island pointer-events-auto flex gap-1 rounded-[2rem] border border-line p-2">
           {TABS.map((t) => {
             const on = tab === t.id;
             return (
@@ -382,7 +382,7 @@ export function AppShell({
                 aria-current={on ? "page" : undefined}
                 /* The active tab has a shape, not just a colour — at this size a
                    tinted label alone is easy to miss on a moving background. */
-                className={`flex flex-1 items-center justify-center rounded-[1.35rem] py-2.5 transition-colors ${
+                className={`flex flex-1 items-center justify-center rounded-[1.5rem] py-3.5 transition-colors ${
                   on ? "border border-accent/30 bg-accent-soft" : "border border-transparent"
                 }`}
               >

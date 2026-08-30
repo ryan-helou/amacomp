@@ -128,7 +128,7 @@ export function ScoringSheet({
       <button
         aria-label="Close scoring"
         onClick={onClose}
-        className="absolute inset-0 bg-ink/40"
+        className="absolute inset-0 bg-scrim"
       />
       <div
         role="dialog"

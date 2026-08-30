@@ -129,7 +129,7 @@ export function AthleteSheet({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-ink/40" />
+      <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-scrim" />
       <div
         role="dialog"
         aria-modal="true"
@@ -313,7 +313,7 @@ export function AthleteSheet({
           type="button"
           aria-label="Close photo"
           onClick={() => setZoom(false)}
-          className="absolute inset-0 z-10 flex items-center justify-center bg-ink/90 p-6"
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/90 p-6"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- full-size profile photo viewer */}
           <img
