@@ -55,14 +55,22 @@ export function RecordsTab({
     return m;
   }, [state.athletes]);
 
+  // Current weights, so a W/kg record appears the moment someone fills theirs in
+  // rather than waiting for their rides to be re-extracted.
+  const weightById = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const a of state.athletes) m.set(a.id, a.weightKg);
+    return m;
+  }, [state.athletes]);
+
   const rows = useMemo(
-    () => recordsFor(sport, state.efforts, state.settings.seasonStart),
-    [sport, state.efforts, state.settings.seasonStart],
+    () => recordsFor(sport, state.efforts, state.settings.seasonStart, weightById),
+    [sport, state.efforts, state.settings.seasonStart, weightById],
   );
 
   const blocked = useMemo(
-    () => bikeBlockedReason(state.efforts, state.settings.seasonStart),
-    [state.efforts, state.settings.seasonStart],
+    () => bikeBlockedReason(state.efforts, state.settings.seasonStart, weightById),
+    [state.efforts, state.settings.seasonStart, weightById],
   );
 
   const ui = SPORT_UI[sport];

@@ -75,6 +75,8 @@ export function recordsFor(
   sport: Sport,
   efforts: ActivityEfforts[],
   seasonStart: string,
+  /** Each athlete's CURRENT weight, used when the effort has none pinned. */
+  weightById: Map<string, number | null> = new Map(),
 ): RecordRow[] {
   const direction = directionFor(sport);
   const better = (a: number, b: number) => (direction === "lower" ? a < b : a > b);
@@ -90,13 +92,24 @@ export function recordsFor(
       if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) continue;
 
       let value = raw;
+      let weightKg: number | null = null;
       if (sport === "bike") {
-        // W/kg needs a weight. Without one the ride still happened, but there is
-        // no honest number to rank it by — showing raw watts beside a W/kg
-        // column would put a heavier rider ahead on a figure that isn't the one
-        // being compared. So it sits out until a weight is filled in.
-        if (!effort.weightKg || effort.weightKg <= 0) continue;
-        value = raw / effort.weightKg;
+        // The weight pinned when the effort was extracted, else the athlete's
+        // current one.
+        //
+        // The fallback is not a nicety. Weight arrives from the same Strava sync
+        // that extracts the efforts, so on the first pass there is nothing to
+        // pin and every row stores null — which is exactly what happened in
+        // production: 103 rows, every one of them null, and a cycling record
+        // book that could never show anything no matter who set a weight later.
+        // Resolving at read time repairs those rows the moment a weight exists,
+        // with no re-sync and no backfill.
+        weightKg = effort.weightKg ?? weightById.get(effort.athleteId) ?? null;
+        // Still nothing to divide by: the ride happened, but there is no honest
+        // number to rank it by, and raw watts would put a heavier rider ahead on
+        // a figure that isn't the one being compared.
+        if (!weightKg || weightKg <= 0) continue;
+        value = raw / weightKg;
       }
 
       const held = bestByAthlete.get(effort.athleteId);
@@ -106,7 +119,7 @@ export function recordsFor(
           value,
           raw,
           occurredOn: effort.occurredOn,
-          weightKg: sport === "bike" ? effort.weightKg : null,
+          weightKg,
         });
       }
     }
@@ -134,11 +147,16 @@ export function filledCount(rows: RecordRow[]): number {
 export function bikeBlockedReason(
   efforts: ActivityEfforts[],
   seasonStart: string,
+  weightById: Map<string, number | null> = new Map(),
 ): "no-power" | "no-weight" | null {
   const rides = efforts.filter((e) => e.sport === "bike" && e.occurredOn >= seasonStart);
   if (rides.length === 0) return null;
   const withPower = rides.filter((e) => Object.keys(e.bests).length > 0);
   if (withPower.length === 0) return "no-power";
-  if (withPower.every((e) => !e.weightKg)) return "no-weight";
+  // Same resolution the records use, or the explanation would contradict the book.
+  const weighed = withPower.filter(
+    (e) => (e.weightKg ?? weightById.get(e.athleteId) ?? 0) > 0,
+  );
+  if (weighed.length === 0) return "no-weight";
   return null;
 }
