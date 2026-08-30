@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, Public_Sans, JetBrains_Mono, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import { ServiceWorker } from "@/components/ServiceWorker";
+import { ThemeScript } from "@/components/ThemeScript";
 
 const display = Archivo({
   variable: "--font-archivo",
@@ -66,9 +67,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      /* ThemeScript stamps `data-palette` on this element before React hydrates,
+         so the server's markup and the client's DOM differ here by design. */
+      suppressHydrationWarning
       className={`${display.variable} ${body.variable} ${mono.variable} ${stat.variable} h-full antialiased`}
     >
       <body className="min-h-full">
+        {/* Before anything paints, so a chosen colourway never flashes Deck first. */}
+        <ThemeScript />
         {children}
         <ServiceWorker />
       </body>

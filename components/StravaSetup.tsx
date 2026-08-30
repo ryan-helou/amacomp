@@ -38,7 +38,7 @@ export function StravaSetup({ league }: { league: League }) {
         : `Last sync ${timeAgo(s.lastSyncAtISO)} ago.`;
 
   return (
-    <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+    <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="eyebrow text-ink">Strava</div>
@@ -72,7 +72,7 @@ export function StravaSetup({ league }: { league: League }) {
           <button
             onClick={sync}
             disabled={busy}
-            className="eyebrow flex-1 rounded-lg border-2 border-line px-3 py-2 text-ink-2 disabled:opacity-40"
+            className="eyebrow flex-1 rounded-lg border border-line px-3 py-2 text-ink-2 disabled:opacity-40"
           >
             {busy ? "Syncing…" : "Sync now"}
           </button>

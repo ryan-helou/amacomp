@@ -61,7 +61,7 @@ export function HouseRulesSheet({
           transform: dragY ? `translateY(${dragY}px)` : undefined,
           transition: dragY ? "none" : "transform 0.25s ease",
         }}
-        className="relative max-h-[88dvh] overflow-y-auto rounded-t-3xl border-t-2 border-ink bg-deck px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5"
+        className="relative max-h-[88dvh] overflow-y-auto glass-raised rounded-t-3xl border-t border-line-2 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5"
       >
         <div
           onTouchStart={onTouchStart}
@@ -101,7 +101,7 @@ export function HouseRulesSheet({
           </div>
         </div>
 
-        <p className="mt-4 rounded-xl border-2 border-line bg-tile px-4 py-3 text-[0.8125rem] text-ink-2">
+        <p className="mt-4 rounded-xl pane border border-line bg-tile px-4 py-3 text-[0.8125rem] text-ink-2">
           Weeks run Monday to Sunday, and the day rolls over at{" "}
           <span className="font-semibold text-ink">{RESET_HOUR} AM</span> — the same hour
           for everyone. A Sunday night session that finishes at 1 AM still counts for
@@ -113,7 +113,7 @@ export function HouseRulesSheet({
         {/* End-of-season stakes */}
         <p className="eyebrow mb-2 text-ink-3">End of season</p>
         <div className="space-y-2">
-          <div className="flex items-start gap-3 rounded-xl border-2 border-gold/40 bg-gold/5 px-4 py-3">
+          <div className="flex items-start gap-3 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3">
             <span className="mt-0.5 shrink-0 text-gold" aria-hidden>
               <Glyph name="crown" className="h-5 w-5" />
             </span>
@@ -125,7 +125,7 @@ export function HouseRulesSheet({
               </p>
             </div>
           </div>
-          <div className="flex items-start gap-3 rounded-xl border-2 border-line bg-tile px-4 py-3">
+          <div className="flex items-start gap-3 rounded-xl pane border border-line bg-tile px-4 py-3">
             <span className="mt-0.5 shrink-0 text-run" aria-hidden>
               <Glyph name="flame" className="h-5 w-5" />
             </span>

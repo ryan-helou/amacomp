@@ -105,7 +105,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
               </>
             );
             const cls =
-              "flex w-full items-center gap-3 rounded-xl border-2 border-gold/40 bg-gold/5 px-4 py-3 text-left";
+              "flex w-full items-center gap-3 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3 text-left";
             return (
               <li key={r.key}>
                 {holder ? (
@@ -132,7 +132,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
             <button
               onClick={() => setShowUnclaimed((v) => !v)}
               aria-expanded={showUnclaimed}
-              className="flex w-full items-center gap-2 rounded-xl border-2 border-dashed border-line px-4 py-3 text-left"
+              className="flex w-full items-center gap-2 rounded-xl border border-dashed border-line px-4 py-3 text-left"
             >
               <span className="eyebrow flex-1 text-ink-2">
                 {unclaimed.length} record{unclaimed.length === 1 ? "" : "s"} up for grabs
@@ -144,7 +144,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
                 {unclaimed.map((r) => (
                   <li
                     key={r.key}
-                    className="flex items-center gap-3 rounded-xl border-2 border-line bg-tile px-4 py-2.5"
+                    className="flex items-center gap-3 rounded-xl pane border border-line bg-tile px-4 py-2.5"
                   >
                     <span className="shrink-0 text-ink-3">
                       {r.sport ? (
@@ -165,17 +165,17 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
       <section>
         <h2 className="eyebrow text-ink-2">Together so far</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-xl border-2 border-ink bg-tile px-4 py-3">
+          <div className="rounded-xl pane border border-line-2 bg-tile px-4 py-3">
             <div className="stamp accent-text text-2xl">{fmtKm(team.distanceKm)}</div>
             <div className="eyebrow mt-0.5 text-ink-3">km on the move</div>
           </div>
-          <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+          <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
             <div className="stamp text-2xl text-ink">{team.sessions}</div>
             <div className="eyebrow mt-0.5 text-ink-3">sessions logged</div>
           </div>
         </div>
         {team.sessions > 0 && (
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl border-2 border-line bg-tile px-4 py-3 font-mono text-xs">
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl pane border border-line bg-tile px-4 py-3 font-mono text-xs">
             {SPORT_ORDER.map((s) => {
               const amt = team.kmBySport[s];
               if (amt <= 0) return null;
@@ -195,7 +195,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
         </p>
 
         {!anyWins ? (
-          <p className="mt-3 rounded-2xl border-2 border-dashed border-line px-4 py-8 text-center text-sm text-ink-2">
+          <p className="mt-3 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-2">
             No weeks in the books yet. The first champion is crowned when this week
             closes.
           </p>
@@ -208,7 +208,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
                 <li key={row.athlete.id}>
                   <button
                     onClick={() => openProfile(row.athlete.id)}
-                    className={`flex w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left ${
+                    className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left ${
                       isMe ? "border-ink bg-tile" : "border-line bg-tile"
                     }`}
                   >
@@ -253,7 +253,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
           {seasons.map((s) => (
             <li
               key={s.season.number}
-              className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 ${
+              className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
                 s.status === "live"
                   ? "border-accent/40 bg-accent/5"
                   : s.champion
@@ -306,7 +306,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
       <section>
         <h2 className="eyebrow text-ink-2">Monthly champions</h2>
         {months.length === 0 ? (
-          <p className="mt-3 rounded-2xl border-2 border-dashed border-line px-4 py-8 text-center text-sm text-ink-2">
+          <p className="mt-3 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-2">
             The monthly hall of fame fills up as the months roll by.
           </p>
         ) : (
@@ -314,7 +314,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
             {months.map((m) => (
               <li
                 key={m.monthKey}
-                className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 ${
+                className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
                   m.isCurrent ? "border-accent/40 bg-accent/5" : "border-gold/40 bg-gold/5"
                 }`}
               >

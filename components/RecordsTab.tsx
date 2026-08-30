@@ -80,7 +80,7 @@ export function RecordsTab({
       <div
         role="tablist"
         aria-label="Record book"
-        className="flex gap-1 rounded-xl border-2 border-line bg-tile p-1"
+        className="flex gap-1 rounded-xl pane border border-line bg-tile p-1"
       >
         {SPORTS_WITH_RECORDS.map((s) => {
           const on = s === sport;
@@ -117,7 +117,7 @@ export function RecordsTab({
           type="button"
           onClick={() => setMineOnly((v) => !v)}
           aria-pressed={mineOnly}
-          className={`eyebrow shrink-0 rounded-lg border-2 px-3 py-1.5 transition-colors ${
+          className={`eyebrow shrink-0 rounded-lg border px-3 py-1.5 transition-colors ${
             mineOnly ? "border-ink bg-ink text-tile" : "border-line bg-tile text-ink-2"
           }`}
         >
@@ -131,7 +131,7 @@ export function RecordsTab({
 
       {/* ── Why cycling might be empty ─────────────────────────────── */}
       {sport === "bike" && blocked && (
-        <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+        <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
           <p className="text-[0.8125rem] text-ink-2">
             {blocked === "no-power" ? (
               <>
@@ -150,7 +150,7 @@ export function RecordsTab({
       )}
 
       {nothingSynced && (
-        <div className="rounded-xl border-2 border-line bg-tile px-4 py-3">
+        <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
           <p className="text-[0.8125rem] text-ink-2">
             Nothing pulled in yet. Bests are read from the Strava session behind each
             log, a few at a time, so the book fills itself in over the next few hours.
@@ -178,7 +178,7 @@ export function RecordsTab({
                 onClick={() => setExpanded(open ? null : row.key)}
                 aria-expanded={open}
                 disabled={entries.length === 0}
-                className={`flex w-full items-center gap-3 rounded-xl border-2 px-3.5 py-3 text-left transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
                   leader
                     ? "border-line bg-tile active:bg-tile/70"
                     : "border-dashed border-line/70 bg-transparent"
@@ -221,7 +221,7 @@ export function RecordsTab({
 
               {/* ── Everyone else on this row ─────────────────────────── */}
               {open && entries.length > 0 && (
-                <ol className="mt-1 space-y-1 rounded-xl border-2 border-line bg-deck-2/40 px-3.5 py-2.5">
+                <ol className="mt-1 space-y-1 rounded-xl border border-line bg-deck-2/40 px-3.5 py-2.5">
                   {entries.map((entry, i) => (
                     <li
                       key={entry.athleteId}
