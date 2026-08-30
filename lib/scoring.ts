@@ -3,14 +3,53 @@ import { SPORTS, SPORT_UNIT, isGrant, isExcuse } from "./types";
 import { inRange, type DayKey, type Period, periodRange } from "./dates";
 import { MAX_SCORING_GYM_PER_DAY } from "./validate";
 
+/** The scoring rates in force on a given day. */
+export interface Rates {
+  multipliers: Record<Sport, number>;
+  elevationPer100m: Record<Sport, number>;
+}
+
 /**
- * Points are derived from distance at read time rather than frozen when an
- * activity is logged. The multipliers are the rules of the competition, so when
- * Ryan changes them the whole season re-scores — nobody keeps points that were
- * earned under a rule that no longer exists.
+ * The rates that applied on `day`: the base rates with every dated change whose
+ * `from` has arrived layered over them, oldest first.
+ *
+ * Points are still derived at read time — nothing is ever frozen into a row —
+ * but they are derived from the rules that were in force when the session
+ * happened. Changing a rate therefore moves the weeks ahead of it and leaves the
+ * weeks behind it exactly as they were scored, which is what stops a rule change
+ * from retroactively handing out or taking away a forfeit.
+ *
+ * Each change is a partial: one that names only `run` moves run alone.
  */
-export function pointsFor(km: number, sport: Sport, settings: Settings): number {
-  return km * (settings.multipliers[sport] ?? 0);
+export function ratesOn(day: DayKey, settings: Settings): Rates {
+  const multipliers = { ...settings.multipliers };
+  const elevationPer100m = { ...(settings.elevationPer100m ?? emptySportMap()) };
+  // `from` is inclusive, and the list is kept oldest-first, so the newest change
+  // that has already started is the last one applied and therefore wins.
+  for (const change of settings.rateChanges ?? []) {
+    if (change.from > day) continue;
+    for (const sport of SPORTS) {
+      const m = change.multipliers?.[sport];
+      if (typeof m === "number" && Number.isFinite(m)) multipliers[sport] = m;
+      const e = change.elevationPer100m?.[sport];
+      if (typeof e === "number" && Number.isFinite(e)) elevationPer100m[sport] = e;
+    }
+  }
+  return { multipliers, elevationPer100m };
+}
+
+/**
+ * Points for a distance on a given day. `day` is required rather than defaulted:
+ * a forgotten argument would score a session at the wrong era's rates, and the
+ * compiler catching that is worth more than the convenience.
+ */
+export function pointsFor(
+  km: number,
+  sport: Sport,
+  settings: Settings,
+  day: DayKey,
+): number {
+  return km * (ratesOn(day, settings).multipliers[sport] ?? 0);
 }
 
 /**
@@ -27,9 +66,10 @@ export function elevationPointsFor(
   elevationM: number | null,
   sport: Sport,
   settings: Settings,
+  day: DayKey,
 ): number {
   if (elevationM === null || !Number.isFinite(elevationM) || elevationM <= 0) return 0;
-  return (elevationM / 100) * (settings.elevationPer100m?.[sport] ?? 0);
+  return (elevationM / 100) * (ratesOn(day, settings).elevationPer100m?.[sport] ?? 0);
 }
 
 /**
@@ -45,9 +85,10 @@ export function activityPoints(
   // An admin grant carries its points directly — no sport, no distance.
   if (isGrant(a)) return a.points ?? 0;
   if (unscored?.has(a.id)) return 0;
+  // The day the session happened picks the rates — not today's.
   return (
-    pointsFor(a.km, a.sport, settings) +
-    elevationPointsFor(a.elevationM, a.sport, settings)
+    pointsFor(a.km, a.sport, settings, a.occurredOn) +
+    elevationPointsFor(a.elevationM, a.sport, settings, a.occurredOn)
   );
 }
 

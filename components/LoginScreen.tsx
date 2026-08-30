@@ -1,21 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { SPORT_ORDER } from "@/lib/scoring";
+import { SPORT_ORDER, ratesOn } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, type Settings } from "@/lib/types";
-import { formatDay } from "@/lib/dates";
+import { formatDay, type DayKey } from "@/lib/dates";
 import { SportMark } from "./SportMark";
 
 export function LoginScreen({
   settings,
+  refDay,
   busy,
   onSubmit,
 }: {
   settings: Settings;
+  /** Today — the rates on show are the ones in force now, not the base rates. */
+  refDay: DayKey;
   busy: boolean;
   onSubmit: (name: string) => Promise<string | null>;
 }) {
+  const rates = ratesOn(refDay, settings);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -51,10 +55,10 @@ export function LoginScreen({
             </span>
             <span className="eyebrow w-12 text-ink">{SPORT_UI[sport].label}</span>
             <span className="font-mono text-sm text-ink-2">
-              {settings.multipliers[sport]} pt{settings.multipliers[sport] === 1 ? "" : "s"} / {UNIT_LABEL[SPORT_UNIT[sport]]}
-              {(settings.elevationPer100m?.[sport] ?? 0) > 0 && (
+              {rates.multipliers[sport]} pt{rates.multipliers[sport] === 1 ? "" : "s"} / {UNIT_LABEL[SPORT_UNIT[sport]]}
+              {(rates.elevationPer100m?.[sport] ?? 0) > 0 && (
                 <span className="text-ink-3">
-                  {" "}+ {settings.elevationPer100m[sport]} / 100m up
+                  {" "}+ {rates.elevationPer100m[sport]} / 100m up
                 </span>
               )}
             </span>

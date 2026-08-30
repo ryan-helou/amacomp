@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SPORT_ORDER, elevationPointsFor, fmtPoints, pointsFor } from "@/lib/scoring";
+import { SPORT_ORDER, elevationPointsFor, fmtPoints, pointsFor, ratesOn } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { today, type DayKey } from "@/lib/dates";
 import { BIG_SESSION_KM, MAX_ELEVATION_M, MAX_NOTE } from "@/lib/validate";
@@ -61,13 +61,20 @@ export function ActivityForm({
   // A flat discipline (gym) has no amount to enter — the quantity is one workout.
   const km = isFlat ? 1 : Number(draft.km);
   const valid = isFlat || (Number.isFinite(km) && km > 0);
+  // Rates are read for the DAY BEING LOGGED, not today, so backdating a session
+  // into an earlier rate era previews the points it will actually score.
+  const rates = ratesOn(draft.occurredOn, settings);
   // Climb is only offered where it actually scores, so turning it on for another
   // discipline in the settings makes the field appear with no code change.
-  const climbRate = settings.elevationPer100m?.[draft.sport] ?? 0;
+  const climbRate = rates.elevationPer100m?.[draft.sport] ?? 0;
   const climbs = !isFlat && climbRate > 0;
   const elevationM = draft.elevation.trim() === "" ? null : Number(draft.elevation);
-  const climbPoints = climbs ? elevationPointsFor(elevationM, draft.sport, settings) : 0;
-  const points = valid ? pointsFor(km, draft.sport, settings) + climbPoints : 0;
+  const climbPoints = climbs
+    ? elevationPointsFor(elevationM, draft.sport, settings, draft.occurredOn)
+    : 0;
+  const points = valid
+    ? pointsFor(km, draft.sport, settings, draft.occurredOn) + climbPoints
+    : 0;
 
   // A distance well past what one session plausibly holds is far more often a
   // typo (100 typed as 1000) than a real ride. One extra tap to confirm — the
@@ -95,7 +102,7 @@ export function ActivityForm({
     const km = nextFlat ? "1" : isFlat ? "" : draft.km;
     // Drop any ascent the new discipline can't score, so switching bike -> run
     // never leaves an invisible number attached to the log.
-    const keepClimb = !nextFlat && (settings.elevationPer100m?.[sport] ?? 0) > 0;
+    const keepClimb = !nextFlat && (rates.elevationPer100m?.[sport] ?? 0) > 0;
     setDraft({ ...draft, sport, km, elevation: keepClimb ? draft.elevation : "" });
   }
 
@@ -128,11 +135,11 @@ export function ActivityForm({
                 <SportMark sport={sport} className="h-5 w-5" />
                 <span className="eyebrow">{ui.label}</span>
                 <span className="font-mono text-[0.625rem] leading-none">
-                  {rateLabel(settings.multipliers[sport], SPORT_UNIT[sport])}
+                  {rateLabel(rates.multipliers[sport], SPORT_UNIT[sport])}
                 </span>
-                {(settings.elevationPer100m?.[sport] ?? 0) > 0 && (
+                {(rates.elevationPer100m?.[sport] ?? 0) > 0 && (
                   <span className="font-mono text-[0.5625rem] leading-none opacity-70">
-                    +{elevationRateLabel(settings.elevationPer100m[sport])}
+                    +{elevationRateLabel(rates.elevationPer100m[sport])}
                   </span>
                 )}
               </button>

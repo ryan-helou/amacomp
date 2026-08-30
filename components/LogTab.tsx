@@ -58,11 +58,12 @@ export function LogTab({
       return;
     }
     const points = fmtPoints(
-      pointsFor(Number(draft.km), draft.sport, state.settings) +
+      pointsFor(Number(draft.km), draft.sport, state.settings, draft.occurredOn) +
         elevationPointsFor(
           draft.elevation.trim() === "" ? null : Number(draft.elevation),
           draft.sport,
           state.settings,
+          draft.occurredOn,
         ),
     );
     setSaved(`${points} pts added.`);
