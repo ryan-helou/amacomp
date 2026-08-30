@@ -1,5 +1,6 @@
 import { activityPoints, ratesOn, unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
 import { getStore } from "./db";
+import { ANNOUNCE_HOUR, announcementIsDue, rateAnnouncementFor } from "./announce";
 import { periodRange } from "./dates";
 import { seasonByNumber, seasonChampions } from "./season";
 import { DEFAULT_SETTINGS, type Activity, type Athlete, type Settings } from "./types";
@@ -145,6 +146,57 @@ console.log("\ndated rate changes — stacking and hygiene");
     ratesOn("2020-01-01", flat).multipliers.run,
     ratesOn("2099-01-01", flat).multipliers.run,
   ], [5, 5]);
+}
+
+console.log("\nthe scoring-change announcement");
+{
+  const PROD: Settings = {
+    multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
+    elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
+    rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
+    weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "Run a marathon",
+  };
+
+  const a = rateAnnouncementFor("2026-08-31", PROD);
+  check("it announces the change that started", a?.from, "2026-08-31");
+  // Diffed against the day before, so it can say "5 -> 4" rather than just "4",
+  // and so sports the change didn't name produce no row at all.
+  check("it lists exactly what moved", a?.moves, [
+    { sport: "swim", before: 20, after: 15, climb: false },
+    { sport: "run", before: 5, after: 4, climb: false },
+  ]);
+  check("nothing to announce before it starts", rateAnnouncementFor("2026-08-30", PROD), null);
+  check("it stops being news after a week",
+    rateAnnouncementFor("2026-09-08", PROD), null);
+  check("still news six days later", rateAnnouncementFor("2026-09-06", PROD)?.from, "2026-08-31");
+
+  // A change that restates the rates already in force moves nothing, so there is
+  // nothing to announce — this is what stops a no-op admin save from popping a
+  // full-screen card on everyone's phone.
+  const noop: Settings = { ...PROD, rateChanges: [{ from: "2026-08-31", multipliers: { run: 5 } }] };
+  check("a change that restates a rate announces nothing",
+    rateAnnouncementFor("2026-08-31", noop), null);
+
+  // The 6 AM gate. Before the 3 AM rollover a session still logs into yesterday
+  // at yesterday's rates, so announcing at 1 AM would be actively misleading.
+  check("ANNOUNCE_HOUR is 6", ANNOUNCE_HOUR, 6);
+  const due = (day: string, hour: number) => announcementIsDue(a!, day, hour);
+  check("not due at 1 AM on the day it starts", due("2026-08-31", 1), false);
+  check("not due at 5 AM", due("2026-08-31", 5), false);
+  check("due at 6 AM sharp", due("2026-08-31", 6), true);
+  check("due at 9 AM", due("2026-08-31", 9), true);
+  // Someone who was away should still be told, whatever time they open it.
+  check("due at any hour the next day", due("2026-09-01", 0), true);
+  check("never due before the day itself", due("2026-08-30", 23), false);
+
+  // Climb rates get their own row rather than being folded into the sport.
+  const climb: Settings = {
+    ...PROD,
+    rateChanges: [{ from: "2026-08-31", elevationPer100m: { bike: 2 } }],
+  };
+  check("a climbing change is announced as a climbing row",
+    rateAnnouncementFor("2026-08-31", climb)?.moves,
+    [{ sport: "bike", before: 1, after: 2, climb: true }]);
 }
 
 console.log("\nunscoredGymIds");

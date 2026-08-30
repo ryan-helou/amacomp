@@ -5,6 +5,7 @@ import { addDays, logToday, parseDayKey, today, weekStart, type DayKey } from "@
 import { fmtPoints, standingsFor } from "@/lib/scoring";
 import { reigningChampionId, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
 import type { AppState } from "@/lib/types";
+import { announcementIsDue, rateAnnouncementFor, type RateAnnouncement } from "@/lib/announce";
 import { useLeague } from "./useLeague";
 import { LoginScreen } from "./LoginScreen";
 import { LogTab } from "./LogTab";
@@ -16,6 +17,7 @@ import { ScoringSheet } from "./ScoringSheet";
 import { HouseRulesSheet } from "./HouseRulesSheet";
 import { Confetti } from "./Confetti";
 import { SeasonKickoff } from "./SeasonKickoff";
+import { PointsChange } from "./PointsChange";
 import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
 import { ProfileProvider, AthleteName } from "./ProfileContext";
@@ -159,6 +161,29 @@ export function AppShell({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot on mount, gated by a localStorage marker
     setKickoffSeason(season);
   }, [state.me, state.settings.seasonStart, refDay]);
+
+  // The scoring-change card. Same shape as the kickoff above: derived from
+  // settings rather than hard-coded, gated on the athlete's own clock, and
+  // marked seen up front so a reload can't replay it. It waits until 6 AM on the
+  // day a change starts — before the 3 AM rollover a session is still being
+  // logged into yesterday at yesterday's rates, and announcing the new ones then
+  // would be telling the athlete something untrue about the run in front of them.
+  const [pointsChange, setPointsChange] = useState<RateAnnouncement | null>(null);
+  useEffect(() => {
+    if (!state.me) return;
+    const announcement = rateAnnouncementFor(refDay, state.settings);
+    if (!announcement) return;
+    if (!announcementIsDue(announcement, refDay, new Date().getHours())) return;
+    const key = `amacomp-rates-${state.me.id}-${announcement.from}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch {
+      return; // private mode — skip rather than replay it on every open
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot, gated by a localStorage marker
+    setPointsChange(announcement);
+  }, [state.me, state.settings, refDay]);
 
   const [fireKey, setFireKey] = useState(0);
   useEffect(() => {
@@ -398,6 +423,15 @@ export function AppShell({
       )}
 
       <Confetti fireKey={fireKey} />
+
+      {/* The kickoff card wins if both land on the same open — a season starting
+          is the bigger news, and this one keeps its marker for next time. */}
+      {!kickoffSeason && pointsChange && (
+        <PointsChange
+          announcement={pointsChange}
+          onDismiss={() => setPointsChange(null)}
+        />
+      )}
 
       {kickoffSeason && state.me && (
         <SeasonKickoff
