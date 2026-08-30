@@ -2,7 +2,7 @@ import "server-only";
 import webpush from "web-push";
 import { getStore, type PushSub } from "./db";
 import { fmtPoints, standingsForRange } from "./scoring";
-import { logToday, periodRange, today, weekStart } from "./dates";
+import { leagueLogToday, leagueToday, periodRange, weekStart } from "./dates";
 import type { Activity, Athlete, Settings } from "./types";
 
 /**
@@ -97,7 +97,7 @@ export async function notifyOvertakes(
   // range taken straight off the clock would miss the overtake it caused. Take
   // the week from the activity instead — but only if it's one of those two, so a
   // backfilled session from a month ago doesn't push about a long-settled week.
-  const liveWeeks = new Set([weekStart(today()), weekStart(logToday())]);
+  const liveWeeks = new Set([weekStart(leagueToday()), weekStart(leagueLogToday())]);
   const moved = allActivities
     .filter((a) => fresh.has(a.id) && liveWeeks.has(weekStart(a.occurredOn)))
     .map((a) => a.occurredOn)
@@ -167,7 +167,7 @@ export async function notifyQuotaHits(
   const goal = settings.weeklyGoal;
   if (goal <= 0) return;
 
-  const range = periodRange("week", today());
+  const range = periodRange("week", leagueToday());
   const fresh = new Set(newActivityIds);
   // Same guard as notifyOvertakes: only activities that landed inside this
   // week can push someone across this week's quota line.

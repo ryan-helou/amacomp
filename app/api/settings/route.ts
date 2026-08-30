@@ -3,7 +3,7 @@ import { getStore } from "@/lib/db";
 import { currentAthlete, isAdmin } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { SPORTS, type RateChange, type Settings, type Sport } from "@/lib/types";
-import { isDayKey, today } from "@/lib/dates";
+import { isDayKey, leagueToday } from "@/lib/dates";
 import { ratesOn } from "@/lib/scoring";
 
 export const dynamic = "force-dynamic";
@@ -73,7 +73,7 @@ export async function PUT(req: Request) {
   // ridden for, along with the forfeit it did or didn't trigger. Saving the same
   // numbers back records nothing.
   const current = await getStore().getSettings();
-  const from = today();
+  const from = leagueToday();
   const effective = ratesOn(from, current);
   const movedMultipliers: Partial<Record<Sport, number>> = {};
   const movedElevation: Partial<Record<Sport, number>> = {};
