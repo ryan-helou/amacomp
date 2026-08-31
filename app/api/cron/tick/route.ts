@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
 import { readState } from "@/lib/state";
-import { notifyOvertakes, notifyQuotaHits, pushEnabled, sendToAthlete } from "@/lib/push";
+import { pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, standingsForRange, fmtPoints } from "@/lib/scoring";
 import { addDays, leagueToday, parseDayKey, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
-import { stravaConfigured, syncAthlete, syncEfforts } from "@/lib/strava";
+import { runStravaTick } from "@/lib/tick";
 import { seasonByNumber, seasonFor } from "@/lib/season";
 
 export const dynamic = "force-dynamic";
-
-/** Stream requests per athlete per tick. Strava allows 100 requests per 15
- *  minutes across an app AmaComp SHARES with Trifecta, so six athletes at five
- *  each leaves plenty of headroom; the half-hourly cron finishes a season's
- *  backfill within a day and keeps up trivially after that. */
-const EFFORT_BUDGET_PER_ATHLETE = 5;
 
 /**
  * Scheduled work, triggered by an external cron (GitHub Actions) hitting this
@@ -39,58 +33,11 @@ export async function GET(req: Request) {
 
   // Strava polling stands alone — it doesn't need push configured, and it reads
   // per-connection rather than the whole app state.
+  // The app schedules this itself now (see instrumentation.ts); this endpoint
+  // stays as a backup trigger and a way to force a sync by hand. The tick is
+  // idempotent, so both firing is harmless.
   if (job === "strava") {
-    if (!stravaConfigured()) {
-      return NextResponse.json({ ok: true, skipped: "strava not configured" });
-    }
-    const conns = await store.listStravaConns();
-    const { seasonStart } = await store.getSettings();
-    let athletes = 0;
-    let efforts = 0;
-    const importedBy = new Map<string, string[]>();
-    for (const conn of conns) {
-      try {
-        const created = await syncAthlete(store, conn, 3);
-        if (created.length) importedBy.set(conn.athleteId, created);
-        athletes += 1;
-      } catch {
-        // One dead connection (revoked, rate-limited) shouldn't stop the rest.
-      }
-      try {
-        // Personal bests cost one request per activity, so each tick takes a
-        // small bite and the backfill finishes over several. Kept on the cron
-        // rather than the app-open sync so nobody waits on it to see the board.
-        efforts += await syncEfforts(store, conn, seasonStart, EFFORT_BUDGET_PER_ATHLETE);
-      } catch {
-        // Same again — a rate-limited or revoked athlete must not stall the rest.
-      }
-    }
-
-    // Most sessions arrive here rather than through the log form, so this is
-    // where the "you just got passed" nudge actually earns its keep. Read state
-    // once, after every athlete has synced, so the standings reflect the full tick.
-    let imported = 0;
-    if (importedBy.size > 0) {
-      const state = await readState();
-      for (const [athleteId, ids] of importedBy) {
-        imported += ids.length;
-        await notifyOvertakes(
-          athleteId,
-          state.athletes,
-          state.activities,
-          ids,
-          state.settings,
-        ).catch(() => {});
-        await notifyQuotaHits(
-          athleteId,
-          state.athletes,
-          state.activities,
-          ids,
-          state.settings,
-        ).catch(() => {});
-      }
-    }
-    return NextResponse.json({ ok: true, athletes, imported, efforts });
+    return NextResponse.json(await runStravaTick());
   }
 
   if (!pushEnabled()) {

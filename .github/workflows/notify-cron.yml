@@ -1,14 +1,21 @@
 name: AmaComp cron
 
-# Scheduled push nudges + Strava polling. GitHub cron runs in UTC.
-#   - Strava sync:     every 30 min
+# Scheduled push nudges. GitHub cron runs in UTC.
+#
+# STRAVA POLLING IS NO LONGER HERE. GitHub only ran about eight of the ~44
+# half-hourly jobs it was asked for in a measured day, with gaps up to six and a
+# half hours, so personal bests could sit unextracted most of a day. The app
+# schedules that itself now (instrumentation.ts) and actually keeps to thirty
+# minutes. `workflow_dispatch` with job=strava still forces one by hand.
+#
+# The jobs below stay: they fire once a day or once a week, where an hour of
+# GitHub's drift costs nothing, and they need no extra process running.
 #   - Season roll:     daily 13:00 UTC (announces once per season via meta marker)
 #   - Weekly results:  Monday 12:00 UTC  (~08:00 America/Toronto)
 #   - Midweek nudge:   Thursday 22:00 UTC (~18:00 America/Toronto)
 #   - Quota deadline:  Sunday 22:00 UTC  (~18:00 America/Toronto)
 on:
   schedule:
-    - cron: "*/30 * * * *"
     - cron: "0 13 * * *"
     - cron: "0 12 * * 1"
     - cron: "0 22 * * 4"
