@@ -353,6 +353,17 @@ export async function syncEfforts(
   const acts = await fetchRecentActivities(token, afterEpoch, 100);
   const seen = await store.listEffortStravaIds(conn.athleteId);
 
+  // Backfill activity names onto rows extracted before names were stored. The
+  // listing is already in hand, so this costs no extra Strava call — only rows
+  // that have no name are touched.
+  await store
+    .fillEffortNames(
+      acts
+        .filter((a) => a.id && (a.name || "").trim())
+        .map((a) => ({ stravaId: a.id as number, name: (a.name as string).trim().slice(0, 120) })),
+    )
+    .catch(() => {});
+
   let done = 0;
   for (const a of acts) {
     if (done >= budget) break;
@@ -375,6 +386,7 @@ export async function syncEfforts(
       sport,
       occurredOn: day,
       bests,
+      name: (a.name || "").trim().slice(0, 120) || null,
       // Pinned at extraction time, so a W/kg record stays true to the day it was
       // set rather than shifting every time the rider steps on a scale.
       weightKg,
