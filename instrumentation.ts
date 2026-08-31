@@ -37,11 +37,14 @@ export async function register() {
     running = true;
     try {
       const r = await runStravaTick();
-      if (r.imported || r.efforts) {
-        console.log(
-          `[amacomp] tick: ${r.imported} imported, ${r.efforts} efforts, ${r.athletes} athletes`,
-        );
-      }
+      // Logged EVERY tick, not just productive ones. The thing being replaced
+      // here failed silently — GitHub simply didn't run the job, and nothing
+      // said so. An in-process scheduler can die the same quiet way, so a
+      // heartbeat every half hour is what makes "it stopped" visible at all.
+      console.log(
+        `[amacomp] tick: ${r.imported} imported, ${r.efforts} efforts, ` +
+          `${r.athletes} athletes${r.skipped ? ` (${r.skipped})` : ""}`,
+      );
     } catch (err) {
       console.error("[amacomp] tick failed", err);
     } finally {
