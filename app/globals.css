@@ -20,16 +20,22 @@
      THAT BUG WAS FIRST SEEN — the old tab bar did it over the leaderboard,
      which is why the bar has been solid ever since.
 
-     The tab island is a deliberate exception, mitigated exactly the way Manna
-     mitigates it: the filter sits on a NON-FIXED child of the fixed wrapper,
-     the island owns its own compositing layer through translateZ(0) and
-     will-change, and `--island` is opaque enough that the blur does less work
-     than it looks like.
+     The island was tried as an exception, with the filter on a NON-FIXED child
+     of an empty fixed wrapper — the mitigation Manna calls "as hard as the
+     platform allows". IT DID NOT HOLD. On 2026-08-30 the island floated up over
+     the content during momentum scroll on Ryan's iPhone, the same symptom as an
+     unmitigated fixed blurred bar. The escape hatch has been taken: the island
+     is now an opaque tinted pane and blurs nothing.
 
-     THE ESCAPE HATCH, if the bar ever floats mid-screen again: delete the two
-     backdrop-filter lines from `glass-island` and raise `--island` toward 0.92.
-     Everything else stays. NOTHING ELSE IN THIS APP MAY TAKE A BACKDROP-FILTER
-     WHILE FIXED OR STICKY — the header is sticky, so it stays opaque.
+     So the rule has no exceptions any more. NOTHING IN THIS APP MAY TAKE A
+     BACKDROP-FILTER WHILE FIXED OR STICKY, AND NOTHING PINNED TO THE VIEWPORT
+     MAY BLUR AT ALL — not even a non-fixed child of a fixed wrapper. The header
+     is sticky and stays opaque.
+
+     `glass-raised` (sheets) still blurs and has NOT shown the fault. A sheet is
+     modal and short-lived rather than pinned through every scroll of the app, so
+     it is not the same exposure — but it is the same mechanism, and if one ever
+     detaches the fix is identical: drop its filter and raise `--raised`.
 
   Glass only exists against something. A near-white pane on a near-white deck is
   paper, whatever the blur is doing, so every ground here is a mid tone. That is
@@ -84,7 +90,7 @@
   --lamp: rgb(255 255 255 / 0.92);
   --floor: rgb(9 38 56 / 0.28);
   --raised: rgb(250 253 255 / 0.9);
-  --island: rgb(255 255 255 / 0.84);
+  --island: rgb(255 255 255 / 0.94);
 }
 
 /* Slate — an overcast morning session. */
@@ -108,7 +114,7 @@
   --lamp: rgb(255 255 255 / 0.9);
   --floor: rgb(18 26 38 / 0.28);
   --raised: rgb(251 252 254 / 0.9);
-  --island: rgb(255 255 255 / 0.84);
+  --island: rgb(255 255 255 / 0.94);
 }
 
 /* Carbon — the track at night. The darkest scheme without being a dark mode:
@@ -133,7 +139,7 @@
   --lamp: rgb(214 230 245 / 0.16);
   --floor: rgb(0 0 0 / 0.5);
   --raised: rgb(38 44 51 / 0.94);
-  --island: rgb(45 52 60 / 0.9);
+  --island: rgb(45 52 60 / 0.96);
 }
 
 /* Clay — a hot road, late in the ride. */
@@ -157,7 +163,7 @@
   --lamp: rgb(255 250 245 / 0.92);
   --floor: rgb(70 40 26 / 0.26);
   --raised: rgb(255 251 247 / 0.9);
-  --island: rgb(255 252 249 / 0.84);
+  --island: rgb(255 252 249 / 0.94);
 }
 
 /* Moss — a trail run under cover. */
@@ -181,7 +187,7 @@
   --lamp: rgb(253 255 249 / 0.92);
   --floor: rgb(38 52 30 / 0.26);
   --raised: rgb(252 255 249 / 0.9);
-  --island: rgb(252 255 249 / 0.84);
+  --island: rgb(252 255 249 / 0.94);
 }
 
 /* Plum — the last hour of a night ride. */
@@ -205,7 +211,7 @@
   --lamp: rgb(254 252 255 / 0.92);
   --floor: rgb(44 28 58 / 0.26);
   --raised: rgb(254 252 255 / 0.9);
-  --island: rgb(254 252 255 / 0.84);
+  --island: rgb(254 252 255 / 0.94);
 }
 
 /* The material. Shared by every scheme — this is the glass, not the colour. */
@@ -296,18 +302,6 @@ body::after {
    --------------------------------------------------------------------------- */
 
 /*
-  A card. Blurs what is behind it, lifts off the deck, and catches a highlight
-  along its top edge. The saturation boost is most of what separates glass from
-  grey plastic: it pulls colour out of the backdrop instead of averaging it away.
-*/
-@utility glass {
-  background-image: linear-gradient(154deg, var(--sheen) 0%, transparent 44%, transparent 100%);
-  backdrop-filter: blur(var(--blur)) saturate(180%) brightness(1.06);
-  box-shadow: var(--glass-shadow), inset 0 1px 0 0 var(--glass-edge),
-    inset 0 0 0 1px var(--glass-inner);
-}
-
-/*
   A list row, a tile, a small card. Everything a pane needs EXCEPT the blur: the
   lit top edge, the sheen across the face, the shadow onto the deck. The fill is
   already translucent, so it takes its colour from the room behind it.
@@ -340,7 +334,12 @@ body::after {
 @utility glass-island {
   background-color: var(--island);
   background-image: linear-gradient(158deg, var(--sheen) 0%, transparent 48%);
-  backdrop-filter: blur(30px) saturate(190%);
+  /* NO backdrop-filter. This is the escape hatch, taken 2026-08-30 on Ryan's
+     iPhone: the island floated up over the content during momentum scroll.
+     Putting the filter on a non-fixed child of an empty fixed wrapper — the
+     mitigation Manna describes as "as hard as the platform allows" — was NOT
+     enough. It failed on real hardware exactly as the unmitigated version did.
+     Do not put it back. The tint below carries the pane on its own. */
   box-shadow: 0 20px 44px -14px rgb(0 0 0 / 0.44), 0 4px 12px -6px rgb(0 0 0 / 0.3),
     inset 0 1px 0 0 var(--glass-edge);
 }
