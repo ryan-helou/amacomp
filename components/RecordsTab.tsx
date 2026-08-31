@@ -202,11 +202,19 @@ export function RecordsTab({
                       me={leader.athleteId === meId}
                       className="h-7 w-7 shrink-0 text-[0.625rem]"
                     />
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink-2">
-                      <AthleteName
-                        id={leader.athleteId}
-                        name={byId.get(leader.athleteId)?.name ?? "—"}
-                      />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-ink-2">
+                        <AthleteName
+                          id={leader.athleteId}
+                          name={byId.get(leader.athleteId)?.name ?? "—"}
+                        />
+                      </span>
+                      {/* Which session it came off. A record reads completely
+                          differently when you can see it was set on "Brutal
+                          interval" rather than on a bare date. */}
+                      <span className="block truncate text-[0.6875rem] text-ink-3">
+                        {leader.name || formatDay(leader.occurredOn)}
+                      </span>
                     </span>
                     <span className="shrink-0 text-right">
                       <span className={`block font-mono text-base font-semibold ${ui.text}`}>
@@ -243,17 +251,30 @@ export function RecordsTab({
                         me={entry.athleteId === meId}
                         className="h-6 w-6 shrink-0 text-[0.5625rem]"
                       />
-                      <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-2">
-                        <AthleteName
-                          id={entry.athleteId}
-                          name={byId.get(entry.athleteId)?.name ?? "—"}
-                        />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[0.8125rem] text-ink-2">
+                          <AthleteName
+                            id={entry.athleteId}
+                            name={byId.get(entry.athleteId)?.name ?? "—"}
+                          />
+                        </span>
+                        <span className="block truncate text-[0.6875rem] text-ink-3">
+                          {entry.name ? `${entry.name} · ` : ""}
+                          {formatDay(entry.occurredOn)}
+                        </span>
                       </span>
-                      <span className="shrink-0 font-mono text-[0.6875rem] text-ink-3">
-                        {formatDay(entry.occurredOn)}
-                      </span>
-                      <span className="w-16 shrink-0 text-right font-mono text-[0.8125rem] text-ink">
-                        {primaryValue(row, entry)}
+                      <span className="shrink-0 text-right">
+                        <span className="block font-mono text-[0.8125rem] text-ink">
+                          {primaryValue(row, entry)}
+                          {row.sport === "bike" && (
+                            <span className="text-[0.625rem] font-normal text-ink-3"> W/kg</span>
+                          )}
+                        </span>
+                        {/* Watts, because W/kg alone is unreadable as a number
+                            you can compare to anything you know. */}
+                        <span className="block font-mono text-[0.625rem] text-ink-3">
+                          {secondaryValue(row, entry)}
+                        </span>
                       </span>
                     </li>
                   ))}

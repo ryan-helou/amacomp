@@ -116,6 +116,9 @@ export interface Store {
    */
   listEffortStravaIds(athleteId: string): Promise<Set<number>>;
   saveEfforts(row: ActivityEfforts): Promise<void>;
+  /** Fill in activity names on rows that have none, from the listing the sync
+   *  already fetches. One statement, and it never overwrites a name we have. */
+  fillEffortNames(pairs: { stravaId: number; name: string }[]): Promise<void>;
   // Push
   savePushSub(athleteId: string, sub: PushSub): Promise<void>;
   deletePushSub(endpoint: string): Promise<void>;
@@ -301,6 +304,7 @@ function toEfforts(r: {
   occurred_on: string;
   bests: unknown;
   weight_kg?: string | number | null;
+  name?: string | null;
 }): ActivityEfforts {
   const weight = r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg);
   const raw = (r.bests ?? {}) as Record<string, unknown>;
@@ -318,6 +322,7 @@ function toEfforts(r: {
     occurredOn: r.occurred_on,
     bests,
     weightKg: weight !== null && Number.isFinite(weight) && weight > 0 ? weight : null,
+    name: r.name ?? null,
   };
 }
 
@@ -479,6 +484,11 @@ class PgStore implements Store {
           )`);
         await this.pool.query(
           `CREATE INDEX IF NOT EXISTS strava_efforts_athlete_idx ON strava_efforts (athlete_id)`,
+        );
+        // The activity a record came off. Added later, so existing rows carry
+        // null until the sync fills them from its listing.
+        await this.pool.query(
+          `ALTER TABLE strava_efforts ADD COLUMN IF NOT EXISTS name TEXT`,
         );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS strava_imports (
@@ -751,7 +761,7 @@ class PgStore implements Store {
     await this.init();
     const r = await this.pool.query(
       `SELECT strava_id, athlete_id, sport,
-              to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, bests, weight_kg
+              to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, bests, weight_kg, name
          FROM strava_efforts`,
     );
     return r.rows.map(toEfforts);
@@ -771,12 +781,30 @@ class PgStore implements Store {
   async saveEfforts(row: ActivityEfforts): Promise<void> {
     await this.init();
     await this.pool.query(
-      `INSERT INTO strava_efforts (strava_id, athlete_id, sport, occurred_on, bests, weight_kg)
-       VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+      `INSERT INTO strava_efforts (strava_id, athlete_id, sport, occurred_on, bests, weight_kg, name)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
        ON CONFLICT (strava_id) DO UPDATE
-         SET bests = EXCLUDED.bests, weight_kg = EXCLUDED.weight_kg, fetched_at = now()`,
+         SET bests = EXCLUDED.bests, weight_kg = EXCLUDED.weight_kg,
+             name = COALESCE(EXCLUDED.name, strava_efforts.name), fetched_at = now()`,
       [row.stravaId, row.athleteId, row.sport, row.occurredOn,
-       JSON.stringify(row.bests), row.weightKg],
+       JSON.stringify(row.bests), row.weightKg, row.name],
+    );
+  }
+
+  async fillEffortNames(pairs: { stravaId: number; name: string }[]): Promise<void> {
+    if (pairs.length === 0) return;
+    await this.init();
+    // A single UPDATE ... FROM (VALUES ...) rather than one statement per
+    // activity: the sync calls this every tick with the whole listing.
+    const values = pairs
+      .map((_, i) => `($${i * 2 + 1}::bigint, $${i * 2 + 2}::text)`)
+      .join(", ");
+    const params = pairs.flatMap((p) => [p.stravaId, p.name]);
+    await this.pool.query(
+      `UPDATE strava_efforts e SET name = v.name
+         FROM (VALUES ${values}) AS v(strava_id, name)
+        WHERE e.strava_id = v.strava_id AND e.name IS NULL`,
+      params,
     );
   }
 
@@ -1020,6 +1048,12 @@ class MemoryStore implements Store {
   }
   async saveEfforts(row: ActivityEfforts) {
     this.efforts.set(row.stravaId, row);
+  }
+  async fillEffortNames(pairs: { stravaId: number; name: string }[]) {
+    for (const p of pairs) {
+      const e = this.efforts.get(p.stravaId);
+      if (e && !e.name) e.name = p.name;
+    }
   }
 
   private subs = new Map<string, StoredSub>(); // endpoint → sub

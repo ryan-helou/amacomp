@@ -30,6 +30,9 @@ export interface RecordEntry {
   occurredOn: string;
   /** The weight the W/kg was computed against; null for run and swim. */
   weightKg: number | null;
+  /** The activity it was set on. A record reads very differently when you can
+   *  see it came off "Brutal interval" rather than just a date. */
+  name: string | null;
 }
 
 export interface RecordRow {
@@ -120,6 +123,7 @@ export function recordsFor(
           raw,
           occurredOn: effort.occurredOn,
           weightKg,
+          name: effort.name,
         });
       }
     }

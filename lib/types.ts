@@ -76,6 +76,11 @@ export interface ActivityEfforts {
   /** The rider's weight when this was recorded, so a W/kg record stays true to
    *  the day it was set rather than shifting when they next stand on a scale. */
   weightKg: number | null;
+  /** The Strava activity's name. A record reads very differently when you can
+   *  see it came off "Brutal interval" rather than just a date. Null on rows
+   *  extracted before names were stored; the sync fills those in from the
+   *  activity listing it already fetches, so no extra API call. */
+  name: string | null;
 }
 
 // Twelve colours the athlete can pick from — deliberately kept apart from the

@@ -213,7 +213,7 @@ function eff(
   stravaId: number, athleteId: string, sport: "run" | "swim" | "bike",
   occurredOn: string, bests: Record<string, number>, weightKg: number | null = null,
 ): ActivityEfforts {
-  return { stravaId, athleteId, sport, occurredOn, bests, weightKg };
+  return { stravaId, athleteId, sport, occurredOn, bests, weightKg, name: null };
 }
 
 console.log("\nrecordsFor — the league's book");
