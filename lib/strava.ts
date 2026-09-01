@@ -144,6 +144,29 @@ export interface StravaActivity {
   total_elevation_gain?: number; // meters of ascent
   moving_time?: number; // seconds
   elapsed_time?: number; // seconds
+  /** `[lat, lng]` where the activity started, or null/absent when it had no GPS
+   *  fix. For swims this is the pool/open-water tell — see `isOpenWater`. */
+  start_latlng?: [number, number] | null;
+}
+
+/**
+ * Whether a Strava swim happened in open water rather than a pool.
+ *
+ * Strava has no sport type for it — both are `Swim` — so this reads the GPS fix.
+ * A pool swim is measured by counting lengths off the wrist and carries no
+ * track; an open water swim CANNOT be measured without one, because distance
+ * comes from the line you swam. So a start coordinate is the tell.
+ *
+ * Verified against the league's real swims: two lake swims at 45.01, -71.61 have
+ * coordinates; a "Night Swim in 10m backyard" and two indoor sessions have none.
+ *
+ * Non-swims answer null — the question is meaningless for them, and null keeps
+ * it out of the column rather than writing a misleading `false`.
+ */
+export function isOpenWater(a: StravaActivity, sport: Sport | null): boolean | null {
+  if (sport !== "swim") return null;
+  const ll = a.start_latlng;
+  return Array.isArray(ll) && ll.length === 2 && Number.isFinite(ll[0]) && Number.isFinite(ll[1]);
 }
 
 export async function fetchRecentActivities(
@@ -241,7 +264,10 @@ export function toImport(
       ? Math.max(0, Math.round(a.total_elevation_gain * 10) / 10)
       : null;
   return {
-    input: { athleteId, sport, km, occurredOn: day, note, elevationM },
+    input: {
+      athleteId, sport, km, occurredOn: day, note, elevationM,
+      openWater: isOpenWater(a, sport),
+    },
     stravaId: a.id,
   };
 }

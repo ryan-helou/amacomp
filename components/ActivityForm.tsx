@@ -19,10 +19,12 @@ export interface ActivityDraft {
   /** Metres of ascent as typed. Empty string = not stated, which scores nothing
    *  (see `parseElevation`) — it is not the same as a flat "0". */
   elevation: string;
+  /** Swims only: open water rather than a pool. */
+  openWater: boolean;
 }
 
 export function emptyDraft(ref: DayKey = today()): ActivityDraft {
-  return { sport: "run", km: "", occurredOn: ref, note: "", elevation: "" };
+  return { sport: "run", km: "", occurredOn: ref, note: "", elevation: "", openWater: false };
 }
 
 /** Trim float noise off a typed distance for the confirm copy. */
@@ -73,8 +75,13 @@ export function ActivityForm({
     ? elevationPointsFor(elevationM, draft.sport, settings, draft.occurredOn)
     : 0;
   const points = valid
-    ? pointsFor(km, draft.sport, settings, draft.occurredOn) + climbPoints
+    ? pointsFor(km, draft.sport, settings, draft.occurredOn, draft.openWater) + climbPoints
     : 0;
+  // The open water question only exists for swims, and only when it actually
+  // changes the score — if both rates are equal there is nothing to ask about.
+  const openWaterRate = settings.openWaterPerKm ?? 0;
+  const poolRate = rates.multipliers.swim ?? 0;
+  const asksOpenWater = draft.sport === "swim" && openWaterRate !== poolRate;
 
   // A distance well past what one session plausibly holds is far more often a
   // typo (100 typed as 1000) than a real ride. One extra tap to confirm — the
@@ -103,7 +110,12 @@ export function ActivityForm({
     // Drop any ascent the new discipline can't score, so switching bike -> run
     // never leaves an invisible number attached to the log.
     const keepClimb = !nextFlat && (rates.elevationPer100m?.[sport] ?? 0) > 0;
-    setDraft({ ...draft, sport, km, elevation: keepClimb ? draft.elevation : "" });
+    // Leaving swim drops the open water flag, so it can never ride along on a run.
+    setDraft({
+      ...draft, sport, km,
+      elevation: keepClimb ? draft.elevation : "",
+      openWater: sport === "swim" ? draft.openWater : false,
+    });
   }
 
   return (
@@ -215,6 +227,36 @@ export function ActivityForm({
             {elevationRateLabel(climbRate)} on top of the distance. Strava fills
             this in on its own — leave it blank if you don&apos;t know.
           </p>
+        </div>
+      )}
+
+      {asksOpenWater && (
+        <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="eyebrow block text-ink">Open water</span>
+              <p className="mt-0.5 text-[0.8125rem] text-ink-2">
+                Lake, river or sea — {openWaterRate}/km instead of {poolRate}.
+              </p>
+            </div>
+            {/* A two-state segment rather than a checkbox: "pool" is a real
+                answer, not the absence of one, and it should be as tappable. */}
+            <div className="flex shrink-0 gap-1 rounded-lg border border-line bg-deck-2 p-1">
+              {([false, true] as const).map((v) => (
+                <button
+                  key={String(v)}
+                  type="button"
+                  aria-pressed={draft.openWater === v}
+                  onClick={() => setDraft({ ...draft, openWater: v })}
+                  className={`eyebrow rounded-md px-3 py-1.5 transition-colors ${
+                    draft.openWater === v ? "bg-ink text-on-ink" : "text-ink-2"
+                  }`}
+                >
+                  {v ? "Open" : "Pool"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

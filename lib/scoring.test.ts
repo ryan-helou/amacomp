@@ -28,16 +28,16 @@ function check(label: string, actual: unknown, expected: unknown) {
 const S = DEFAULT_SETTINGS; // gym 30/workout, run 5/km
 
 function gym(id: string, athleteId: string, day: string, createdAt: string): Activity {
-  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", points: null, elevationM: null, createdAt };
+  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", points: null, elevationM: null, openWater: null, createdAt };
 }
 function run(id: string, athleteId: string, day: string, km: number): Activity {
-  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", points: null, elevationM: null, createdAt: "2026-08-10T10:00:00Z" };
+  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", points: null, elevationM: null, openWater: null, createdAt: "2026-08-10T10:00:00Z" };
 }
 function grant(id: string, athleteId: string, day: string, points: number): Activity {
-  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, elevationM: null, createdAt: "2026-08-11T10:00:00Z" };
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" };
 }
 function excuse(id: string, athleteId: string, day: string, points: number): Activity {
-  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "excuse", points, elevationM: null, createdAt: "2026-08-11T10:00:00Z" };
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "excuse", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" };
 }
 
 const ath = (id: string, name: string): Athlete => ({
@@ -46,7 +46,7 @@ const ath = (id: string, name: string): Athlete => ({
 
 /** A ride with a known ascent. `elevationM: null` elsewhere means "unknown". */
 function ride(id: string, athleteId: string, day: string, km: number, elevationM: number | null): Activity {
-  return { id, athleteId, sport: "bike", km, occurredOn: day, note: null, source: "strava", points: null, elevationM, createdAt: "2026-08-10T10:00:00Z" };
+  return { id, athleteId, sport: "bike", km, occurredOn: day, note: null, source: "strava", points: null, elevationM, openWater: null, createdAt: "2026-08-10T10:00:00Z" };
 }
 
 console.log("\nclimb points");
@@ -78,6 +78,7 @@ console.log("\ndated rate changes — the past does not move");
     multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
     elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
     rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
+    openWaterPerKm: 20,
     weeklyGoal: 100,
     seasonStart: "2026-08-03",
     forfeit: "Run a marathon",
@@ -134,7 +135,7 @@ console.log("\ndated rate changes — stacking and hygiene");
       { from: "2026-08-31", multipliers: { run: 4 } },
       { from: "2026-10-01", multipliers: { run: 3 } },
     ],
-    weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
+    openWaterPerKm: 20, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
   };
   check("between the two changes, the first one holds", ratesOn("2026-09-15", base).multipliers.run, 4);
   check("after the second, the newest wins", ratesOn("2026-10-02", base).multipliers.run, 3);
@@ -154,7 +155,7 @@ console.log("\nthe scoring-change announcement");
     multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
     elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
     rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
-    weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "Run a marathon",
+    openWaterPerKm: 20, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "Run a marathon",
   };
 
   const a = rateAnnouncementFor("2026-08-31", PROD);
@@ -197,6 +198,61 @@ console.log("\nthe scoring-change announcement");
   check("a climbing change is announced as a climbing row",
     rateAnnouncementFor("2026-08-31", climb)?.moves,
     [{ sport: "bike", before: 1, after: 2, climb: true }]);
+}
+
+console.log("\nopen water swims");
+{
+  const PROD: Settings = {
+    multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
+    elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
+    rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
+    openWaterPerKm: 20, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
+  };
+  const swim = (day: string, km: number, open: boolean | null): Activity => ({
+    id: "s", athleteId: "a", sport: "swim", km, occurredOn: day, note: null,
+    source: "strava", points: null, elevationM: null, openWater: open,
+    createdAt: "2026-08-10T10:00:00Z",
+  });
+
+  // The rule: open water is 20/km whatever the pool rate has done.
+  check("open water after the rate cut is 20/km",
+    activityPoints(swim("2026-09-05", 2, true), PROD), 40);
+  check("a pool swim on the same day is 15/km",
+    activityPoints(swim("2026-09-05", 2, false), PROD), 30);
+
+  // Retroactive, and provably harmless: swim was 20/km league-wide until the
+  // 31st, so an open water swim before then scored 20 either way. That is why
+  // making this one rate retroactive costs nobody a point.
+  check("open water before the cut is 20/km, as it always was",
+    activityPoints(swim("2026-08-10", 1.556, true), PROD), 31.12);
+  check("and a pool swim then was also 20/km",
+    activityPoints(swim("2026-08-10", 1.556, false), PROD), 31.12);
+  // Rounded: 1.262 x 20 lands on 25.240000000000002 in binary floating point.
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  check("so reclassifying the past changes nothing", [
+    r2(activityPoints(swim("2026-08-10", 1.262, true), PROD)),
+    r2(activityPoints(swim("2026-08-10", 1.262, false), PROD)),
+  ], [25.24, 25.24]);
+
+  // UNKNOWN scores as a pool. A hand-logged swim from before the question was
+  // asked might be either, and reading it as open water would hand out points
+  // nobody claimed.
+  check("unknown is scored as a pool, not guessed upward",
+    activityPoints(swim("2026-09-05", 2, null), PROD), 30);
+
+  // The flag is meaningless anywhere else and must never pay out.
+  const openRun: Activity = { ...swim("2026-09-05", 10, true), sport: "run" };
+  check("a run flagged open water still scores as a run",
+    activityPoints(openRun, PROD), 40);
+
+  // Open water is NOT dated, so a later rate change to swim leaves it alone.
+  const cut: Settings = {
+    ...PROD,
+    rateChanges: [...PROD.rateChanges, { from: "2026-10-01", multipliers: { swim: 5 } }],
+  };
+  check("a later pool cut does not touch open water",
+    activityPoints(swim("2026-10-02", 2, true), cut), 40);
+  check("but the pool follows it", activityPoints(swim("2026-10-02", 2, false), cut), 10);
 }
 
 console.log("\nunscoredGymIds");
@@ -400,7 +456,7 @@ async function storedRateChangesAreNormalised() {
       { from: "2026-09-09" } as never,
       { from: "2026-09-10", multipliers: { run: -1 } } as never,
     ],
-    weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
+    openWaterPerKm: 20, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
   });
   const back = await store.getSettings();
   check("sorted oldest-first", back.rateChanges.map((c) => c.from), ["2026-08-31", "2026-10-01"]);
@@ -419,6 +475,7 @@ async function storedRateChangesAreNormalised() {
   await store.setSettings({
     multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
     elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
+    openWaterPerKm: 20,
     weeklyGoal: 100,
     seasonStart: "2026-08-03",
     forfeit: "Run a marathon",

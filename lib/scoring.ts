@@ -48,8 +48,30 @@ export function pointsFor(
   sport: Sport,
   settings: Settings,
   day: DayKey,
+  openWater: boolean | null = null,
 ): number {
-  return km * (ratesOn(day, settings).multipliers[sport] ?? 0);
+  return km * rateFor(sport, settings, day, openWater);
+}
+
+/**
+ * The points-per-unit a session earns.
+ *
+ * Open water is its own rate rather than a multiplier on the swim one, and
+ * unlike every other rate here it is NOT dated — see `Settings.openWaterPerKm`.
+ * An unknown `openWater` scores as a pool: a hand-logged swim from before the
+ * question was asked genuinely might be either, and reading it as open water
+ * would hand out points nobody claimed.
+ */
+export function rateFor(
+  sport: Sport,
+  settings: Settings,
+  day: DayKey,
+  openWater: boolean | null = null,
+): number {
+  if (sport === "swim" && openWater === true) {
+    return settings.openWaterPerKm ?? 0;
+  }
+  return ratesOn(day, settings).multipliers[sport] ?? 0;
 }
 
 /**
@@ -87,7 +109,7 @@ export function activityPoints(
   if (unscored?.has(a.id)) return 0;
   // The day the session happened picks the rates — not today's.
   return (
-    pointsFor(a.km, a.sport, settings, a.occurredOn) +
+    pointsFor(a.km, a.sport, settings, a.occurredOn, a.openWater) +
     elevationPointsFor(a.elevationM, a.sport, settings, a.occurredOn)
   );
 }

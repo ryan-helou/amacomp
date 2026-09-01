@@ -51,6 +51,7 @@ export function LogTab({
         occurredOn: draft.occurredOn,
         note: draft.note,
         elevationM: draft.elevation.trim() === "" ? null : Number(draft.elevation),
+        openWater: draft.sport === "swim" ? draft.openWater : null,
       }),
     });
     if (err) {
@@ -79,6 +80,7 @@ export function LogTab({
       sport: a.sport,
       km: String(a.km),
       occurredOn: a.occurredOn,
+      openWater: a.openWater === true,
       note: a.note ?? "",
       elevation: a.elevationM === null ? "" : String(a.elevationM),
     });
@@ -95,6 +97,7 @@ export function LogTab({
         note: editDraft.note,
         elevationM:
           editDraft.elevation.trim() === "" ? null : Number(editDraft.elevation),
+        openWater: editDraft.sport === "swim" ? editDraft.openWater : null,
       }),
     });
     if (err) {
