@@ -30,6 +30,9 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
   );
   const shownRecords = useMemo(() => records.filter((r) => r.holderId), [records]);
   const unclaimed = useMemo(() => records.filter((r) => !r.holderId), [records]);
+  // Which record's ranking is open. Tapping a record shows who else has a mark
+  // on it — the same move as the Records tab, so the two read the same way.
+  const [openRanking, setOpenRanking] = useState<string | null>(null);
   const seasons = useMemo(
     () =>
       seasonChampions(
@@ -106,18 +109,57 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
             );
             const cls =
               "flex w-full items-center gap-3 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3 text-left";
+            const open = openRanking === r.key;
             return (
               <li key={r.key}>
                 {holder ? (
                   <button
-                    onClick={() => setOpenRecord(r.key)}
-                    aria-label={`How ${holder.name} set the ${r.label} record`}
+                    onClick={() => setOpenRanking(open ? null : r.key)}
+                    aria-expanded={open}
+                    aria-label={`Rankings for ${r.label}`}
                     className={cls}
                   >
                     {body}
                   </button>
                 ) : (
                   <div className={cls}>{body}</div>
+                )}
+
+                {open && (
+                  <ol className="mt-1 space-y-1 rounded-xl border border-gold/30 bg-gold/[0.03] px-3.5 py-2.5">
+                    {r.entries.map((e, i) => {
+                      const who = athleteById.get(e.athleteId);
+                      const v = r.unit === "km" ? fmtKm(e.value) : fmtPoints(e.value);
+                      return (
+                        <li key={e.athleteId} className="flex items-center gap-2.5 py-1">
+                          <span className="w-4 shrink-0 font-mono text-xs text-ink-3">{i + 1}</span>
+                          {who && <Avatar athlete={who} className="h-6 w-6 shrink-0 text-[0.5625rem]" />}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[0.8125rem] text-ink-2">
+                              {who?.name ?? "—"}
+                            </span>
+                            <span className="block truncate font-mono text-[0.625rem] text-ink-3">
+                              {e.detail}
+                            </span>
+                          </span>
+                          <span className="shrink-0 font-mono text-[0.8125rem] text-ink">
+                            {v}
+                            <span className="text-[0.625rem] text-ink-3"> {r.unit}</span>
+                          </span>
+                        </li>
+                      );
+                    })}
+                    {/* The record sheet still lives here — it explains the top
+                        mark, which is a different question from who else has one. */}
+                    <li className="border-t border-gold/20 pt-2">
+                      <button
+                        onClick={() => setOpenRecord(r.key)}
+                        className="eyebrow text-[0.625rem] text-gold"
+                      >
+                        How {holder?.name} set it
+                      </button>
+                    </li>
+                  </ol>
                 )}
               </li>
             );

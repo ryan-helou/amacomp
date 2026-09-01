@@ -3,6 +3,7 @@ import { getStore } from "./db";
 import { ANNOUNCE_HOUR, announcementIsDue, rateAnnouncementFor } from "./announce";
 import { periodRange } from "./dates";
 import { seasonByNumber, seasonChampions } from "./season";
+import { hallOfFame } from "./records";
 import { DEFAULT_SETTINGS, type Activity, type Athlete, type Settings } from "./types";
 
 /**
@@ -253,6 +254,41 @@ console.log("\nopen water swims");
   check("a later pool cut does not touch open water",
     activityPoints(swim("2026-10-02", 2, true), cut), 40);
   check("but the pool follows it", activityPoints(swim("2026-10-02", 2, false), cut), 10);
+}
+
+console.log("\nhall of fame rankings");
+{
+  const S2 = DEFAULT_SETTINGS;
+  const acts = [
+    run("h1", "ryan", "2026-08-10", 12),
+    run("h2", "ryan", "2026-08-11", 8),
+    run("h3", "jona", "2026-08-10", 15),
+    run("h4", "alberto", "2026-08-12", 5),
+    gym("h5", "jona", "2026-08-10", "2026-08-10T10:00:00Z"),
+  ];
+  const hall = hallOfFame(acts, S2);
+
+  // THE INVARIANT: the headline holder is entries[0]. If these ever disagree the
+  // record book is showing one name and ranking another.
+  let mismatched = 0;
+  for (const r of hall) {
+    const top = r.entries[0] ?? null;
+    if ((r.holderId ?? null) !== (top?.athleteId ?? null)) mismatched++;
+    if (top && Math.abs(r.value - top.value) > 1e-9) mismatched++;
+  }
+  check("every headline matches the top of its own ranking", mismatched, 0);
+
+  const longestRun = hall.find((r) => r.key === "run")!;
+  check("longest run is held by the longest run", longestRun.holderId, "jona");
+  check("and the ranking lists everyone who has one",
+    longestRun.entries.map((e) => e.athleteId), ["jona", "ryan", "alberto"]);
+  // One entry per athlete: Ryan ran twice and appears once, at his best.
+  check("one entry per athlete, at their own best", longestRun.entries[1].value, 12);
+
+  // A record nobody has set has no ranking rather than a phantom row.
+  const swim = hall.find((r) => r.key === "swim")!;
+  check("an unclaimed record has an empty ranking", swim.entries, []);
+  check("and no holder", swim.holderId, null);
 }
 
 console.log("\nunscoredGymIds");

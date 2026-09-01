@@ -29,6 +29,14 @@ export type RecordContext =
   | { kind: "activity"; activityId: string }
   | { kind: "streak"; endDay: DayKey; length: number };
 
+/** One athlete's own best mark on a record, for the ranking behind it. */
+export interface HallEntry {
+  athleteId: string;
+  value: number;
+  detail: string;
+  context?: RecordContext;
+}
+
 export interface HallRecord {
   key: string;
   label: string;
@@ -44,6 +52,54 @@ export interface HallRecord {
   detail: string;
   /** How to re-derive the sessions behind this mark. Absent while unclaimed. */
   context?: RecordContext;
+  /**
+   * Everyone who has a mark on this record, best first — one entry per athlete,
+   * so a prolific week can't fill the list. `entries[0]` is the holder above.
+   * Empty while nobody has posted anything.
+   */
+  entries: HallEntry[];
+}
+
+/**
+ * Rank a `athleteId|period` map into one best-per-athlete list.
+ *
+ * `dir` matters: nearly every record here is "more is better", but fastest-to-
+ * quota is a race to the fewest days, and ranking it the wrong way round would
+ * crown whoever took longest.
+ */
+function rank(
+  map: Map<string, number>,
+  detail: (period: string) => string,
+  context: (period: string) => RecordContext,
+  dir: "higher" | "lower" = "higher",
+): HallEntry[] {
+  const per = new Map<string, HallEntry>();
+  for (const [k, value] of map) {
+    if (!Number.isFinite(value) || value <= 0) continue;
+    const [athleteId, period] = k.split("|");
+    const cur = per.get(athleteId);
+    const better = !cur || (dir === "higher" ? value > cur.value : value < cur.value);
+    if (better) per.set(athleteId, { athleteId, value, detail: detail(period), context: context(period) });
+  }
+  return [...per.values()].sort((a, b) =>
+    dir === "higher" ? b.value - a.value : a.value - b.value,
+  );
+}
+
+/** Same, for maps whose value is a set and whose size is the mark. */
+function rankSets(
+  map: Map<string, Set<string>>,
+  detail: (period: string) => string,
+  context: (period: string) => RecordContext,
+): HallEntry[] {
+  const sizes = new Map<string, number>();
+  for (const [k, set] of map) sizes.set(k, set.size);
+  return rank(sizes, detail, context);
+}
+
+/** Sort a per-athlete map that was accumulated directly. */
+function rankDirect(per: Map<string, HallEntry>): HallEntry[] {
+  return [...per.values()].sort((a, b) => b.value - a.value);
 }
 
 interface Peak {
@@ -58,6 +114,16 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
   const unscored = unscoredGymIds(activities);
   const pts = (a: Activity) => activityPoints(a, settings, unscored);
   const goal = settings.weeklyGoal;
+
+  // Per-athlete bests for the records that come straight off a single session.
+  const sessionBy = new Map<string, HallEntry>();
+  const runBy = new Map<string, HallEntry>();
+  const rideBy = new Map<string, HallEntry>();
+  const swimBy = new Map<string, HallEntry>();
+  const keepBest = (m: Map<string, HallEntry>, e: HallEntry) => {
+    const cur = m.get(e.athleteId);
+    if (!cur || e.value > cur.value) m.set(e.athleteId, e);
+  };
 
   let bigDaySession = emptyPeak(); // most points from one logged session
   let longestRun = emptyPeak();
@@ -81,6 +147,15 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     // Awarded points aren't a performance — they never set a record.
     if (isGrant(a)) continue;
     const p = pts(a);
+    const here = (value: number): HallEntry => ({
+      athleteId: a.athleteId, value,
+      detail: formatDay(a.occurredOn),
+      context: { kind: "activity", activityId: a.id },
+    });
+    if (p > 0) keepBest(sessionBy, here(p));
+    if (a.sport === "run" && a.km > 0) keepBest(runBy, here(a.km));
+    if (a.sport === "bike" && a.km > 0) keepBest(rideBy, here(a.km));
+    if (a.sport === "swim" && a.km > 0) keepBest(swimBy, here(a.km));
     if (p > bigDaySession.value) {
       bigDaySession = {
         holderId: a.athleteId,
@@ -218,6 +293,7 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     }
   }
   // Longest run of consecutive days with at least one session.
+  const streakBy = new Map<string, HallEntry>();
   let longestStreak = emptyPeak();
   for (const [holderId, daysSet] of athleteDays) {
     const days = [...daysSet].sort();
@@ -230,6 +306,13 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
         best = run;
         bestEnd = days[i];
       }
+    }
+    if (best > 0) {
+      keepBest(streakBy, {
+        athleteId: holderId, value: best,
+        detail: `to ${formatDay(bestEnd)}`,
+        context: { kind: "streak", endDay: bestEnd, length: best },
+      });
     }
     if (best > longestStreak.value) {
       longestStreak = {
@@ -264,6 +347,7 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
 
   // Longest run of consecutive weeks clearing the quota on earned points — a
   // gap week (or one that only got there on an admin grant) breaks the streak.
+  const quotaStreakBy = new Map<string, HallEntry>();
   let quotaStreak = emptyPeak();
   {
     const byAthlete = new Map<string, Map<string, number>>();
@@ -289,6 +373,14 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
           run = 0;
         }
       }
+      if (best > 0) {
+        const st = addDays(bestEnd, -7 * (best - 1));
+        keepBest(quotaStreakBy, {
+          athleteId: ath, value: best,
+          detail: formatRange([st, weekEnd(bestEnd)]),
+          context: { kind: "range", from: st, to: weekEnd(bestEnd) },
+        });
+      }
       if (best > quotaStreak.value) {
         const start = addDays(bestEnd, -7 * (best - 1));
         quotaStreak = {
@@ -302,6 +394,7 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
   }
 
   // Fewest days into a week anyone cleared the quota (Mon = 1 … Sun = 7).
+  const fastQuotaBy = new Map<string, HallEntry>();
   let fastestQuota = emptyPeak();
   {
     const byWeek = new Map<string, { day: string; pts: number }[]>();
@@ -329,6 +422,16 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
       const [ath, wk] = key.split("|");
       let di = 1;
       for (let cur = wk; cur < hitDay; cur = addDays(cur, 1)) di += 1;
+      {
+        const cur = fastQuotaBy.get(ath);
+        if (!cur || di < cur.value) {
+          fastQuotaBy.set(ath, {
+            athleteId: ath, value: di,
+            detail: formatRange([wk, weekEnd(wk)]),
+            context: { kind: "week", weekStart: wk },
+          });
+        }
+      }
       if (di < fewest) {
         fewest = di;
         fastestQuota = {
@@ -341,24 +444,49 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     }
   }
 
+  // The ranking behind each record: one best per athlete, best first. The
+  // headline above stays the source of truth for the holder; a test asserts the
+  // two agree, so they cannot drift apart silently.
+  const E = {
+    week: rank(weekPts, wk => formatRange([wk, weekEnd(wk)]), wk => ({ kind: "week", weekStart: wk })),
+    month: rank(monthPts, m => formatMonth(m), m => ({ kind: "month", month: m })),
+    day: rank(dayPts, d => formatDay(d), d => ({ kind: "day", day: d })),
+    session: rankDirect(sessionBy),
+    kmmonth: rank(monthKm, m => formatMonth(m), m => ({ kind: "month", month: m })),
+    kmweek: rank(weekKm, wk => formatRange([wk, weekEnd(wk)]), wk => ({ kind: "week", weekStart: wk })),
+    kmday: rank(dayKm, d => formatDay(d), d => ({ kind: "day", day: d })),
+    fullday: rankSets(daySports, d => formatDay(d), d => ({ kind: "day", day: d })),
+    busiest: rank(weekSessions, wk => formatRange([wk, weekEnd(wk)]), wk => ({ kind: "week", weekStart: wk })),
+    busiestday: rank(daySessions, d => formatDay(d), d => ({ kind: "day", day: d })),
+    gymweek: rank(weekGym, wk => formatRange([wk, weekEnd(wk)]), wk => ({ kind: "week", weekStart: wk })),
+    streak: rankDirect(streakBy),
+    quotastreak: rankDirect(quotaStreakBy),
+    // Fewest days is the win here, so this one ranks the other way up.
+    fastquota: [...fastQuotaBy.values()].sort((a, b) => a.value - b.value),
+    activemonth: rankSets(monthDays, m => formatMonth(m), m => ({ kind: "month", month: m })),
+    run: rankDirect(runBy),
+    ride: rankDirect(rideBy),
+    swim: rankDirect(swimBy),
+  };
+
   return [
-    { key: "week", label: "Biggest week", glyph: "trophy", unit: "pts", ...bestWeek },
-    { key: "month", label: "Biggest month", glyph: "medal", unit: "pts", ...bestMonth },
-    { key: "day", label: "Most points in a day", glyph: "bolt", unit: "pts", ...bestDay },
-    { key: "session", label: "Biggest single session", glyph: "star", unit: "pts", ...bigDaySession },
-    { key: "kmmonth", label: "Most km in a month", glyph: "compass", unit: "km", ...bestKmMonth },
-    { key: "kmweek", label: "Most km in a week", glyph: "mountain", unit: "km", ...bestKmWeek },
-    { key: "kmday", label: "Most km in a day", glyph: "target", unit: "km", ...bestKmDay },
-    { key: "fullday", label: "Most disciplines in a day", glyph: "rings", unit: "sports", ...fullestDay },
-    { key: "busiest", label: "Busiest week", glyph: "trio", unit: "sessions", ...busiestWeek },
-    { key: "busiestday", label: "Busiest day", glyph: "rocket", unit: "sessions", ...busiestDay },
-    { key: "gymweek", label: "Most gym workouts", glyph: "dumbbell", unit: "sessions", ...mostGymWeek },
-    { key: "streak", label: "Longest streak", glyph: "flame", unit: "days", ...longestStreak },
-    { key: "quotastreak", label: "Longest quota streak", glyph: "shield", unit: "weeks", ...quotaStreak },
-    { key: "fastquota", label: "Fastest to quota", glyph: "diamond", unit: "days", ...fastestQuota },
-    { key: "activemonth", label: "Most active days in a month", glyph: "flag", unit: "days", ...mostActiveMonth },
-    { key: "run", label: "Longest run", sport: "run", unit: "km", ...longestRun },
-    { key: "ride", label: "Longest ride", sport: "bike", unit: "km", ...longestRide },
-    { key: "swim", label: "Longest swim", sport: "swim", unit: "km", ...longestSwim },
+    { key: "week", label: "Biggest week", glyph: "trophy", unit: "pts", ...bestWeek , entries: E.week },
+    { key: "month", label: "Biggest month", glyph: "medal", unit: "pts", ...bestMonth , entries: E.month },
+    { key: "day", label: "Most points in a day", glyph: "bolt", unit: "pts", ...bestDay , entries: E.day },
+    { key: "session", label: "Biggest single session", glyph: "star", unit: "pts", ...bigDaySession , entries: E.session },
+    { key: "kmmonth", label: "Most km in a month", glyph: "compass", unit: "km", ...bestKmMonth , entries: E.kmmonth },
+    { key: "kmweek", label: "Most km in a week", glyph: "mountain", unit: "km", ...bestKmWeek , entries: E.kmweek },
+    { key: "kmday", label: "Most km in a day", glyph: "target", unit: "km", ...bestKmDay , entries: E.kmday },
+    { key: "fullday", label: "Most disciplines in a day", glyph: "rings", unit: "sports", ...fullestDay , entries: E.fullday },
+    { key: "busiest", label: "Busiest week", glyph: "trio", unit: "sessions", ...busiestWeek , entries: E.busiest },
+    { key: "busiestday", label: "Busiest day", glyph: "rocket", unit: "sessions", ...busiestDay , entries: E.busiestday },
+    { key: "gymweek", label: "Most gym workouts", glyph: "dumbbell", unit: "sessions", ...mostGymWeek , entries: E.gymweek },
+    { key: "streak", label: "Longest streak", glyph: "flame", unit: "days", ...longestStreak , entries: E.streak },
+    { key: "quotastreak", label: "Longest quota streak", glyph: "shield", unit: "weeks", ...quotaStreak , entries: E.quotastreak },
+    { key: "fastquota", label: "Fastest to quota", glyph: "diamond", unit: "days", ...fastestQuota , entries: E.fastquota },
+    { key: "activemonth", label: "Most active days in a month", glyph: "flag", unit: "days", ...mostActiveMonth , entries: E.activemonth },
+    { key: "run", label: "Longest run", sport: "run", unit: "km", ...longestRun , entries: E.run },
+    { key: "ride", label: "Longest ride", sport: "bike", unit: "km", ...longestRide , entries: E.ride },
+    { key: "swim", label: "Longest swim", sport: "swim", unit: "km", ...longestSwim , entries: E.swim },
   ];
 }
