@@ -984,6 +984,9 @@ class MemoryStore implements Store {
     if (Object.prototype.hasOwnProperty.call(patch, "elevationM")) {
       found.elevationM = patch.elevationM ?? null;
     }
+    if (Object.prototype.hasOwnProperty.call(patch, "openWater")) {
+      found.openWater = patch.openWater ?? null;
+    }
     return found;
   }
 
