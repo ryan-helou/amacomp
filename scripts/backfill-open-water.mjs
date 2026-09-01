@@ -54,7 +54,12 @@ console.log(`${swims.length} swims logged${WRITE ? "" : "   (DRY RUN — pass --
 
 // Every Strava swim we can see, by athlete.
 const stravaByAthlete = new Map();
-const after = Math.floor(Date.parse("2020-01-01T00:00:00Z") / 1000);
+// Season start, not the dawn of time. With a distant `after` Strava paginates
+// ASCENDING, so page one comes back full of ancient activities and this month's
+// swims are never seen — which is exactly what happened on the first run.
+const { rows: sett } = await pool.query("select data from settings where id = 1");
+const seasonStart = sett[0]?.data?.seasonStart || "2026-08-03";
+const after = Math.floor(Date.parse(`${seasonStart}T00:00:00Z`) / 1000) - 86400;
 for (const c of conns) {
   try {
     const t = await token(c);
@@ -77,11 +82,16 @@ for (const s of swims) {
     console.log(`${head} UNKNOWN — hand-logged, no data to read`);
     skipped++; continue;
   }
-  const candidates = (stravaByAthlete.get(s.athlete_id) || []).filter((a) => {
-    const day = (a.start_date_local || "").slice(0, 10);
+  const sameDay = (stravaByAthlete.get(s.athlete_id) || []).filter(
+    (a) => (a.start_date_local || "").slice(0, 10) === s.d);
+  const byKm = sameDay.filter((a) => {
     const km = Math.round(((a.distance ?? 0) / 1000) * 1000) / 1000;
-    return day === s.d && Math.abs(km - s.km) < 0.0015;
+    return Math.abs(km - s.km) < 0.0015;
   });
+  // Prefer the km fingerprint. Falling back to day alone is safe only when the
+  // athlete swam exactly once that day, which makes it unambiguous even though
+  // the distances disagree — one of the two was edited after import.
+  const candidates = byKm.length === 1 ? byKm : sameDay.length === 1 ? sameDay : [];
   if (candidates.length !== 1) {
     console.log(`${head} UNKNOWN — ${candidates.length} Strava matches, refusing to guess`);
     skipped++; continue;
@@ -90,9 +100,11 @@ for (const s of swims) {
   const ll = a.start_latlng;
   const isOpen = Array.isArray(ll) && ll.length === 2 && Number.isFinite(ll[0]);
   if (isOpen) open++; else poolCount++;
+  const viaDay = byKm.length !== 1;
   console.log(
     `${head} ${isOpen ? "OPEN WATER" : "POOL      "}  "${(a.name || "").slice(0, 26)}"` +
-    `${isOpen ? `  @ ${ll[0].toFixed(3)},${ll[1].toFixed(3)}` : ""}`);
+    `${isOpen ? `  @ ${ll[0].toFixed(3)},${ll[1].toFixed(3)}` : ""}` +
+    `${viaDay ? `  [matched by day; Strava says ${((a.distance ?? 0) / 1000).toFixed(3)}km]` : ""}`);
   if (WRITE) {
     await pool.query("update activities set open_water = $2 where id = $1", [s.id, isOpen]);
   }

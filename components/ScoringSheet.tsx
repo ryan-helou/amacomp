@@ -29,6 +29,8 @@ import type { League } from "./useLeague";
 interface SettingsInput {
   multipliers: Record<Sport, number>;
   elevationPer100m: Record<Sport, number>;
+  /** Retroactive by instruction — see Settings.openWaterPerKm. */
+  openWaterPerKm: number;
   weeklyGoal: number;
   seasonStart: string;
   forfeit: string;
@@ -74,6 +76,7 @@ export function ScoringSheet({
     climbBike: String(liveRates.elevationPer100m?.bike ?? 0),
     climbRun: String(liveRates.elevationPer100m?.run ?? 0),
     climbGym: String(liveRates.elevationPer100m?.gym ?? 0),
+    openWater: String(state.settings.openWaterPerKm ?? 20),
     weeklyGoal: String(state.settings.weeklyGoal),
     seasonStart: state.settings.seasonStart,
     forfeit: state.settings.forfeit,
@@ -107,6 +110,7 @@ export function ScoringSheet({
         run: Number(form.climbRun),
         gym: Number(form.climbGym),
       },
+      openWaterPerKm: Number(form.openWater),
       weeklyGoal: Number(form.weeklyGoal),
       seasonStart: form.seasonStart,
       forfeit: form.forfeit,
@@ -306,6 +310,38 @@ export function ScoringSheet({
               </div>
             );
           })}
+
+          {/* Open water is a different RATE for the same sport rather than a
+              second quantity, so it sits with the disciplines and not with
+              climbing. */}
+          <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
+            <p className="eyebrow text-ink">Open water</p>
+            <p className="mt-1 text-[0.8125rem] text-ink-2">
+              A swim in a lake, river or sea — no wall, no line, and you have to
+              sight.{" "}
+              <span className="text-ink-3">
+                Unlike the rates above, this one applies to every swim ever
+                logged, not only from today.
+              </span>
+            </p>
+            <div className="mt-2 flex items-center gap-3">
+              <label htmlFor="openwater" className="eyebrow flex-1 text-ink-2">
+                Per km
+              </label>
+              <input
+                id="openwater"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="0.5"
+                value={form.openWater}
+                disabled={!editable || busy}
+                onChange={(e) => setForm({ ...form, openWater: e.target.value })}
+                className="w-20 rounded-lg border-2 border-ink-3 bg-tile px-2 py-2 text-right text-sm text-ink focus:border-accent focus:outline-none disabled:opacity-60"
+              />
+              <span className="eyebrow w-12 text-ink-3">pts/km</span>
+            </div>
+          </div>
 
           {/* Climbing is a second rate against a different quantity, so it gets
               its own group rather than a cramped second box per row. Gym is
