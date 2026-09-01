@@ -39,6 +39,11 @@ export function LogTab({
     () => state.activities.filter((a) => a.athleteId === state.me?.id && !isGrant(a)),
     [state.activities, state.me?.id],
   );
+  // Only worth asking when the two rates actually differ; if they are equal the
+  // distinction changes nothing and the buttons are noise.
+  const waterMatters =
+    (state.settings.openWaterPerKm ?? 0) !== (state.settings.multipliers.swim ?? 0);
+
   const unscored = useMemo(() => unscoredGymIds(state.activities), [state.activities]);
 
   async function create() {
@@ -70,6 +75,21 @@ export function LogTab({
     setSaved(`${points} pts added.`);
     setDraft({ ...emptyDraft(logDay), sport: draft.sport });
     setTimeout(() => setSaved(null), 2600);
+  }
+
+  /**
+   * Set a swim's water in one tap, straight from the list.
+   *
+   * Deliberately not behind the edit form: the classification is a guess the app
+   * made, the athlete is the only one who actually knows, and asking them to open
+   * a form to correct our guess is the wrong way round.
+   */
+  async function setWater(a: Activity, openWater: boolean) {
+    if (a.openWater === openWater) return;
+    await send(`/api/activities/${a.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ openWater }),
+    });
   }
 
   function startEdit(a: Activity) {
@@ -219,6 +239,36 @@ export function LogTab({
                         <p className="mt-0.5 text-[0.8125rem] text-ink-3">
                           Past the {MAX_SCORING_GYM_PER_DAY}-a-day gym cap — logged, not scored.
                         </p>
+                      )}
+                      {a.sport === "swim" && waterMatters && (
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          {([false, true] as const).map((v) => {
+                            const on = a.openWater === v;
+                            return (
+                              <button
+                                key={String(v)}
+                                type="button"
+                                aria-pressed={on}
+                                disabled={busy}
+                                onClick={() => setWater(a, v)}
+                                className={`eyebrow rounded-md border px-2 py-1 text-[0.625rem] transition-colors ${
+                                  on
+                                    ? "border-swim bg-swim text-white"
+                                    : "border-line bg-deck-2 text-ink-3"
+                                }`}
+                              >
+                                {v ? "Open water" : "Pool"}
+                              </button>
+                            );
+                          })}
+                          {/* Unknown scores as a pool but is not a claim that it
+                              was one — say so, or the guess reads as a fact. */}
+                          {a.openWater === null && (
+                            <span className="text-[0.6875rem] text-ink-3">
+                              unconfirmed — counting as pool
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="text-right">

@@ -153,20 +153,27 @@ export interface StravaActivity {
  * Whether a Strava swim happened in open water rather than a pool.
  *
  * Strava has no sport type for it — both are `Swim` — so this reads the GPS fix.
- * A pool swim is measured by counting lengths off the wrist and carries no
- * track; an open water swim CANNOT be measured without one, because distance
- * comes from the line you swam. So a start coordinate is the tell.
+ * An open water swim CANNOT be measured without one, because the distance IS the
+ * line you swam. So coordinates mean open water, and that direction is reliable.
  *
- * Verified against the league's real swims: two lake swims at 45.01, -71.61 have
- * coordinates; a "Night Swim in 10m backyard" and two indoor sessions have none.
+ * THE ABSENCE OF COORDINATES PROVES NOTHING, and this returns null rather than
+ * `false` because of it. A swim recorded with GPS off, or in the watch's pool
+ * mode, or entered by hand on Strava, has no track and is not a pool. That is
+ * not hypothetical: Ryan's 0.5 km on 2026-08-31 came through with no fix and was
+ * open water, and calling it a pool understated his week.
  *
- * Non-swims answer null — the question is meaningless for them, and null keeps
- * it out of the column rather than writing a misleading `false`.
+ * Null is UNKNOWN, which scores as a pool — the lower rate, so a wrong guess can
+ * never inflate anyone — and the log shows it as unconfirmed so the athlete can
+ * set it in one tap.
+ *
+ * Non-swims answer null too: the question is meaningless for them.
  */
 export function isOpenWater(a: StravaActivity, sport: Sport | null): boolean | null {
   if (sport !== "swim") return null;
   const ll = a.start_latlng;
-  return Array.isArray(ll) && ll.length === 2 && Number.isFinite(ll[0]) && Number.isFinite(ll[1]);
+  const hasFix =
+    Array.isArray(ll) && ll.length === 2 && Number.isFinite(ll[0]) && Number.isFinite(ll[1]);
+  return hasFix ? true : null;
 }
 
 export async function fetchRecentActivities(
