@@ -100,10 +100,19 @@ export async function PUT(req: Request) {
     rateChanges.sort((a, b) => a.from.localeCompare(b.from));
   }
 
+  // Open water is retroactive by instruction, so unlike the multipliers above it
+  // is written straight through rather than recorded as a dated change.
+  const rawOpenWater = Number(body.openWaterPerKm);
+  const openWaterPerKm =
+    Number.isFinite(rawOpenWater) && rawOpenWater >= 0 && rawOpenWater <= MAX_MULTIPLIER
+      ? Math.round(rawOpenWater * 100) / 100
+      : current.openWaterPerKm;
+
   const settings: Settings = {
     multipliers: current.multipliers,
     elevationPer100m: current.elevationPer100m,
     rateChanges,
+    openWaterPerKm,
     weeklyGoal: Math.round(weeklyGoal * 10) / 10,
     seasonStart: body.seasonStart,
     forfeit,

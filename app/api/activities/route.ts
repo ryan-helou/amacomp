@@ -52,6 +52,10 @@ export async function POST(req: Request) {
     occurredOn: body.occurredOn,
     note: parseNote(body.note),
     elevationM,
+    // Only meaningful for a swim; anything else is stored as unknown so the
+    // column never claims a ride happened in a lake.
+    openWater:
+      body.sport === "swim" && typeof body.openWater === "boolean" ? body.openWater : null,
   });
 
   const state = await readState();

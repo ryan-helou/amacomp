@@ -139,6 +139,15 @@ export interface Activity {
   note: string | null;
   source: ActivitySource;
   /**
+   * Open water rather than a pool, for swims only.
+   *
+   * `null` is UNKNOWN, and is scored as a pool — the lower rate. A hand-logged
+   * swim from before the toggle existed genuinely might be either, and guessing
+   * upward would hand out points nobody claimed. Strava-imported swims are
+   * classified on the way in.
+   */
+  openWater: boolean | null;
+  /**
    * A flat points override. Non-null only for admin grants, where it is the
    * awarded amount; null for logged activities, which score from km × multiplier.
    */
@@ -215,6 +224,17 @@ export interface Settings {
    * forfeit it did or didn't trigger stands.
    */
   rateChanges: RateChange[];
+  /**
+   * Points per km for an OPEN WATER swim, which is a harder thing than the same
+   * distance in a pool — no wall, no line, chop, sighting, cold.
+   *
+   * Deliberately OUTSIDE `rateChanges` and therefore not dated: Ryan asked for
+   * it to apply "for the rest of history and the past", so it is retroactive by
+   * instruction. That is the opposite of how every other rate here behaves, and
+   * it is safe only because it has never yet lowered anyone's score — see the
+   * note on the default. If it is ever cut, it will rewrite finished weeks.
+   */
+  openWaterPerKm: number;
   /** Points every athlete is expected to hit each week. */
   weeklyGoal: number;
   /** The competition only counts sessions on/after this local day (`YYYY-MM-DD`). */
@@ -236,6 +256,11 @@ export const DEFAULT_SETTINGS: Settings = {
   // is a PARTIAL change: bike and gym are untouched, so the live 1/km and
   // 5/workout survive even though the base numbers above are stale.
   rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
+  // 20/km, retroactive, on Ryan's instruction 2026-08-31. Chosen so the change
+  // costs nobody points: swim was already 20/km league-wide until 2026-08-31, so
+  // every open water swim in the book was scored at exactly this rate already.
+  // It only starts to matter going forward, where pool is 15 and open water 20.
+  openWaterPerKm: 20,
   weeklyGoal: 100,
   seasonStart: "2026-08-03",
   forfeit: "Run a marathon — unless the lads excuse you",

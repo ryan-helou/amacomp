@@ -72,6 +72,14 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
     patch.elevationM = elevationM;
   }
+  if (body.openWater !== undefined) {
+    // Tied to the sport the activity will END UP as, so switching a swim to a
+    // run can't leave an open-water flag attached to a run.
+    patch.openWater =
+      effectiveSport === "swim" && typeof body.openWater === "boolean"
+        ? body.openWater
+        : null;
+  }
 
   await getStore().updateActivity(id, patch);
   return NextResponse.json(await readState());

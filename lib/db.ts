@@ -26,6 +26,8 @@ export interface NewActivity {
   points?: number | null;
   /** Metres of ascent, or null when unknown. See `Activity.elevationM`. */
   elevationM?: number | null;
+  /** Open water rather than a pool, for swims. Null when unknown. */
+  openWater?: boolean | null;
 }
 
 export type ActivityPatch = Partial<Omit<NewActivity, "athleteId">>;
@@ -203,6 +205,7 @@ function mergeSettings(raw: unknown): Settings {
       gym: num(e.gym, DEFAULT_SETTINGS.elevationPer100m.gym),
     },
     rateChanges: mergeRateChanges(value.rateChanges),
+    openWaterPerKm: num(value.openWaterPerKm, DEFAULT_SETTINGS.openWaterPerKm),
     weeklyGoal: num(value.weeklyGoal, DEFAULT_SETTINGS.weeklyGoal),
     seasonStart: isDay(value.seasonStart) ? value.seasonStart : DEFAULT_SETTINGS.seasonStart,
     forfeit:
@@ -218,7 +221,7 @@ function mergeSettings(raw: unknown): Settings {
 
 const ACTIVITY_COLS = `id, athlete_id, sport, km::float8 AS km,
    to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, note, source, points::float8 AS points,
-   elevation_m::float8 AS elevation_m,
+   elevation_m::float8 AS elevation_m, open_water,
    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at`;
 
 type ActivityRow = {
@@ -231,6 +234,7 @@ type ActivityRow = {
   source: string | null;
   points: number | null;
   elevation_m: number | null;
+  open_water: boolean | null;
   created_at: string;
 };
 
@@ -245,6 +249,7 @@ function toActivity(r: ActivityRow): Activity {
     source: (r.source as ActivitySource) ?? "manual",
     points: r.points == null ? null : Number(r.points),
     elevationM: r.elevation_m == null ? null : Number(r.elevation_m),
+    openWater: r.open_water ?? null,
     createdAt: r.created_at,
   };
 }
@@ -347,6 +352,11 @@ class PgStore implements Store {
             name_lower TEXT UNIQUE NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
+        // Open water vs pool, for swims. Nullable: unknown is a real state for a
+        // hand-logged swim, and it scores as a pool rather than guessing upward.
+        await this.pool.query(
+          `ALTER TABLE activities ADD COLUMN IF NOT EXISTS open_water BOOLEAN`,
+        );
         // Body weight, for the cycling W/kg records. Nullable: unknown is a real
         // and common state, and it must not be confused with a light rider.
         await this.pool.query(
@@ -611,11 +621,11 @@ class PgStore implements Store {
   async createActivity(input: NewActivity, source: ActivitySource = "manual"): Promise<Activity> {
     await this.init();
     const r = await this.pool.query(
-      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points, elevation_m)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points, elevation_m, open_water)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING ${ACTIVITY_COLS}`,
       [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note, source,
-       input.points ?? null, input.elevationM ?? null],
+       input.points ?? null, input.elevationM ?? null, input.openWater ?? null],
     );
     return toActivity(r.rows[0] as ActivityRow);
   }
@@ -629,6 +639,7 @@ class PgStore implements Store {
          occurred_on = COALESCE($4::date, occurred_on),
          note = CASE WHEN $5::boolean THEN $6 ELSE note END,
          elevation_m = CASE WHEN $7::boolean THEN $8 ELSE elevation_m END,
+         open_water = CASE WHEN $9::boolean THEN $10 ELSE open_water END,
          updated_at = now()
        WHERE id = $1
        RETURNING ${ACTIVITY_COLS}`,
@@ -641,6 +652,8 @@ class PgStore implements Store {
         patch.note ?? null,
         Object.prototype.hasOwnProperty.call(patch, "elevationM"),
         patch.elevationM ?? null,
+        Object.prototype.hasOwnProperty.call(patch, "openWater"),
+        patch.openWater ?? null,
       ],
     );
     return r.rows[0] ? toActivity(r.rows[0] as ActivityRow) : null;
@@ -949,6 +962,7 @@ class MemoryStore implements Store {
       km: input.km,
       occurredOn: input.occurredOn,
       note: input.note,
+      openWater: input.openWater ?? null,
       source,
       points: input.points ?? null,
       elevationM: input.elevationM ?? null,
