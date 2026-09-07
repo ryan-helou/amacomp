@@ -14,7 +14,7 @@ import { formatRange, periodRange, type DayKey, type Period } from "@/lib/dates"
 import { SPORT_UNIT, elevationRateLabel, rateLabel, isGrant, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { firstSeason, seasonFor } from "@/lib/season";
-import { useOpenProfile, useReigningChampion } from "./ProfileContext";
+import { FlagName, FlagTag, useAway, useOpenProfile, useReigningChampion } from "./ProfileContext";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
@@ -274,16 +274,49 @@ function Lane({
 }) {
   const width = top > 0 ? Math.max(row.points / top, 0) : 0;
   const scored = row.points > 0;
+  const awayFlag = useAway().get(row.athlete.id);
 
   return (
     <button
       onClick={onSelect}
-      className={`lane-enter block w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
+      className={`lane-enter relative block w-full overflow-hidden rounded-xl px-3 py-2.5 text-left transition-colors ${
         isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
       }`}
-      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+      style={{
+        animationDelay: `${Math.min(index, 8) * 45}ms`,
+        ...(awayFlag ? { boxShadow: `inset 0 0 0 1px ${awayFlag.from}99` } : null),
+      }}
     >
-      <div className="flex items-center gap-3">
+      {/* An away athlete's whole lane flies the flag: three soft bands at a low
+          alpha so the ink on top stays the darkest thing in the row, with a
+          highlight drifting across so it reads as fabric rather than a fill.
+          Feathered rather than hard-edged — a crisp tricolour behind a
+          leaderboard row looks like a rendering fault; a soft one looks lit. */}
+      {awayFlag && (
+        <>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage:
+                `linear-gradient(100deg, ${awayFlag.from}80 0%, ${awayFlag.from}5C 30%,` +
+                ` ${awayFlag.mid}00 47%, ${awayFlag.mid}00 53%,` +
+                ` ${awayFlag.to}5C 70%, ${awayFlag.to}80 100%)`,
+            }}
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage:
+                "linear-gradient(100deg, transparent 38%, rgba(255,255,255,0.45) 50%, transparent 62%)",
+              backgroundSize: "260% 100%",
+              animation: "flag-sheen 3.4s cubic-bezier(0.45, 0, 0.25, 1) infinite",
+            }}
+          />
+        </>
+      )}
+      <div className="relative flex items-center gap-3">
         <div className="flex w-8 shrink-0 flex-col items-center">
           <span
             className={`stamp text-2xl ${
@@ -315,7 +348,17 @@ function Lane({
               {champion && (
                 <Glyph name="crown" className="mr-1 inline h-3.5 w-3.5 -translate-y-px align-baseline" />
               )}
-              {row.athlete.name}
+              {/* Away athletes fly their flag here too — the lane is where a
+                  name is actually read, and it draws names directly rather than
+                  through AthleteName. */}
+              {awayFlag ? (
+                <>
+                  <FlagName name={row.athlete.name} flag={awayFlag} />
+                  <FlagTag flag={awayFlag} />
+                </>
+              ) : (
+                row.athlete.name
+              )}
               {titles > 0 && (
                 <span className="ml-1.5 inline-flex items-baseline gap-0.5 align-baseline text-xs font-normal text-gold">
                   <Glyph name="trophy" className="h-3.5 w-3.5 translate-y-0.5" />

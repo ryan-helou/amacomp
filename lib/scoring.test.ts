@@ -58,13 +58,20 @@ console.log("\nclimb points");
   check("climb is proportional, not stepped", activityPoints(ride("r3", "a", "2026-08-18", 0.001, 250), S), 2.5 + 0.001);
   // The distinction the column exists for: unknown must not score as flat.
   check("unknown ascent scores no climb", activityPoints(ride("r4", "a", "2026-08-18", 20, null), S), 20);
-  check("a sport with rate 0 ignores ascent", activityPoints(
-    { ...run("r5", "a", "2026-08-18", 10), elevationM: 800 }, S), 50);
+  // Running counts ascent as DISTANCE: 800 m up is 8 km, and on 18 Aug a km was
+  // worth 5, so the climb adds 40 on top of the 50 for the 10 km itself.
+  check("a run's ascent counts as kilometres", activityPoints(
+    { ...run("r5", "a", "2026-08-18", 10), elevationM: 800 }, S), 90);
   check("negative ascent is ignored, never subtracted", activityPoints(ride("r6", "a", "2026-08-18", 20, -300), S), 20);
-  // Turning climbing on for another discipline is a settings change only.
+  // `elevationPer100m.run` no longer does anything — running goes through the
+  // distance rule instead, so setting it must NOT double-count.
   const climbyRun = { ...S, elevationPer100m: { ...S.elevationPer100m, run: 2 } };
-  check("run climbs once the rate is set", activityPoints(
-    { ...run("r7", "a", "2026-08-18", 10), elevationM: 300 }, climbyRun), 50 + 6);
+  check("the old per-100m run rate is ignored, not added", activityPoints(
+    { ...run("r7", "a", "2026-08-18", 10), elevationM: 300 }, climbyRun), 50 + 15);
+  // Turning the rule off entirely leaves a run scoring on distance alone.
+  const noAscent = { ...S, runAscentMetresPerKm: 0 };
+  check("0 turns the run ascent rule off", activityPoints(
+    { ...run("r7b", "a", "2026-08-18", 10), elevationM: 300 }, noAscent), 50);
   // Grants carry flat points and have no session behind them.
   check("a grant never picks up climb points", activityPoints(
     { ...grant("r8", "a", "2026-08-18", 40), elevationM: 900 }, S), 40);
@@ -80,6 +87,7 @@ console.log("\ndated rate changes — the past does not move");
     elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
     rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
     openWaterPerKm: 20,
+    runAscentMetresPerKm: 100,
     weeklyGoal: 100,
     seasonStart: "2026-08-03",
     forfeit: "Run a marathon",
@@ -136,7 +144,7 @@ console.log("\ndated rate changes — stacking and hygiene");
       { from: "2026-08-31", multipliers: { run: 4 } },
       { from: "2026-10-01", multipliers: { run: 3 } },
     ],
-    openWaterPerKm: 20, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
+    openWaterPerKm: 20, runAscentMetresPerKm: 100, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
   };
   check("between the two changes, the first one holds", ratesOn("2026-09-15", base).multipliers.run, 4);
   check("after the second, the newest wins", ratesOn("2026-10-02", base).multipliers.run, 3);
@@ -156,7 +164,7 @@ console.log("\nthe scoring-change announcement");
     multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
     elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
     rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
-    openWaterPerKm: 20, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "Run a marathon",
+    openWaterPerKm: 20, runAscentMetresPerKm: 100, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "Run a marathon",
   };
 
   const a = rateAnnouncementFor("2026-08-31", PROD);
@@ -201,13 +209,49 @@ console.log("\nthe scoring-change announcement");
     [{ sport: "bike", before: 1, after: 2, climb: true }]);
 }
 
+console.log("\nrunning ascent counts as distance");
+{
+  const PROD: Settings = {
+    multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
+    elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
+    rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
+    openWaterPerKm: 20, runAscentMetresPerKm: 100,
+    weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
+  };
+  const hilly = (day: string, km: number, m: number): Activity => ({
+    id: "r", athleteId: "a", sport: "run", km, occurredOn: day, note: null,
+    source: "strava", points: null, elevationM: m, openWater: null,
+    createdAt: "2026-09-01T10:00:00Z",
+  });
+
+  // Ryan's own arithmetic: at 4 pts/km, a point per 25 m of ascent.
+  check("25 m of ascent is 1 point at 4/km",
+    activityPoints(hilly("2026-09-01", 0, 25), PROD), 1);
+  check("100 m of ascent is a kilometre, so 4 points",
+    activityPoints(hilly("2026-09-01", 0, 100), PROD), 4);
+  check("a 10 km run with 500 m up scores 40 + 20",
+    activityPoints(hilly("2026-09-01", 10, 500), PROD), 60);
+
+  // Retroactive by instruction, and because ascent is DISTANCE it scores at the
+  // rate of its own day — 5/km before the 31st, 4/km after.
+  check("the same climb before the rate cut is worth 5 a kilometre",
+    activityPoints(hilly("2026-08-20", 0, 100), PROD), 5);
+
+  // Unknown ascent stays worth nothing. Treating null as flat would be a claim.
+  check("unknown ascent still scores no climb",
+    activityPoints(hilly("2026-09-01", 10, null as unknown as number), PROD), 40);
+  // Cycling is untouched by the run rule: still a flat point per 100 m.
+  const ride: Activity = { ...hilly("2026-09-01", 20, 500), sport: "bike" };
+  check("a ride still climbs at 1 per 100 m", activityPoints(ride, PROD), 25);
+}
+
 console.log("\nopen water swims");
 {
   const PROD: Settings = {
     multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
     elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
     rateChanges: [{ from: "2026-08-31", multipliers: { run: 4, swim: 15 } }],
-    openWaterPerKm: 20, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
+    openWaterPerKm: 20, runAscentMetresPerKm: 100, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
   };
   const swim = (day: string, km: number, open: boolean | null): Activity => ({
     id: "s", athleteId: "a", sport: "swim", km, occurredOn: day, note: null,
@@ -492,7 +536,7 @@ async function storedRateChangesAreNormalised() {
       { from: "2026-09-09" } as never,
       { from: "2026-09-10", multipliers: { run: -1 } } as never,
     ],
-    openWaterPerKm: 20, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
+    openWaterPerKm: 20, runAscentMetresPerKm: 100, weeklyGoal: 100, seasonStart: "2026-08-03", forfeit: "x",
   });
   const back = await store.getSettings();
   check("sorted oldest-first", back.rateChanges.map((c) => c.from), ["2026-08-31", "2026-10-01"]);
@@ -512,6 +556,7 @@ async function storedRateChangesAreNormalised() {
     multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
     elevationPer100m: { swim: 0, bike: 1, run: 0, gym: 0 },
     openWaterPerKm: 20,
+    runAscentMetresPerKm: 100,
     weeklyGoal: 100,
     seasonStart: "2026-08-03",
     forfeit: "Run a marathon",

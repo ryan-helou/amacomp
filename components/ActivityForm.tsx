@@ -68,7 +68,17 @@ export function ActivityForm({
   const rates = ratesOn(draft.occurredOn, settings);
   // Climb is only offered where it actually scores, so turning it on for another
   // discipline in the settings makes the field appear with no code change.
-  const climbRate = rates.elevationPer100m?.[draft.sport] ?? 0;
+  // Running counts ascent as distance, so its effective rate per 100 m is simply
+  // the run rate — which is also why the ascent field has to appear for runs even
+  // though `elevationPer100m.run` is 0.
+  const runAscentM = settings.runAscentMetresPerKm ?? 0;
+  const climbRateOf = (sp: Sport) =>
+    sp === "run"
+      ? runAscentM > 0
+        ? (100 / runAscentM) * (rates.multipliers.run ?? 0)
+        : 0
+      : (rates.elevationPer100m?.[sp] ?? 0);
+  const climbRate = climbRateOf(draft.sport);
   const climbs = !isFlat && climbRate > 0;
   const elevationM = draft.elevation.trim() === "" ? null : Number(draft.elevation);
   const climbPoints = climbs
@@ -109,7 +119,7 @@ export function ActivityForm({
     const km = nextFlat ? "1" : isFlat ? "" : draft.km;
     // Drop any ascent the new discipline can't score, so switching bike -> run
     // never leaves an invisible number attached to the log.
-    const keepClimb = !nextFlat && (rates.elevationPer100m?.[sport] ?? 0) > 0;
+    const keepClimb = !nextFlat && climbRateOf(sport) > 0;
     // Leaving swim drops the open water flag, so it can never ride along on a run.
     setDraft({
       ...draft, sport, km,
@@ -149,9 +159,9 @@ export function ActivityForm({
                 <span className="font-mono text-[0.625rem] leading-none">
                   {rateLabel(rates.multipliers[sport], SPORT_UNIT[sport])}
                 </span>
-                {(rates.elevationPer100m?.[sport] ?? 0) > 0 && (
+                {climbRateOf(sport) > 0 && (
                   <span className="font-mono text-[0.5625rem] leading-none opacity-70">
-                    +{elevationRateLabel(rates.elevationPer100m[sport])}
+                    +{elevationRateLabel(climbRateOf(sport))}
                   </span>
                 )}
               </button>

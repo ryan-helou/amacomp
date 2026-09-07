@@ -689,3 +689,18 @@ input[type="number"] {
     transition-duration: 0.001ms !important;
   }
 }
+
+/*
+  An away athlete's name flies their flag: a solid two-colour gradient with a
+  white band sweeping across it. The sweep is a separate layer rather than a
+  stop in the gradient, because a white stop in the middle of a name is an
+  invisible name on a pale deck.
+*/
+@keyframes flag-sheen {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}

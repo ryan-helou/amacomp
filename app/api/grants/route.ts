@@ -74,11 +74,20 @@ export async function POST(req: Request) {
         a.occurredOn <= range[1],
     );
     if (already) return NextResponse.json(await readState());
-    const row = standingsForRange(athletes, activities, settings, range).find(
-      (s) => s.athlete.id === athleteId,
-    );
-    const current = row?.points ?? 0;
-    points = Math.max(Math.round((settings.weeklyGoal - current) * 10) / 10, 0);
+    // `award: false` waives the week WITHOUT paying for it: the athlete is off
+    // the hook for the forfeit but gains nothing toward the season. Ryan's
+    // framing for someone away — "he doesn't need to complete the quota, but he
+    // will not be awarded a hundred points either". Topping up is still the
+    // default so existing behaviour is unchanged.
+    if (body.award === false) {
+      points = 0;
+    } else {
+      const row = standingsForRange(athletes, activities, settings, range).find(
+        (s) => s.athlete.id === athleteId,
+      );
+      const current = row?.points ?? 0;
+      points = Math.max(Math.round((settings.weeklyGoal - current) * 10) / 10, 0);
+    }
     source = "excuse";
   } else {
     const n = Number(body.points);

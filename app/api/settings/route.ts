@@ -108,11 +108,20 @@ export async function PUT(req: Request) {
       ? Math.round(rawOpenWater * 100) / 100
       : current.openWaterPerKm;
 
+  // Retroactive like the open water rate, so written straight through rather
+  // than recorded as a dated change.
+  const rawAscent = Number(body.runAscentMetresPerKm);
+  const runAscentMetresPerKm =
+    Number.isFinite(rawAscent) && rawAscent >= 0 && rawAscent <= 10000
+      ? Math.round(rawAscent)
+      : current.runAscentMetresPerKm;
+
   const settings: Settings = {
     multipliers: current.multipliers,
     elevationPer100m: current.elevationPer100m,
     rateChanges,
     openWaterPerKm,
+    runAscentMetresPerKm,
     weeklyGoal: Math.round(weeklyGoal * 10) / 10,
     seasonStart: body.seasonStart,
     forfeit,
