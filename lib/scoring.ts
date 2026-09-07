@@ -91,7 +91,17 @@ export function elevationPointsFor(
   day: DayKey,
 ): number {
   if (elevationM === null || !Number.isFinite(elevationM) || elevationM <= 0) return 0;
-  return (elevationM / 100) * (ratesOn(day, settings).elevationPer100m?.[sport] ?? 0);
+  const rates = ratesOn(day, settings);
+  // Running counts ascent as DISTANCE — a hundred metres up is a kilometre run —
+  // so it scores at whatever the run rate was that day rather than at a fixed
+  // number of points. Cycling keeps its own flat rate per 100 m.
+  if (sport === "run") {
+    const perKm = settings.runAscentMetresPerKm ?? 0;
+    if (perKm > 0) {
+      return (elevationM / perKm) * (rates.multipliers.run ?? 0);
+    }
+  }
+  return (elevationM / 100) * (rates.elevationPer100m?.[sport] ?? 0);
 }
 
 /**

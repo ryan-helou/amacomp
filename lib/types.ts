@@ -235,6 +235,21 @@ export interface Settings {
    * note on the default. If it is ever cut, it will rewrite finished weeks.
    */
   openWaterPerKm: number;
+  /**
+   * Metres of ascent on a RUN that count as one kilometre run.
+   *
+   * Ryan's rule, 2026-09-01: "every hundred metres of elevation counts for one
+   * kilometre ran". Expressed as distance rather than as points on purpose — it
+   * then scores at whatever the run rate was that day, which is what the rule
+   * actually says. At 4 pts/km that is a point per 25 m, exactly as he put it.
+   *
+   * Retroactive by instruction ("all time, past and future"), so like
+   * `openWaterPerKm` it sits OUTSIDE `rateChanges`. Cycling is untouched: it
+   * keeps its own flat `elevationPer100m` of 1 point per 100 m.
+   *
+   * 0 turns it off.
+   */
+  runAscentMetresPerKm: number;
   /** Points every athlete is expected to hit each week. */
   weeklyGoal: number;
   /** The competition only counts sessions on/after this local day (`YYYY-MM-DD`). */
@@ -261,6 +276,7 @@ export const DEFAULT_SETTINGS: Settings = {
   // every open water swim in the book was scored at exactly this rate already.
   // It only starts to matter going forward, where pool is 15 and open water 20.
   openWaterPerKm: 20,
+  runAscentMetresPerKm: 100,
   weeklyGoal: 100,
   seasonStart: "2026-08-03",
   forfeit: "Run a marathon — unless the lads excuse you",

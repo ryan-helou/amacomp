@@ -24,7 +24,7 @@ import { PaceClock } from "./PaceClock";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
-import { AthleteName, useReigningChampion } from "./ProfileContext";
+import { AthleteName, FlagName, FlagTag, useAway, useReigningChampion } from "./ProfileContext";
 import type { League } from "./useLeague";
 
 export function WeekTab({
@@ -68,6 +68,7 @@ export function WeekTab({
   const range = periodRange("week", weekRef);
   const met = standings.filter((s) => s.points >= goal).length;
   const champ = useReigningChampion();
+  const awayFlags = useAway();
 
   // Tap a name to decompose that person's points for the viewed week.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -312,7 +313,20 @@ export function WeekTab({
                             className="mr-1 inline h-3.5 w-3.5 -translate-y-px align-baseline"
                           />
                         )}
-                        {row.athlete.name}
+                        {/* Same flag as the board — this list draws names
+                            directly too, and an away athlete should read the
+                            same way everywhere. */}
+                        {awayFlags.get(row.athlete.id) ? (
+                          <>
+                            <FlagName
+                              name={row.athlete.name}
+                              flag={awayFlags.get(row.athlete.id)!}
+                            />
+                            <FlagTag flag={awayFlags.get(row.athlete.id)!} />
+                          </>
+                        ) : (
+                          row.athlete.name
+                        )}
                       </span>
                       <span className="flex items-baseline gap-1.5 font-mono text-xs text-ink-2">
                         {granted > 0 && (

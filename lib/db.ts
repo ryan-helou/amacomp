@@ -206,6 +206,8 @@ function mergeSettings(raw: unknown): Settings {
     },
     rateChanges: mergeRateChanges(value.rateChanges),
     openWaterPerKm: num(value.openWaterPerKm, DEFAULT_SETTINGS.openWaterPerKm),
+    runAscentMetresPerKm: num(
+      value.runAscentMetresPerKm, DEFAULT_SETTINGS.runAscentMetresPerKm),
     weeklyGoal: num(value.weeklyGoal, DEFAULT_SETTINGS.weeklyGoal),
     seasonStart: isDay(value.seasonStart) ? value.seasonStart : DEFAULT_SETTINGS.seasonStart,
     forfeit:
