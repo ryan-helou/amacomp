@@ -66,7 +66,10 @@ export function WeekTab({
   const mine = standings.find((s) => s.athlete.id === meId);
   const goal = state.settings.weeklyGoal;
   const range = periodRange("week", weekRef);
-  const met = standings.filter((s) => s.points >= goal).length;
+  // Excused counts as through: they are not on the hook for the forfeit, and
+  // leaving them in the denominator makes a week that everyone survived read as
+  // "3/4 through" forever.
+  const met = standings.filter((s) => s.points >= goal || s.excused).length;
   const champ = useReigningChampion();
   const awayFlags = useAway();
 
@@ -288,6 +291,7 @@ export function WeekTab({
             const gold = champ === row.athlete.id;
             const sessions = isOpen ? weekSessions(row.athlete.id) : [];
             const grants = isOpen ? weekGrants(row.athlete.id) : [];
+            const flag = awayFlags.get(row.athlete.id);
             return (
               <li
                 key={row.athlete.id}
@@ -299,10 +303,38 @@ export function WeekTab({
                   type="button"
                   onClick={() => toggle(row.athlete.id)}
                   aria-expanded={isOpen}
-                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+                  className="relative flex w-full items-center gap-3 overflow-hidden px-3 py-2.5 text-left"
                 >
-                  <Avatar athlete={row.athlete} me={isMe} className="h-8 w-8 text-[0.625rem]" />
-                  <div className="min-w-0 flex-1">
+                  {/* Same flag wash as the board lane — the two lists show the
+                      same week and should say the same thing about it. Only the
+                      collapsed header is painted: the expanded session list below
+                      is dense text and reads badly over colour. */}
+                  {flag && (
+                    <>
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0"
+                        style={{
+                          backgroundImage:
+                            `linear-gradient(100deg, ${flag.from}80 0%, ${flag.from}5C 30%,` +
+                            ` ${flag.mid}00 47%, ${flag.mid}00 53%,` +
+                            ` ${flag.to}5C 70%, ${flag.to}80 100%)`,
+                        }}
+                      />
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0"
+                        style={{
+                          backgroundImage:
+                            "linear-gradient(100deg, transparent 38%, rgba(255,255,255,0.45) 50%, transparent 62%)",
+                          backgroundSize: "260% 100%",
+                          animation: "flag-sheen 3.4s cubic-bezier(0.45, 0, 0.25, 1) infinite",
+                        }}
+                      />
+                    </>
+                  )}
+                  <Avatar athlete={row.athlete} me={isMe} className="relative h-8 w-8 text-[0.625rem]" />
+                  <div className="relative min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <span
                         className={`truncate text-sm font-semibold ${gold ? "text-gold" : "text-ink"}`}
@@ -357,9 +389,15 @@ export function WeekTab({
                       )}
                     </div>
                   </div>
-                  {done && (
+                  {/* `done || excused`, not just `done`. The old excuse topped
+                      the athlete up to the quota, so being excused implied
+                      meeting it and this only ever needed to check the points. A
+                      zero-cost excuse breaks that: the athlete is off the hook on
+                      0 points, and checking `done` alone would render them as
+                      plainly behind. */}
+                  {(done || excused) && (
                     <span
-                      className={`eyebrow shrink-0 rounded-md px-2 py-1 ${
+                      className={`eyebrow relative shrink-0 rounded-md px-2 py-1 ${
                         excused ? "bg-ink-2/10 text-ink-2" : "bg-good/12 text-good"
                       }`}
                     >
@@ -368,7 +406,7 @@ export function WeekTab({
                   )}
                   <svg
                     viewBox="0 0 24 24"
-                    className={`h-4 w-4 shrink-0 text-ink-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    className={`relative h-4 w-4 shrink-0 text-ink-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2.5"
