@@ -277,7 +277,29 @@ export function AppShell({
     <ProfileProvider state={state} refDay={refDay} championId={championId}>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
-      <header className="sticky top-0 z-30 border-b border-line-2 bg-deck px-5 pb-3 pt-4">
+      {/* The notch strip.
+
+          `body` is padded by the top safe-area inset so the app sits under the
+          notch, which means the strip above that padding is not covered by
+          anything in the flow — scrolled content travels through it, under the
+          clock. The header used to hide that by being `sticky top-0`: pinned,
+          its opaque deck covered the strip. That only held while the pin was
+          keeping up. On Ryan's iPhone it did not, and the period tabs painted
+          into the strip above the header, clipped by the top of the screen.
+
+          So the cover is now its own element and owns the job outright: fixed,
+          exactly the height of the inset, opaque, no blur, and it never moves.
+          It collapses to nothing on a device with no inset. Below the pull-to-
+          refresh spinner and any sheet, above everything that scrolls. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 z-[35] bg-deck"
+        style={{ height: "env(safe-area-inset-top)" }}
+      />
+      {/* Deliberately NOT sticky — see the note above. It scrolls away like the
+          rest of the page, so there is no pinned element at the top of the
+          screen for content to collide with or paint over. */}
+      <header className="relative z-10 border-b border-line-2 bg-deck px-5 pb-3 pt-4">
         <div className="flex items-center justify-between">
           <div>
             <button
