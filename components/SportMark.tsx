@@ -1,6 +1,12 @@
 import type { Sport } from "@/lib/types";
 
-/** Geometric marks, not illustrations: water, a wheel, a stride. */
+/**
+ * The discipline marks: water, a wheel, a stride, a bar.
+ *
+ * All one weight, all drawn on the same 24-unit grid, and all filling the box
+ * top to bottom — a mark that sits in the middle band reads as smaller than its
+ * neighbours even at the same size.
+ */
 export function SportMark({
   sport,
   className = "h-4 w-4",
@@ -41,11 +47,18 @@ export function SportMark({
   }
 
   if (sport === "run") {
+    // Five separate strokes — head, torso, front leg, trailing leg, driving arm
+    // — rather than one polyline folded through the whole body. The polyline
+    // version had to double back on itself to get from the foot to the arm,
+    // which left the torso a single unit long and pushed the head into the
+    // shoulder: at 14px it read as a crouch rather than a stride.
     return (
       <svg {...common}>
-        <circle cx="15" cy="4.5" r="2" />
-        <path d="M13.5 21l1.5-6-3.5-3 1-5 3 3 3 1" />
-        <path d="M11.5 12 8 14l-2 5" />
+        <circle cx="15.2" cy="4.3" r="2.1" />
+        <path d="M13.6 8.4 10.8 13.4" />
+        <path d="M10.8 13.4 14.4 15.8 14.8 20.8" />
+        <path d="M10.8 13.4 6.6 15 4.6 19.6" />
+        <path d="M13.9 9.6 18.2 10.8" />
       </svg>
     );
   }
