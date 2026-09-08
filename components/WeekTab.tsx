@@ -24,7 +24,7 @@ import { PaceClock } from "./PaceClock";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
-import { AthleteName, FlagName, FlagTag, useAway, useReigningChampion } from "./ProfileContext";
+import { AthleteName, FlagName, FlagTag, useAwayIn, useReigningChampion } from "./ProfileContext";
 import type { League } from "./useLeague";
 
 export function WeekTab({
@@ -71,7 +71,9 @@ export function WeekTab({
   // "3/4 through" forever.
   const met = standings.filter((s) => s.points >= goal || s.excused).length;
   const champ = useReigningChampion();
-  const awayFlags = useAway();
+  // Keyed to the week ON SCREEN, not to today — this tab pages back through
+  // finished weeks, and an excuse belongs to the week it was granted for.
+  const awayFlags = useAwayIn(weekRef);
 
   // Tap a name to decompose that person's points for the viewed week.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());

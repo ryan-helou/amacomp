@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import type { AppState } from "@/lib/types";
+import type { Activity, AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { awayThisWeek, type Flag } from "@/lib/away";
 import { AthleteSheet } from "./AthleteSheet";
@@ -14,8 +14,13 @@ import { AthleteSheet } from "./AthleteSheet";
 const OpenProfileCtx = createContext<(athleteId: string) => void>(() => {});
 // The reigning champion (last season's winner) — shown in gold everywhere.
 const ChampionCtx = createContext<string | null>(null);
-// Anyone away this week, with the flag to fly for them.
-const AwayCtx = createContext<Map<string, Flag>>(new Map());
+// The log itself, so a view can ask who was away in the week IT is showing.
+// Deliberately not a prebaked "away this week" map: a flag belongs to a week,
+// and a map keyed only by athlete flies it in every view that draws a name —
+// the record book, the hall of fame, the titles page, last week's recap. The
+// week has to be part of the question.
+const EMPTY_LOG: Activity[] = [];
+const AwayLogCtx = createContext<Activity[]>(EMPTY_LOG);
 
 export function useOpenProfile() {
   return useContext(OpenProfileCtx);
@@ -25,8 +30,16 @@ export function useReigningChampion() {
   return useContext(ChampionCtx);
 }
 
-export function useAway() {
-  return useContext(AwayCtx);
+/**
+ * Who is away in the week containing `weekRef`, with the flag to fly for them.
+ *
+ * Takes the week as an argument on purpose. The Week tab can page back through
+ * finished weeks and the Board has five period tabs; a flag that came from
+ * "now" would follow the athlete's name into all of them.
+ */
+export function useAwayIn(weekRef: DayKey) {
+  const activities = useContext(AwayLogCtx);
+  return useMemo(() => awayThisWeek(activities, weekRef), [activities, weekRef]);
 }
 
 export function ProfileProvider({
@@ -41,13 +54,8 @@ export function ProfileProvider({
   children: ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
-  // Recomputed from the log, so a week ends and the flag comes down on its own.
-  const away = useMemo(
-    () => awayThisWeek(state.activities, refDay),
-    [state.activities, refDay],
-  );
   return (
-    <AwayCtx.Provider value={away}>
+    <AwayLogCtx.Provider value={state.activities}>
     <ChampionCtx.Provider value={championId}>
       <OpenProfileCtx.Provider value={setSelected}>
         {children}
@@ -62,7 +70,7 @@ export function ProfileProvider({
         )}
       </OpenProfileCtx.Provider>
     </ChampionCtx.Provider>
-    </AwayCtx.Provider>
+    </AwayLogCtx.Provider>
   );
 }
 
@@ -141,6 +149,12 @@ export function FlagTag({ flag }: { flag: Flag }) {
  * A person's name, tappable to open their profile. Renders as a role="button"
  * span (not a <button>) so it's valid even nested inside another clickable row —
  * the click is stopped from bubbling so it opens the profile, not the row.
+ *
+ * Deliberately never flies an away flag. This is the generic name, drawn in the
+ * record book, the hall of fame, the titles page and last week's recap — none of
+ * which is showing the away week, and a record set in March has nothing to do
+ * with where its holder is in September. The two places that DO mean "this
+ * week's standing" draw the flag themselves, from `useAwayIn`.
  */
 export function AthleteName({
   id,
@@ -154,36 +168,6 @@ export function AthleteName({
   const open = useOpenProfile();
   const champ = useReigningChampion();
   const gold = !!id && champ === id;
-  const flag = useAway().get(id);
-
-  // Away: the name flies their flag. Two layers, the same trick the season
-  // kickoff card uses — a solid two-colour gradient underneath so the text is
-  // always readable, and a white band sweeping across on top. Painting white
-  // into the gradient itself would make the middle of the name vanish against a
-  // pale deck; as a moving sheen it reads as a flag rippling instead.
-  if (flag) {
-    return (
-      <span
-        role="button"
-        tabIndex={0}
-        aria-label={`${name} — away in ${flag.label} this week`}
-        onClick={(e) => {
-          e.stopPropagation();
-          open(id);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            e.stopPropagation();
-            open(id);
-          }
-        }}
-        className={`cursor-pointer font-semibold active:opacity-60 ${className ?? ""}`}
-      >
-        <FlagName name={name} flag={flag} />
-      </span>
-    );
-  }
 
   return (
     <span
