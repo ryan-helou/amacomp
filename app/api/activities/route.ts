@@ -5,7 +5,7 @@ import { readState } from "@/lib/state";
 import { isDayKey } from "@/lib/dates";
 import { isSport, SPORT_UNIT } from "@/lib/types";
 import { MAX_ELEVATION_M, MAX_KM, parseElevation, parseKm, parseNote } from "@/lib/validate";
-import { notifyOvertakes, notifyQuotaHits } from "@/lib/push";
+import { notifyOvertakes, notifyQuotaHits, notifySeasonLead } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +76,9 @@ export async function POST(req: Request) {
     [created.id],
     state.settings,
   ).catch(() => {});
+  // Takes no batch: it compares against the last leader announced, so it catches
+  // a change however it happened.
+  void notifySeasonLead(state.athletes, state.activities, state.settings).catch(() => {});
 
   return NextResponse.json(state);
 }
