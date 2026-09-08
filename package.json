@@ -8,7 +8,7 @@
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx lib/dates.test.ts && tsx lib/efforts.test.ts && tsx lib/scoring.test.ts && tsx lib/race.test.ts && tsx --conditions=react-server lib/strava.test.ts",
+    "test": "tsx lib/dates.test.ts && tsx lib/efforts.test.ts && tsx lib/scoring.test.ts && tsx lib/race.test.ts && tsx lib/climb.test.ts && tsx --conditions=react-server lib/strava.test.ts",
     "icons": "node scripts/gen-icons.mjs"
   },
   "dependencies": {

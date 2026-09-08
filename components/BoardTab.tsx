@@ -20,8 +20,12 @@ import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
 import { SeasonRace } from "./SeasonRace";
+import { CLIMB_SPORTS, climbLeader, climbStandings, fmtMetres, type ClimbRow } from "@/lib/climb";
 
-type SportFilter = Sport | "all";
+// "climb" is not a discipline — it is the same sessions ranked by the metres
+// that go up instead of the kilometres that go along. It rides in the same
+// control because that is where someone looks to change what the board shows.
+type SportFilter = Sport | "all" | "climb";
 type BoardPeriod = Period | "season";
 
 // Season sits between Month and the all-time view; "All" is shortened so five
@@ -107,6 +111,11 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
   const awayWeek = useAwayIn(refDay);
   const away = period === "week" ? awayWeek : null;
 
+  const climbRows = useMemo<ClimbRow[] | null>(
+    () => (sport === "climb" ? climbStandings(state.athletes, state.activities, range) : null),
+    [sport, state.athletes, state.activities, range],
+  );
+
   const titles = useMemo(
     () => championshipsByAthlete(state.athletes, state.activities, state.settings, refDay),
     [state.athletes, state.activities, state.settings, refDay],
@@ -120,6 +129,8 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
   const anyPoints = standings.some((s) => s.points > 0);
   const sportTop = sportRanked?.[0]?.value ?? 0;
   const anySport = (sportRanked ?? []).some((r) => r.value > 0);
+  const climbTop = climbRows?.[0]?.total ?? 0;
+  const anyClimb = (climbRows ?? []).some((r) => r.total > 0);
 
   return (
     <div className="space-y-4">
@@ -190,13 +201,30 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
               </button>
             );
           })}
+          <button
+            role="tab"
+            aria-selected={sport === "climb"}
+            aria-label="Climbing"
+            onClick={() => setSport("climb")}
+            className={`flex h-9 flex-1 items-center justify-center rounded-lg border transition-colors ${
+              sport === "climb"
+                ? "border-gold bg-gold text-white"
+                : "border-line bg-tile text-gold"
+            }`}
+          >
+            <Glyph name="mountain" className="h-[18px] w-[18px]" />
+          </button>
         </div>
 
         <p className="mt-2 text-center font-mono text-xs text-ink-3">
-          {sport !== "all" && (
-            <span className={SPORT_UI[sport].text}>
-              {SPORT_UI[sport].label} ·{" "}
-            </span>
+          {sport === "climb" ? (
+            <span className="text-gold">King of the Mountains · </span>
+          ) : (
+            sport !== "all" && (
+              <span className={SPORT_UI[sport].text}>
+                {SPORT_UI[sport].label} ·{" "}
+              </span>
+            )
           )}
           {period === "all" ? "Every session ever logged" : formatRange(range)}
         </p>
@@ -210,7 +238,33 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
         <SeasonRace state={state} refDay={refDay} meId={state.me?.id} />
       )}
 
-      {sport === "all" ? (
+      {sport === "climb" ? (
+        !anyClimb ? (
+          <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
+            Nobody has climbed anything in this window. Bike and run ascent counts —
+            the flat stuff doesn&rsquo;t.
+          </p>
+        ) : (
+          <>
+            <ol className="space-y-0">
+              {(climbRows ?? []).map((row, i) => (
+                <li key={row.athlete.id}>
+                  {i > 0 && <div className="lane-rope my-1" />}
+                  <ClimbLane
+                    row={row}
+                    top={climbTop}
+                    isMe={row.athlete.id === state.me?.id}
+                    index={i}
+                    champion={reigning === row.athlete.id}
+                    onSelect={() => openProfile(row.athlete.id)}
+                  />
+                </li>
+              ))}
+            </ol>
+            <ClimbSubTitles rows={climbRows ?? []} />
+          </>
+        )
+      ) : sport === "all" ? (
         !anyPoints ? (
           <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
             No points in this window yet. The lanes fill as sessions come in.
@@ -515,5 +569,132 @@ function SportLane({
         </div>
       </div>
     </button>
+  );
+}
+
+/**
+ * A lane on the climbing board.
+ *
+ * The bar is split bike/run rather than filled with one colour, because the
+ * split is the story: two athletes on the same total got there completely
+ * differently, and on this board that difference is the only thing
+ * distinguishing a rider from a runner.
+ */
+function ClimbLane({
+  row,
+  top,
+  isMe,
+  index,
+  champion,
+  onSelect,
+}: {
+  row: ClimbRow;
+  top: number;
+  isMe: boolean;
+  index: number;
+  champion?: boolean;
+  onSelect: () => void;
+}) {
+  const has = row.total > 0;
+  const width = top > 0 ? Math.max(row.total / top, 0) : 0;
+
+  return (
+    <button
+      onClick={onSelect}
+      className={`lane-enter block w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
+        isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
+      }`}
+      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex w-8 shrink-0 flex-col items-center">
+          <span className={`stamp text-2xl ${row.rank === 1 && has ? "text-gold" : "text-ink-3"}`}>
+            {has ? row.rank : "—"}
+          </span>
+          <span className="eyebrow text-[0.5rem] text-ink-3">lane</span>
+        </div>
+
+        <Avatar athlete={row.athlete} me={isMe} />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <span
+              className={`truncate text-[0.9375rem] font-semibold ${champion ? "text-gold" : "text-ink"}`}
+            >
+              {champion && (
+                <Glyph name="crown" className="mr-1 inline h-3.5 w-3.5 -translate-y-px align-baseline" />
+              )}
+              {row.athlete.name}
+              {isMe && <span className="ml-1.5 text-xs font-normal text-ink-2">you</span>}
+            </span>
+            <span className="shrink-0 whitespace-nowrap">
+              <span className={`stamp text-xl ${has ? "text-gold" : "text-ink-3"}`}>
+                {fmtMetres(row.total)}
+              </span>
+              <span className="eyebrow ml-1 text-ink-3">m up</span>
+            </span>
+          </div>
+
+          <div className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-deck-2">
+            {has &&
+              CLIMB_SPORTS.map((s) => {
+                const share = row.bySport[s] / row.total;
+                if (share <= 0) return null;
+                return (
+                  <div
+                    key={s}
+                    className={SPORT_UI[s].bg}
+                    style={{ width: `${share * width * 100}%` }}
+                    title={`${SPORT_UI[s].label}: ${fmtMetres(row.bySport[s])} m`}
+                  />
+                );
+              })}
+          </div>
+
+          {has && (
+            <div className="mt-1 font-mono text-[0.6875rem] text-ink-3">
+              {CLIMB_SPORTS.filter((s) => row.bySport[s] > 0)
+                .map((s) => `${SPORT_UI[s].label.toLowerCase()} ${fmtMetres(row.bySport[s])}`)
+                .join("  ·  ")}
+              {"  ·  "}
+              {row.sessions} session{row.sessions === 1 ? "" : "s"}
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/**
+ * The two discipline crowns under the board.
+ *
+ * They exist because they are frequently NOT the same person as the winner
+ * above, and that is the most interesting thing this board knows: the overall
+ * total goes to whoever rides the most, while the running crown routinely lands
+ * on someone near the bottom of the points table.
+ */
+function ClimbSubTitles({ rows }: { rows: ClimbRow[] }) {
+  const crowns = CLIMB_SPORTS.map((s) => ({ sport: s, best: climbLeader(rows, s) })).filter(
+    (c) => c.best,
+  );
+  if (crowns.length === 0) return null;
+
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      {crowns.map(({ sport, best }) => (
+        <div key={sport} className="rounded-xl border border-line bg-tile px-3 py-2">
+          <div className="eyebrow flex items-center gap-1 text-ink-3">
+            <SportMark sport={sport} className={`h-3 w-3 ${SPORT_UI[sport].text}`} />
+            best on {SPORT_UI[sport].label.toLowerCase()}
+          </div>
+          <div className="mt-0.5 truncate text-sm font-semibold text-ink">{best!.athlete.name}</div>
+          <div className="stamp text-base text-gold">
+            {fmtMetres(best!.metres)}
+            <span className="eyebrow ml-1 text-ink-3">m</span>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
