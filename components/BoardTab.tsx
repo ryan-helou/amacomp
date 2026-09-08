@@ -19,6 +19,7 @@ import { FlagName, FlagTag, useAwayIn, useOpenProfile, useReigningChampion } fro
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
+import { SeasonRace } from "./SeasonRace";
 
 type SportFilter = Sport | "all";
 type BoardPeriod = Period | "season";
@@ -200,6 +201,14 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           {period === "all" ? "Every session ever logged" : formatRange(range)}
         </p>
       </div>
+
+      {/* The season is the one period that is a race with an ending, so it gets
+          the run-in above the lanes. Only on "All": a single-sport board ranks
+          by kilometres, and a points projection over it would be answering a
+          different question than the one on screen. */}
+      {period === "season" && sport === "all" && (
+        <SeasonRace state={state} refDay={refDay} meId={state.me?.id} />
+      )}
 
       {sport === "all" ? (
         !anyPoints ? (

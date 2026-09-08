@@ -1,7 +1,7 @@
 import "server-only";
 import { getStore } from "./db";
 import { readState } from "./state";
-import { notifyOvertakes, notifyQuotaHits } from "./push";
+import { notifyOvertakes, notifyQuotaHits, notifySeasonLead } from "./push";
 import { stravaConfigured, syncAthlete, syncEfforts } from "./strava";
 
 /**
@@ -77,6 +77,9 @@ export async function runStravaTick(): Promise<TickResult> {
         athleteId, state.athletes, state.activities, ids, state.settings,
       ).catch(() => {});
     }
+    // Once for the whole tick, not once per athlete: the lead can only be in one
+    // place, and this reads the standings rather than a per-athlete batch.
+    await notifySeasonLead(state.athletes, state.activities, state.settings).catch(() => {});
   }
   return { ok: true, athletes, imported, efforts };
 }

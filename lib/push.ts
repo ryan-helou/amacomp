@@ -3,6 +3,7 @@ import webpush from "web-push";
 import { getStore, type PushSub } from "./db";
 import { fmtPoints, standingsForRange } from "./scoring";
 import { leagueLogToday, leagueToday, periodRange, weekStart } from "./dates";
+import { seasonFor } from "./season";
 import type { Activity, Athlete, Settings } from "./types";
 
 /**
@@ -215,6 +216,81 @@ export async function notifyQuotaHits(
         body: `${actor.name} is through the ${fmtPoints(goal)}-pt week. Time to catch up.`,
         url: "/",
         tag: `quota-hit-${actorId}`,
+      },
+    ),
+  ]);
+}
+
+/**
+ * When the season lead actually changes hands, tell everyone.
+ *
+ * The weekly overtake nudge already fires when someone passes you on the week,
+ * but the season is the thing with a trophy at the end of it and nothing was
+ * watching it. In a race decided by three points, taking #1 on a Tuesday
+ * morning ride is the loudest event of the whole season — and until now the
+ * only way to find out was to open the app and compare two numbers.
+ *
+ * The current leader is kept in the meta store rather than derived from a
+ * before/after diff of the batch, because a lead can change hands through
+ * activities this process never saw: another athlete's sync, a manual log, an
+ * admin grant. Comparing against the last leader we ANNOUNCED is the only
+ * version that can't miss a change or announce one twice.
+ *
+ * The first call for a season records the leader silently. Otherwise deploying
+ * this would open with "X has taken the lead" about a lead X had held for weeks.
+ */
+export async function notifySeasonLead(
+  athletes: Athlete[],
+  allActivities: Activity[],
+  settings: Settings,
+): Promise<void> {
+  if (!ensureConfigured()) return;
+  const season = seasonFor(leagueToday(), settings.seasonStart);
+  if (!season) return; // pre-season — no lead to take
+
+  const standings = standingsForRange(athletes, allActivities, settings, [
+    season.start,
+    season.end,
+  ]);
+  const top = standings[0];
+  if (!top || top.points <= 0) return; // nobody has scored yet
+  // A shared lead is nobody taking it. Say nothing until it breaks.
+  if (standings.length > 1 && standings[1].rank === 1) return;
+
+  const store = getStore();
+  const marker = `season-lead-${season.number}`;
+  const previous = await store.getMeta(marker);
+  await store.setMeta(marker, top.athlete.id);
+  if (!previous || previous === top.athlete.id) return;
+
+  const deposed = athletes.find((a) => a.id === previous);
+  const margin = standings.length > 1 ? top.points - standings[1].points : top.points;
+  const lead = `${fmtPoints(margin)} pt${Math.abs(margin - 1) < 1e-9 ? "" : "s"}`;
+
+  await Promise.all([
+    sendToAthlete(top.athlete.id, {
+      title: `You lead ${season.label}`,
+      body: `You've taken #1 for the season — ${lead} clear. Hold it.`,
+      url: "/",
+      tag: "season-lead",
+    }),
+    deposed
+      ? sendToAthlete(deposed.id, {
+          title: "You lost the season lead",
+          body: `${top.athlete.name} has taken #1 in ${season.label}, ${lead} ahead of you.`,
+          url: "/",
+          tag: "season-lead",
+        })
+      : Promise.resolve(),
+    sendToAthletes(
+      athletes.filter((a) => a.id !== top.athlete.id && a.id !== previous).map((a) => a.id),
+      {
+        title: `${top.athlete.name} leads ${season.label}`,
+        body: `${top.athlete.name} has taken #1 for the season${
+          deposed ? ` off ${deposed.name}` : ""
+        } — ${lead} clear.`,
+        url: "/",
+        tag: "season-lead",
       },
     ),
   ]);

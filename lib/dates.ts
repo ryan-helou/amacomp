@@ -110,6 +110,17 @@ export function parseDayKey(key: DayKey): Date {
   return new Date(y, m - 1, d);
 }
 
+/**
+ * Whole days from `from` to `to`; negative when `to` is the earlier one.
+ *
+ * Rounded, not truncated: a span crossing a daylight-saving boundary is 23 or
+ * 25 hours, so the raw division lands just under or just over the integer.
+ */
+export function daysBetween(from: DayKey, to: DayKey): number {
+  const ms = parseDayKey(to).getTime() - parseDayKey(from).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
 export function addDays(key: DayKey, n: number): DayKey {
   const d = parseDayKey(key);
   d.setDate(d.getDate() + n);
