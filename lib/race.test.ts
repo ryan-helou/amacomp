@@ -165,6 +165,10 @@ console.log("\nprojected order CAN differ from the table — the whole reason fo
   close("and Ben has scored 800 in the window", ben.formPoints, 800);
   check("so the projection flips them", [ben.projectedRank, ana.projectedRank], [1, 2]);
   check("and the race is called live", r.leadChanges, true);
+  // The two margins tell opposite stories, which is exactly why both exist:
+  // Ana is 400 up today and 171 down by the end.
+  close("the margin today", r.margin, 400);
+  close("the margin on the projection", r.projectedMargin, 1600 + 800 / 14 * 10 - 2000);
 }
 
 console.log("\na procession is not called a race");
