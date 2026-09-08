@@ -10,9 +10,11 @@ import {
   unscoredGymIds,
 } from "@/lib/scoring";
 import {
-  RESET_HOUR, addDays, formatRange, periodRange, weekStart, type DayKey,
+  RESET_HOUR, addDays, formatRange, parseDayKey, periodRange, weekStart, type DayKey,
 } from "@/lib/dates";
 import { SPORT_UNIT, isGrant, isExcuse, type Activity } from "@/lib/types";
+import { toGo } from "@/lib/togo";
+import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import {
   headToHead,
@@ -232,6 +234,15 @@ export function WeekTab({
               </>
             )}
           </p>
+        )}
+
+        {/* What the gap actually costs. Forty percent of weeks finish within ten
+            points of the line, so this is the arithmetic almost everyone is
+            doing in their head at the point they look at this screen. Current
+            week only — on a finished one it would be advice about a week nobody
+            can score in any more. */}
+        {isCurrentWeek && mine && !mine.excused && mine.points < goal && (
+          <ToGo shortfall={goal - mine.points} settings={state.settings} day={logDay} />
         )}
       </section>
 
@@ -748,4 +759,60 @@ function listNames(names: string[]): string {
   if (names.length === 1) return names[0];
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/**
+ * The points you're short, priced in each discipline.
+ *
+ * Rates come from `logDay` — where a session logged right now would land —
+ * rather than the day on screen, so during the 3 AM grace window it quotes the
+ * week the session would actually count for.
+ */
+function ToGo({
+  shortfall,
+  settings,
+  day,
+}: {
+  shortfall: number;
+  settings: Parameters<typeof toGo>[1];
+  day: DayKey;
+}) {
+  // Days left in the week, today included — only used to tell whether the gym
+  // answer is reachable.
+  const daysLeft = 7 - Math.round(
+    (parseDayKey(day).getTime() - parseDayKey(weekStart(day)).getTime()) / 86_400_000,
+  );
+  const options = toGo(shortfall, settings, day, daysLeft);
+  if (options.length === 0) return null;
+
+  return (
+    <div className="mt-4 w-full">
+      <p className="eyebrow text-center text-ink-3">
+        {fmtPoints(shortfall)} to go — any one of
+      </p>
+      <div className="mt-2 flex flex-wrap items-stretch justify-center gap-1.5">
+        {options.map((o) => {
+          const ui = SPORT_UI[o.sport];
+          return (
+            <span
+              key={o.sport}
+              className={`inline-flex items-center gap-1.5 rounded-full border border-line bg-tile px-2.5 py-1.5 ${
+                o.beyondCap ? "opacity-45" : ""
+              }`}
+              title={
+                o.beyondCap
+                  ? `More workouts than the ${MAX_SCORING_GYM_PER_DAY}-a-day cap allows in the days left`
+                  : `${ui.label} at ${o.rate}/${o.unit === "flat" ? "workout" : "km"}`
+              }
+            >
+              <SportMark sport={o.sport} className={`h-3.5 w-3.5 ${ui.text}`} />
+              <span className="font-mono text-xs text-ink">
+                {o.unit === "flat" ? `${o.amount}×` : `${o.amount} km`}
+              </span>
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
