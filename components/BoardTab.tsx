@@ -13,8 +13,9 @@ import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import { formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
 import { SPORT_UNIT, elevationRateLabel, rateLabel, isGrant, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
+import type { Flag } from "@/lib/away";
 import { firstSeason, seasonFor } from "@/lib/season";
-import { FlagName, FlagTag, useAway, useOpenProfile, useReigningChampion } from "./ProfileContext";
+import { FlagName, FlagTag, useAwayIn, useOpenProfile, useReigningChampion } from "./ProfileContext";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
@@ -98,6 +99,12 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
       return { ...r, rank };
     });
   }, [sport, range, state.athletes, state.activities]);
+
+  // Only the Week tab flies it. An excuse is a week-shaped thing: it says
+  // nothing about today, and on Month/Season/All the flagged athlete is being
+  // ranked over spans the excuse doesn't cover.
+  const awayWeek = useAwayIn(refDay);
+  const away = period === "week" ? awayWeek : null;
 
   const titles = useMemo(
     () => championshipsByAthlete(state.athletes, state.activities, state.settings, refDay),
@@ -211,6 +218,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                   index={i}
                   titles={titles.get(row.athlete.id) ?? 0}
                   delta={period === "week" ? movement.get(row.athlete.id)?.delta ?? 0 : 0}
+                  awayFlag={away?.get(row.athlete.id)}
                   champion={reigning === row.athlete.id}
                   onSelect={() => openProfile(row.athlete.id)}
                 />
@@ -260,6 +268,7 @@ function Lane({
   index,
   titles,
   delta,
+  awayFlag,
   champion,
   onSelect,
 }: {
@@ -269,12 +278,13 @@ function Lane({
   index: number;
   titles: number;
   delta: number;
+  /** Set only when this board is showing the week the athlete is away for. */
+  awayFlag?: Flag;
   champion?: boolean;
   onSelect: () => void;
 }) {
   const width = top > 0 ? Math.max(row.points / top, 0) : 0;
   const scored = row.points > 0;
-  const awayFlag = useAway().get(row.athlete.id);
 
   return (
     <button
