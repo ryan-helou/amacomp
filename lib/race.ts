@@ -66,8 +66,16 @@ export interface SeasonRace {
   /** Days the form window actually spans — shorter than FORM_DAYS early on,
    *  when the season itself is younger than the window. */
   formDays: number;
-  /** Points between first and second — the headline number. */
+  /** Points between first and second, right now — the headline number. */
   margin: number;
+  /**
+   * Points between first and second ON THE PROJECTION.
+   *
+   * Carried separately because it is routinely the opposite story: three points
+   * covers the top two today while the leader's fortnight puts him 378 clear by
+   * the end. A card that shows only the first number is lying by omission.
+   */
+  projectedMargin: number;
   /** True when the projected table puts someone other than the current leader
    *  on top: the race is live rather than a procession. */
   leadChanges: boolean;
@@ -172,6 +180,8 @@ export function seasonRace(
     daysLeft,
     formDays,
     margin: standings.length >= 2 ? standings[0].points - standings[1].points : 0,
+    projectedMargin:
+      byProjection.length >= 2 ? byProjection[0].projected - byProjection[1].projected : 0,
     leadChanges,
     rows,
   };
