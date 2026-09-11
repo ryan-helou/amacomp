@@ -42,13 +42,13 @@
   the single biggest visual change from the old flat deck.
 */
 @theme {
-  /* The disciplines. Fixed across every colourway on purpose: a sport's colour
-     is what makes it legible before you read a word, so it is identity rather
-     than decoration and does not move when the scheme does. */
-  --color-swim: #0d93bd;
-  --color-bike: #d98217;
-  --color-run: #d93b30;
-  --color-gym: #6d4fc4;
+  /* The disciplines. The app is black, grey and white, so these four carry the
+     only colour in it — which is what makes a sport legible before you read a
+     word. These are the light-mode values; dark brightens them, below. */
+  --color-swim: #0a9a70;
+  --color-bike: #5f9a12;
+  --color-run: #d4147e;
+  --color-gym: #00868c;
 
   --font-display: var(--font-archivo), "Arial Black", system-ui, sans-serif;
   --font-body: var(--font-public-sans), system-ui, sans-serif;
@@ -57,168 +57,39 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Colourways.
+   Light and dark. The only two schemes.
 
-   Deck is the base, so anyone who never touches the setting gets it with no
-   attribute on the html element and no flash. Every other scheme is an override
-   keyed on `data-palette`, stamped by ThemeScript before first paint.
-
-   Only COLOUR moves between schemes. The structural glass tokens (edge, sheen,
-   blur, shadow, grain) belong to the material rather than the palette and live
-   once, below.
+   Both are the same design: black, grey and white, with the four disciplines
+   carrying the only colour. Light is the stylesheet's base, so it needs no
+   attribute and cannot flash; dark is stamped on the html element by
+   ThemeScript ahead of the first paint.
    --------------------------------------------------------------------------- */
 
-/* Deck — the pool at midday. The original identity, taken to a mid tone so the
-   panes have something to sit on. */
 :root {
-  --deck: #c2d5de;
-  --deck-2: rgb(13 34 49 / 0.07);
-  --tile: rgb(255 255 255 / 0.6);
-  --ink: #0b1f2d;
-  --ink-2: #3f5f74;
-  --ink-3: #63808f;
-  --line: rgb(13 34 49 / 0.16);
-  --line-2: rgb(13 34 49 / 0.3);
-  --accent: #2f4be8;
-  --on-ink: #eef4f7;
-  --scrim: rgb(9 26 38 / 0.45);
-  --accent-soft: rgb(47 75 232 / 0.14);
-  --accent-2: #7b31e0;
-  --on-accent: #ffffff;
-  --gold: #96700a;
-  --good: #0d6f5c;
-  --lamp: rgb(255 255 255 / 0.92);
-  --floor: rgb(9 38 56 / 0.28);
-  --raised: rgb(250 253 255 / 0.9);
-  --island: rgb(255 255 255 / 0.94);
+  --deck: #f4f4f5;
+  --deck-2: rgb(16 17 18 / 0.07);
+  --tile: rgb(255 255 255 / 0.8);
+  --ink: #101112;
+  --ink-2: #45484b;
+  --ink-3: #74787c;
+  --line: rgb(16 17 18 / 0.13);
+  --line-2: rgb(16 17 18 / 0.26);
+  --accent: #101112;
+  --on-ink: #f4f4f5;
+  --scrim: rgb(16 17 18 / 0.45);
+  --accent-soft: rgb(16 17 18 / 0.1);
+  --accent-2: #6b6f73;
+  --on-accent: #f4f4f5;
+  --gold: #8a6a3a;
+  --good: #0a8f66;
+  --lamp: rgb(255 255 255 / 0.95);
+  --floor: rgb(16 17 18 / 0.16);
+  --raised: rgb(255 255 255 / 0.95);
+  --island: rgb(255 255 255 / 0.97);
 }
 
-/* Slate — an overcast morning session. */
-:root[data-palette="slate"] {
-  --deck: #ccd2da;
-  --deck-2: rgb(25 33 46 / 0.07);
-  --tile: rgb(255 255 255 / 0.6);
-  --ink: #141a24;
-  --ink-2: #4a5566;
-  --ink-3: #6e7887;
-  --line: rgb(25 33 46 / 0.16);
-  --line-2: rgb(25 33 46 / 0.3);
-  --accent: #3b57d6;
-  --on-ink: #f2f4f7;
-  --scrim: rgb(14 20 30 / 0.45);
-  --accent-soft: rgb(59 87 214 / 0.14);
-  --accent-2: #7145d8;
-  --on-accent: #ffffff;
-  --gold: #8a6a12;
-  --good: #17685a;
-  --lamp: rgb(255 255 255 / 0.9);
-  --floor: rgb(18 26 38 / 0.28);
-  --raised: rgb(251 252 254 / 0.9);
-  --island: rgb(255 255 255 / 0.94);
-}
-
-/* Carbon — the track at night. The darkest scheme without being a dark mode:
-   pale ink on a graphite ground, so the panes read as lit rather than printed. */
-:root[data-palette="carbon"] {
-  --deck: #2b3138;
-  --deck-2: rgb(236 242 248 / 0.06);
-  --tile: rgb(236 244 250 / 0.09);
-  --ink: #f2f6fa;
-  --ink-2: #aab6c1;
-  --ink-3: #7d8996;
-  --line: rgb(236 242 248 / 0.14);
-  --line-2: rgb(236 242 248 / 0.24);
-  --accent: #7d95ff;
-  --on-ink: #10141a;
-  --scrim: rgb(0 0 0 / 0.6);
-  --accent-soft: rgb(125 149 255 / 0.18);
-  --accent-2: #b98cff;
-  --on-accent: #10141a;
-  --gold: #e0b64a;
-  --good: #4fbfa4;
-  --lamp: rgb(214 230 245 / 0.16);
-  --floor: rgb(0 0 0 / 0.5);
-  --raised: rgb(38 44 51 / 0.94);
-  --island: rgb(45 52 60 / 0.96);
-}
-
-/* Clay — a hot road, late in the ride. */
-:root[data-palette="clay"] {
-  --deck: #dbc9bd;
-  --deck-2: rgb(74 46 32 / 0.08);
-  --tile: rgb(255 252 249 / 0.6);
-  --ink: #241610;
-  --ink-2: #63483a;
-  --ink-3: #87695a;
-  --line: rgb(74 46 32 / 0.16);
-  --line-2: rgb(74 46 32 / 0.3);
-  --accent: #b8471f;
-  --on-ink: #fdf8f4;
-  --scrim: rgb(36 22 16 / 0.45);
-  --accent-soft: rgb(184 71 31 / 0.14);
-  --accent-2: #d97316;
-  --on-accent: #fffaf6;
-  --gold: #8a6408;
-  --good: #38702c;
-  --lamp: rgb(255 250 245 / 0.92);
-  --floor: rgb(70 40 26 / 0.26);
-  --raised: rgb(255 251 247 / 0.9);
-  --island: rgb(255 252 249 / 0.94);
-}
-
-/* Moss — a trail run under cover. */
-:root[data-palette="moss"] {
-  --deck: #c7d1bc;
-  --deck-2: rgb(44 58 34 / 0.08);
-  --tile: rgb(252 255 249 / 0.6);
-  --ink: #131a0e;
-  --ink-2: #4c5b3f;
-  --ink-3: #6f7d61;
-  --line: rgb(44 58 34 / 0.16);
-  --line-2: rgb(44 58 34 / 0.3);
-  --accent: #3f7a34;
-  --on-ink: #fbfdf7;
-  --scrim: rgb(19 26 14 / 0.45);
-  --accent-soft: rgb(63 122 52 / 0.14);
-  --accent-2: #6d9c1f;
-  --on-accent: #fbfdf7;
-  --gold: #8a6a0a;
-  --good: #3f7a34;
-  --lamp: rgb(253 255 249 / 0.92);
-  --floor: rgb(38 52 30 / 0.26);
-  --raised: rgb(252 255 249 / 0.9);
-  --island: rgb(252 255 249 / 0.94);
-}
-
-/* Plum — the last hour of a night ride. */
-:root[data-palette="plum"] {
-  --deck: #cec5db;
-  --deck-2: rgb(52 34 68 / 0.08);
-  --tile: rgb(254 252 255 / 0.6);
-  --ink: #1c1226;
-  --ink-2: #574468;
-  --ink-3: #7a6a8a;
-  --line: rgb(52 34 68 / 0.16);
-  --line-2: rgb(52 34 68 / 0.3);
-  --accent: #6d34c8;
-  --on-ink: #fdfaff;
-  --scrim: rgb(28 18 38 / 0.45);
-  --accent-soft: rgb(109 52 200 / 0.14);
-  --accent-2: #b1349b;
-  --on-accent: #fdfaff;
-  --gold: #8a6a0a;
-  --good: #1f7061;
-  --lamp: rgb(254 252 255 / 0.92);
-  --floor: rgb(44 28 58 / 0.26);
-  --raised: rgb(254 252 255 / 0.9);
-  --island: rgb(254 252 255 / 0.94);
-}
-
-/* Soot — near-black, white type, and the only colour in the app is the four
-   disciplines: mint, moss, fuchsia and aqua. The first scheme to re-point the
-   sport colours; see SPORT_UI.paint in lib/ui.ts. */
-:root[data-palette="soot"] {
-  --deck: #151617;
+:root[data-palette="dark"] {
+  --deck: #101112;
   --deck-2: rgb(241 242 243 / 0.07);
   --tile: rgb(241 242 243 / 0.07);
   --ink: #f1f2f3;
@@ -227,52 +98,23 @@
   --line: rgb(241 242 243 / 0.12);
   --line-2: rgb(241 242 243 / 0.22);
   --accent: #f1f2f3;
-  --on-ink: #151617;
-  --scrim: rgb(0 0 0 / 0.6);
+  --on-ink: #101112;
+  --scrim: rgb(0 0 0 / 0.65);
   --accent-soft: rgb(241 242 243 / 0.14);
   --accent-2: #a0a3a6;
-  --on-accent: #151617;
-  --gold: #c6a05a;
-  --good: #2fd0a0;
+  --on-accent: #101112;
+  --gold: #c9a45e;
+  --good: #16d39a;
   --lamp: rgb(241 242 243 / 0.1);
-  --floor: rgb(0 0 0 / 0.5);
-  --raised: rgb(42 43 44 / 0.96);
-  --island: rgb(47 48 49 / 0.97);
+  --floor: rgb(0 0 0 / 0.55);
+  --raised: rgb(30 31 33 / 0.96);
+  --island: rgb(34 35 37 / 0.97);
 
-  --color-swim: #2fd0a0;
-  --color-bike: #8fbf3f;
-  --color-run: #ff2e9a;
-  --color-gym: #00b8c4;
-}
-
-/* Void — the same idea taken to true black, with the four colours at full
-   strength: emerald, lime, magenta and teal. */
-:root[data-palette="void"] {
-  --deck: #000000;
-  --deck-2: rgb(255 255 255 / 0.07);
-  --tile: rgb(255 255 255 / 0.07);
-  --ink: #ffffff;
-  --ink-2: #bdbdbd;
-  --ink-3: #8e8e8e;
-  --line: rgb(255 255 255 / 0.12);
-  --line-2: rgb(255 255 255 / 0.22);
-  --accent: #ffffff;
-  --on-ink: #000000;
-  --scrim: rgb(0 0 0 / 0.7);
-  --accent-soft: rgb(255 255 255 / 0.14);
-  --accent-2: #a3a3a3;
-  --on-accent: #000000;
-  --gold: #cba75f;
-  --good: #00c46a;
-  --lamp: rgb(255 255 255 / 0.1);
-  --floor: rgb(0 0 0 / 0.6);
-  --raised: rgb(23 23 23 / 0.96);
-  --island: rgb(28 28 28 / 0.97);
-
-  --color-swim: #00c46a;
-  --color-bike: #8fd400;
-  --color-run: #ff3db0;
-  --color-gym: #00c9c0;
+  /* The same four hues, brightened for a black ground. */
+  --color-swim: #16d39a;
+  --color-bike: #9ad21f;
+  --color-run: #ff3aa5;
+  --color-gym: #00c6c8;
 }
 
 /* The material. Shared by every scheme — this is the glass, not the colour. */
@@ -289,17 +131,14 @@
   --lane-h: 4.5rem;
 }
 
-/* Carbon is a dark ground, so its glass is lit from a dark room rather than a
-   bright one: a fainter edge, a fainter sheen, a deeper shadow. Soot and Void
-   are darker still and take the same treatment. */
-:root[data-palette="carbon"],
-:root[data-palette="soot"],
-:root[data-palette="void"] {
-  --glass-edge: rgb(226 240 255 / 0.3);
-  --glass-inner: rgb(226 240 255 / 0.05);
-  --sheen: rgb(226 240 255 / 0.12);
-  --glass-shadow: 0 22px 48px -18px rgb(0 0 0 / 0.66),
-    0 2px 10px -6px rgb(0 0 0 / 0.48);
+/* Dark is a black ground, so its glass is lit from a dark room rather than a
+   bright one: a fainter edge, a fainter sheen, a deeper shadow. */
+:root[data-palette="dark"] {
+  --glass-edge: rgb(241 242 243 / 0.18);
+  --glass-inner: rgb(241 242 243 / 0.04);
+  --sheen: rgb(241 242 243 / 0.08);
+  --glass-shadow: 0 22px 48px -18px rgb(0 0 0 / 0.7),
+    0 2px 10px -6px rgb(0 0 0 / 0.5);
   --grain: 0.06;
 
   color-scheme: dark;
