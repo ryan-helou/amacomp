@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Activity } from "./types";
 import { isExcuse } from "./types";
 import { inRange, periodRange, type DayKey } from "./dates";
@@ -81,6 +82,23 @@ export function awayThisWeek(
     if (who && !out.has(who.id)) out.set(who.id, t.flag);
   }
   return out;
+}
+
+/**
+ * Ink for text drawn over a flag's lane. A sun flag paints a white field, so
+ * under a dark colourway (Carbon's ink is near-white) the score and name would
+ * vanish. Re-pointing the ink tokens on the lane keeps every `text-ink*` child
+ * dark there, whatever the scheme. Tricolours are a translucent wash over the
+ * deck and keep the scheme's own ink.
+ */
+export function flagInk(flag: Flag): CSSProperties {
+  if (!flag.sun) return {};
+  return {
+    "--ink": "#0b1f2d",
+    "--ink-2": "#3f5f74",
+    "--ink-3": "#63808f",
+    "--line": "rgb(13 34 49 / 0.16)",
+  } as CSSProperties;
 }
 
 /**

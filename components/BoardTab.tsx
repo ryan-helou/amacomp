@@ -13,7 +13,7 @@ import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import { formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
 import { SPORT_UNIT, elevationRateLabel, rateLabel, isGrant, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
-import { flagWash, type Flag } from "@/lib/away";
+import { flagInk, flagWash, type Flag } from "@/lib/away";
 import { firstSeason, seasonFor } from "@/lib/season";
 import { FlagName, FlagTag, useAwayIn, useOpenProfile, useReigningChampion } from "./ProfileContext";
 import { Glyph } from "./Glyph";
@@ -357,7 +357,7 @@ function Lane({
       }`}
       style={{
         animationDelay: `${Math.min(index, 8) * 45}ms`,
-        ...(awayFlag ? { boxShadow: `inset 0 0 0 1px ${awayFlag.from}99` } : null),
+        ...(awayFlag ? { boxShadow: `inset 0 0 0 1px ${awayFlag.from}99`, ...flagInk(awayFlag) } : null),
       }}
     >
       {/* An away athlete's whole lane flies the flag: three soft bands at a low

@@ -14,7 +14,7 @@ import {
 } from "@/lib/dates";
 import { SPORT_UNIT, isGrant, isExcuse, type Activity } from "@/lib/types";
 import { toGo } from "@/lib/togo";
-import { flagWash } from "@/lib/away";
+import { flagInk, flagWash } from "@/lib/away";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import {
@@ -318,6 +318,7 @@ export function WeekTab({
                   onClick={() => toggle(row.athlete.id)}
                   aria-expanded={isOpen}
                   className="relative flex w-full items-center gap-3 overflow-hidden px-3 py-2.5 text-left"
+                  style={flag ? flagInk(flag) : undefined}
                 >
                   {/* Same flag wash as the board lane — the two lists show the
                       same week and should say the same thing about it. Only the
