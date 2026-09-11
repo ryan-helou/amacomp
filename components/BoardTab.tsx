@@ -371,7 +371,7 @@ function Lane({
             aria-hidden
             className="pointer-events-none absolute inset-0"
             style={{
-              backgroundImage: flagWash(awayFlag),
+              ...flagWash(awayFlag),
             }}
           />
           <span
@@ -387,7 +387,12 @@ function Lane({
         </>
       )}
       <div className="relative flex items-center gap-3">
-        <div className="flex w-8 shrink-0 flex-col items-center">
+        {/* On a sun flag the rank sits inside the red disc, so it goes white. */}
+        <div
+          className={`flex w-8 shrink-0 flex-col items-center ${
+            awayFlag?.sun ? "[&_*]:text-white!" : ""
+          }`}
+        >
           <span
             className={`stamp text-2xl ${
               row.rank === 1 && scored ? "text-gold" : "text-ink-3"
