@@ -102,11 +102,14 @@ export function flagWash(flag: Flag): {
     return {
       backgroundImage:
         `radial-gradient(circle closest-side at 50% 50%, ${c}80 0 64%, ${c}00 66%),` +
+        // A white disc under the red one blanks the waves, so the sun sits
+        // cleanly on top of the pattern instead of letting it show through.
+        ` radial-gradient(circle closest-side at 50% 50%, ${flag.mid} 0 64%, ${flag.mid}00 66%),` +
         ` radial-gradient(circle at 50% 100%, transparent 0 3px, ${c}24 3px 4px,` +
         ` transparent 4px 7px, ${c}24 7px 8px, transparent 8px 11px, ${c}24 11px 12px, transparent 12px),` +
         ` linear-gradient(${flag.mid}E0, ${flag.mid}E0)`,
-      backgroundSize: "100% 100%, 24px 12px, 100% 100%",
-      backgroundRepeat: "no-repeat, repeat, no-repeat",
+      backgroundSize: "100% 100%, 100% 100%, 24px 12px, 100% 100%",
+      backgroundRepeat: "no-repeat, no-repeat, repeat, no-repeat",
     };
   }
   return {
