@@ -387,12 +387,7 @@ function Lane({
         </>
       )}
       <div className="relative flex items-center gap-3">
-        {/* On a sun flag the rank sits inside the red disc, so it goes white. */}
-        <div
-          className={`flex w-8 shrink-0 flex-col items-center ${
-            awayFlag?.sun ? "[&_*]:text-white!" : ""
-          }`}
-        >
+        <div className="flex w-8 shrink-0 flex-col items-center">
           <span
             className={`stamp text-2xl ${
               row.rank === 1 && scored ? "text-gold" : "text-ink-3"

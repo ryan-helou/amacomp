@@ -94,19 +94,14 @@ export function flagWash(flag: Flag): {
   backgroundRepeat?: string;
 } {
   if (flag.sun) {
-    // The actual flag: a white field and a crisp crimson sun. The sun sits on
-    // the lane's left column (rank on the Board, avatar on the Week tab — both
-    // centred 1.75rem in), so it never lands under the score or the bar. Faint
-    // seigaiha waves fill the field so it reads as cloth, not a blank row.
+    // The actual flag: a plain white field and a crisp crimson sun dead
+    // centre, nearly the lane's full height. Held just under half strength
+    // because the name and bar run across it.
     const c = flag.from;
     return {
       backgroundImage:
-        `radial-gradient(circle at 1.75rem 50%, ${c} 0 1.55rem, ${c}00 1.6rem),` +
-        ` radial-gradient(circle at 50% 100%, transparent 0 3px, ${c}24 3px 4px,` +
-        ` transparent 4px 7px, ${c}24 7px 8px, transparent 8px 11px, ${c}24 11px 12px, transparent 12px),` +
-        ` linear-gradient(${flag.mid}E0, ${flag.mid}E0)`,
-      backgroundSize: "100% 100%, 24px 12px, 100% 100%",
-      backgroundRepeat: "no-repeat, repeat, no-repeat",
+        `radial-gradient(circle closest-side at 50% 50%, ${c}80 0 86%, ${c}00 88%),` +
+        ` linear-gradient(${flag.mid}EB, ${flag.mid}EB)`,
     };
   }
   return {
