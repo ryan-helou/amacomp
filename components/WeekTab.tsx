@@ -329,7 +329,7 @@ export function WeekTab({
                         aria-hidden
                         className="pointer-events-none absolute inset-0"
                         style={{
-                          backgroundImage: flagWash(flag),
+                          ...flagWash(flag),
                         }}
                       />
                       <span

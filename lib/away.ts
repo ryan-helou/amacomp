@@ -88,19 +88,31 @@ export function awayThisWeek(
  * bands; a flag with a sun gets a soft wash and a red disc rising at the right
  * edge, so it reads as Japan rather than as a red-white-red stripe.
  */
-export function flagWash(flag: Flag): string {
+export function flagWash(flag: Flag): {
+  backgroundImage: string;
+  backgroundSize?: string;
+  backgroundRepeat?: string;
+} {
   if (flag.sun) {
-    return (
-      // A big faint sun half-set past the right edge: large and pale enough
-      // that the score and bar on top stay the darkest things in the lane.
-      `radial-gradient(circle at calc(100% + 0.5rem) 50%, ${flag.from}40 0, ${flag.from}38 3.25rem, ${flag.from}00 3.4rem),` +
-      ` radial-gradient(circle at calc(100% + 0.5rem) 50%, ${flag.from}1F 0, ${flag.from}00 7rem),` +
-      ` linear-gradient(100deg, ${flag.from}26 0%, ${flag.from}00 35%)`
-    );
+    // The actual flag: a white field and a crisp crimson sun. The sun sits on
+    // the lane's left column (rank on the Board, avatar on the Week tab — both
+    // centred 1.75rem in), so it never lands under the score or the bar. Faint
+    // seigaiha waves fill the field so it reads as cloth, not a blank row.
+    const c = flag.from;
+    return {
+      backgroundImage:
+        `radial-gradient(circle at 1.75rem 50%, ${c} 0 1.55rem, ${c}00 1.6rem),` +
+        ` radial-gradient(circle at 50% 100%, transparent 0 3px, ${c}24 3px 4px,` +
+        ` transparent 4px 7px, ${c}24 7px 8px, transparent 8px 11px, ${c}24 11px 12px, transparent 12px),` +
+        ` linear-gradient(${flag.mid}E0, ${flag.mid}E0)`,
+      backgroundSize: "100% 100%, 24px 12px, 100% 100%",
+      backgroundRepeat: "no-repeat, repeat, no-repeat",
+    };
   }
-  return (
-    `linear-gradient(100deg, ${flag.from}80 0%, ${flag.from}5C 30%,` +
-    ` ${flag.mid}00 47%, ${flag.mid}00 53%,` +
-    ` ${flag.to}5C 70%, ${flag.to}80 100%)`
-  );
+  return {
+    backgroundImage:
+      `linear-gradient(100deg, ${flag.from}80 0%, ${flag.from}5C 30%,` +
+      ` ${flag.mid}00 47%, ${flag.mid}00 53%,` +
+      ` ${flag.to}5C 70%, ${flag.to}80 100%)`,
+  };
 }
