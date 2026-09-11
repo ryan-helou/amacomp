@@ -55,7 +55,7 @@ function slices(bySport: Partial<Record<Sport, number>> | undefined, granted: nu
     const p = bySport?.[s] ?? 0;
     const len = Math.min(p / goal, 1 - cursor);
     if (p <= 0 || len <= 0.0001) continue;
-    out.push({ key: s, tip: SPORT_UI[s].hex, grant: false, start: cursor, len });
+    out.push({ key: s, tip: SPORT_UI[s].paint, grant: false, start: cursor, len });
     cursor += len;
   }
   const len = Math.min(granted / goal, 1 - cursor);
@@ -171,7 +171,9 @@ export function PaceClock({
               y={4 + row * 1.5}
               width="1.5"
               height="1.5"
-              fill={(row + col) % 2 ? "#fff" : "var(--color-ink)"}
+              // Ink against deck, not against white: on a dark scheme the ink
+              // IS near-white, and a white-on-white chequer is no chequer.
+              fill={(row + col) % 2 ? "var(--color-deck)" : "var(--color-ink)"}
               opacity="0.85"
             />
           );
