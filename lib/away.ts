@@ -98,6 +98,10 @@ export function flagInk(flag: Flag): CSSProperties {
     "--ink-2": "#3f5f74",
     "--ink-3": "#63808f",
     "--line": "rgb(13 34 49 / 0.16)",
+    // The accent pair too: Soot and Void accent with white, and a white quota
+    // bar on the flag's white field is an empty bar.
+    "--accent": "#0b1f2d",
+    "--accent-2": "#3f5f74",
   } as CSSProperties;
 }
 

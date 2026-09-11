@@ -23,6 +23,10 @@ const PALETTES = [
   { id: "clay", label: "Clay", deck: "#dbc9bd", accent: "#b8471f", accent2: "#d97316" },
   { id: "moss", label: "Moss", deck: "#c7d1bc", accent: "#3f7a34", accent2: "#6d9c1f" },
   { id: "plum", label: "Plum", deck: "#cec5db", accent: "#6d34c8", accent2: "#b1349b" },
+  // The two monochrome schemes: the app goes black, grey and white, and the
+  // only colour left is the four disciplines — so their swatch shows those.
+  { id: "soot", label: "Soot", deck: "#151617", accent: "#2fd0a0", accent2: "#ff2e9a" },
+  { id: "void", label: "Void", deck: "#000000", accent: "#00c46a", accent2: "#ff3db0" },
 ] as const;
 
 const STORAGE_KEY = "amacomp-palette";
@@ -61,7 +65,7 @@ export function PalettePicker() {
     <div className="pane mt-4 rounded-xl border border-line bg-tile px-4 py-3">
       <div className="eyebrow text-ink">Colourway</div>
       <p className="mt-0.5 text-[0.8125rem] text-ink-2">
-        Changes the deck and the accent. The sport colours never move.
+        Changes the deck and the accent. Soot and Void also recolour the sports.
       </p>
       <div className="mt-3 grid grid-cols-3 gap-2">
         {PALETTES.map((p) => {

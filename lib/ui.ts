@@ -3,10 +3,15 @@ import type { Sport } from "./types";
 /**
  * Tailwind scans source for literal class names, so sport styling is written out
  * per sport rather than built from a template string.
+ *
+ * `paint` is the variable, not a hex: a colourway may re-point the four sport
+ * colours (Soot and Void do), and anything drawn in SVG has to follow the
+ * scheme the same way the `text-*` and `bg-*` classes already do. Use it
+ * wherever a literal colour is needed; never append alpha to it.
  */
 export const SPORT_UI: Record<
   Sport,
-  { label: string; text: string; bg: string; border: string; soft: string; hex: string }
+  { label: string; text: string; bg: string; border: string; soft: string; paint: string }
 > = {
   swim: {
     label: "Swim",
@@ -14,7 +19,7 @@ export const SPORT_UI: Record<
     bg: "bg-swim",
     border: "border-swim",
     soft: "bg-swim/10",
-    hex: "#0d93bd",
+    paint: "var(--color-swim)",
   },
   bike: {
     label: "Bike",
@@ -22,7 +27,7 @@ export const SPORT_UI: Record<
     bg: "bg-bike",
     border: "border-bike",
     soft: "bg-bike/10",
-    hex: "#d98217",
+    paint: "var(--color-bike)",
   },
   run: {
     label: "Run",
@@ -30,7 +35,7 @@ export const SPORT_UI: Record<
     bg: "bg-run",
     border: "border-run",
     soft: "bg-run/10",
-    hex: "#d93b30",
+    paint: "var(--color-run)",
   },
   gym: {
     label: "Gym",
@@ -38,7 +43,7 @@ export const SPORT_UI: Record<
     bg: "bg-gym",
     border: "border-gym",
     soft: "bg-gym/10",
-    hex: "#6d4fc4",
+    paint: "var(--color-gym)",
   },
 };
 

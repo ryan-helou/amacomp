@@ -214,6 +214,67 @@
   --island: rgb(254 252 255 / 0.94);
 }
 
+/* Soot — near-black, white type, and the only colour in the app is the four
+   disciplines: mint, moss, fuchsia and aqua. The first scheme to re-point the
+   sport colours; see SPORT_UI.paint in lib/ui.ts. */
+:root[data-palette="soot"] {
+  --deck: #151617;
+  --deck-2: rgb(241 242 243 / 0.07);
+  --tile: rgb(241 242 243 / 0.07);
+  --ink: #f1f2f3;
+  --ink-2: #b8babd;
+  --ink-3: #8a8d90;
+  --line: rgb(241 242 243 / 0.12);
+  --line-2: rgb(241 242 243 / 0.22);
+  --accent: #f1f2f3;
+  --on-ink: #151617;
+  --scrim: rgb(0 0 0 / 0.6);
+  --accent-soft: rgb(241 242 243 / 0.14);
+  --accent-2: #a0a3a6;
+  --on-accent: #151617;
+  --gold: #c6a05a;
+  --good: #2fd0a0;
+  --lamp: rgb(241 242 243 / 0.1);
+  --floor: rgb(0 0 0 / 0.5);
+  --raised: rgb(42 43 44 / 0.96);
+  --island: rgb(47 48 49 / 0.97);
+
+  --color-swim: #2fd0a0;
+  --color-bike: #8fbf3f;
+  --color-run: #ff2e9a;
+  --color-gym: #00b8c4;
+}
+
+/* Void — the same idea taken to true black, with the four colours at full
+   strength: emerald, lime, magenta and teal. */
+:root[data-palette="void"] {
+  --deck: #000000;
+  --deck-2: rgb(255 255 255 / 0.07);
+  --tile: rgb(255 255 255 / 0.07);
+  --ink: #ffffff;
+  --ink-2: #bdbdbd;
+  --ink-3: #8e8e8e;
+  --line: rgb(255 255 255 / 0.12);
+  --line-2: rgb(255 255 255 / 0.22);
+  --accent: #ffffff;
+  --on-ink: #000000;
+  --scrim: rgb(0 0 0 / 0.7);
+  --accent-soft: rgb(255 255 255 / 0.14);
+  --accent-2: #a3a3a3;
+  --on-accent: #000000;
+  --gold: #cba75f;
+  --good: #00c46a;
+  --lamp: rgb(255 255 255 / 0.1);
+  --floor: rgb(0 0 0 / 0.6);
+  --raised: rgb(23 23 23 / 0.96);
+  --island: rgb(28 28 28 / 0.97);
+
+  --color-swim: #00c46a;
+  --color-bike: #8fd400;
+  --color-run: #ff3db0;
+  --color-gym: #00c9c0;
+}
+
 /* The material. Shared by every scheme — this is the glass, not the colour. */
 :root {
   --grain: 0.05;
@@ -229,8 +290,11 @@
 }
 
 /* Carbon is a dark ground, so its glass is lit from a dark room rather than a
-   bright one: a fainter edge, a fainter sheen, a deeper shadow. */
-:root[data-palette="carbon"] {
+   bright one: a fainter edge, a fainter sheen, a deeper shadow. Soot and Void
+   are darker still and take the same treatment. */
+:root[data-palette="carbon"],
+:root[data-palette="soot"],
+:root[data-palette="void"] {
   --glass-edge: rgb(226 240 255 / 0.3);
   --glass-inner: rgb(226 240 255 / 0.05);
   --sheen: rgb(226 240 255 / 0.12);
