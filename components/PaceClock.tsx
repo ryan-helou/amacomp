@@ -11,27 +11,35 @@ const round = (v: number) => Number(v.toFixed(2));
 
 // A stadium track: bends of radius R centred at (60,50) and (60,70), joined by
 // two 20-unit straights. One lap starts at the finish line, top centre.
+//
+// The track is drawn once, at full width, and stays visible all the way round.
+// Your points run as a narrower line INSIDE it, in lane one, rather than
+// repainting the whole band — a band that fills over its own lane lines stops
+// looking like a track and becomes a fat ring.
 const R = 40;
-const BEND = 20 * Math.PI; // a quarter bend at R = 40
-const LAP = 4 * BEND + 40;
+const BAND = 13; // the width of the track itself
+const LANE = 35.4; // centre of lane one, just inside the track
+const LANE_W = 4.2;
+const LINES = [37.8, 42.2]; // the two lane lines, either side of lane two
 const RELAY_MS = 900;
 const track = (r: number) =>
   `M60 ${50 - r}A${r} ${r} 0 0 1 ${60 + r} 50L${60 + r} 70` +
   `A${r} ${r} 0 0 1 ${60 - r} 70L${60 - r} 50A${r} ${r} 0 0 1 60 ${50 - r}`;
 
-/** The point `f` of the way round the lap, on the centre of the track. */
-function pointAt(f: number): [number, number] {
-  let d = f * LAP;
+/** The point `f` of the way round a lap of radius `r`. */
+function pointAt(f: number, r: number): [number, number] {
+  const bend = (Math.PI / 2) * r; // a quarter bend
+  let d = f * (4 * bend + 40);
   const onBend = (cy: number, from: number, dist: number): [number, number] => {
-    const a = from + dist / R;
-    return [round(60 + R * Math.cos(a)), round(cy + R * Math.sin(a))];
+    const a = from + dist / r;
+    return [round(60 + r * Math.cos(a)), round(cy + r * Math.sin(a))];
   };
-  if (d <= BEND) return onBend(50, -Math.PI / 2, d);
-  d -= BEND;
+  if (d <= bend) return onBend(50, -Math.PI / 2, d);
+  d -= bend;
   if (d <= 20) return [100, round(50 + d)];
   d -= 20;
-  if (d <= 2 * BEND) return onBend(70, 0, d);
-  d -= 2 * BEND;
+  if (d <= 2 * bend) return onBend(70, 0, d);
+  d -= 2 * bend;
   if (d <= 20) return [20, round(70 - d)];
   d -= 20;
   return onBend(50, Math.PI, d);
@@ -58,9 +66,10 @@ function slices(bySport: Partial<Record<Sport, number>> | undefined, granted: nu
 /**
  * The weekly quota as one lap of a running track. Each discipline runs its leg
  * in its own colour, handing over to the next like a relay; granted points run
- * the last leg hatched. Lane lines sit on top of the colour so it reads as a
- * track, the finish line is at the top, and the whole lap goes green when quota
- * is met.
+ * the last leg hatched. The track and its lane lines stay visible the whole way
+ * round; your points run as a line in lane one inside it, so the ring reads as
+ * a runner on a track rather than a band filling up. Lane one goes green when
+ * quota is met.
  */
 export function PaceClock({
   bySport,
@@ -84,7 +93,10 @@ export function PaceClock({
   const parts = goal > 0 && !done ? slices(bySport, granted, goal) : [];
   const filled = parts.reduce((sum, p) => sum + p.len, 0);
   const tip = parts[parts.length - 1]?.tip ?? "";
-  const [tx, ty] = pointAt(filled);
+  const [tx, ty] = pointAt(filled, LANE);
+  // A long score ("105.1") is wider than the infield at the usual size.
+  const label = fmtPoints(points);
+  const statSize = size * Math.max(0.2, 0.36 - 0.05 * Math.max(0, label.length - 3));
 
   // Run the relay once mounted — the score in the infield never moves.
   const [shown, setShown] = useState(!animate);
@@ -112,27 +124,31 @@ export function PaceClock({
         </defs>
 
         {/* Infield */}
-        <path d={track(33)} fill="var(--color-good)" opacity="0.07" />
-        {/* Track */}
-        <path d={track(R)} fill="none" stroke="var(--color-line)" strokeWidth="12" opacity="0.5" />
+        <path d={track(R - BAND / 2 - 0.8)} fill="var(--color-good)" opacity="0.07" />
+        {/* The track, and its lane lines — both stay visible all the way round. */}
+        <path d={track(R)} fill="none" stroke="var(--color-line)" strokeWidth={BAND} opacity="0.5" />
+        {LINES.map((r) => (
+          <path key={r} d={track(r)} fill="none" stroke="#fff" strokeWidth="0.5" opacity="0.55" />
+        ))}
 
+        {/* Your lap, run in lane one. */}
         {done ? (
           <path
-            d={track(R)}
+            d={track(LANE)}
             fill="none"
             stroke="var(--color-good)"
-            strokeWidth="12"
-            style={{ filter: "drop-shadow(0 0 6px color-mix(in srgb, var(--color-good) 45%, transparent))" }}
+            strokeWidth={LANE_W}
+            style={{ filter: "drop-shadow(0 0 5px color-mix(in srgb, var(--color-good) 45%, transparent))" }}
           />
         ) : (
           parts.map((p) => (
             <path
               key={p.key}
-              d={track(R)}
+              d={track(LANE)}
               pathLength={100}
               fill="none"
               stroke={p.grant ? `url(#${hatch})` : p.tip}
-              strokeWidth="12"
+              strokeWidth={LANE_W}
               strokeDasharray={shown ? `${round(p.len * 100)} ${round(100 - p.len * 100)}` : "0 100"}
               strokeDashoffset={round(-p.start * 100)}
               style={{
@@ -143,11 +159,6 @@ export function PaceClock({
             />
           ))
         )}
-
-        {/* Lane lines, over the colour so it reads as a track. */}
-        {[38, 42].map((r) => (
-          <path key={r} d={track(r)} fill="none" stroke="#fff" strokeWidth="0.5" opacity="0.75" />
-        ))}
 
         {/* Finish line */}
         {Array.from({ length: 16 }, (_, i) => {
@@ -171,10 +182,10 @@ export function PaceClock({
           <circle
             cx={tx}
             cy={ty}
-            r="5"
+            r="3.4"
             fill="var(--color-tile)"
             stroke={tip}
-            strokeWidth="2.5"
+            strokeWidth="2"
             opacity={shown ? 1 : 0}
             style={{ transition: `opacity 220ms ease-out ${animate ? Math.round(filled * RELAY_MS) : 0}ms` }}
           />
@@ -182,8 +193,8 @@ export function PaceClock({
       </svg>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="stat leading-none text-ink" style={{ fontSize: size * 0.36 }}>
-          {fmtPoints(points)}
+        <div className="stat leading-none text-ink" style={{ fontSize: statSize }}>
+          {label}
         </div>
         <div
           className={`eyebrow mt-2 ${done ? "text-good" : "text-ink-3"}`}
