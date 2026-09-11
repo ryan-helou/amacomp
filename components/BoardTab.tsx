@@ -13,7 +13,7 @@ import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import { formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
 import { SPORT_UNIT, elevationRateLabel, rateLabel, isGrant, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
-import type { Flag } from "@/lib/away";
+import { flagWash, type Flag } from "@/lib/away";
 import { firstSeason, seasonFor } from "@/lib/season";
 import { FlagName, FlagTag, useAwayIn, useOpenProfile, useReigningChampion } from "./ProfileContext";
 import { Glyph } from "./Glyph";
@@ -371,10 +371,7 @@ function Lane({
             aria-hidden
             className="pointer-events-none absolute inset-0"
             style={{
-              backgroundImage:
-                `linear-gradient(100deg, ${awayFlag.from}80 0%, ${awayFlag.from}5C 30%,` +
-                ` ${awayFlag.mid}00 47%, ${awayFlag.mid}00 53%,` +
-                ` ${awayFlag.to}5C 70%, ${awayFlag.to}80 100%)`,
+              backgroundImage: flagWash(awayFlag),
             }}
           />
           <span

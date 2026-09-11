@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import type { Activity, AppState } from "@/lib/types";
+import type { Activity, AppState, Athlete } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { awayThisWeek, type Flag } from "@/lib/away";
 import { AthleteSheet } from "./AthleteSheet";
@@ -19,8 +19,8 @@ const ChampionCtx = createContext<string | null>(null);
 // and a map keyed only by athlete flies it in every view that draws a name —
 // the record book, the hall of fame, the titles page, last week's recap. The
 // week has to be part of the question.
-const EMPTY_LOG: Activity[] = [];
-const AwayLogCtx = createContext<Activity[]>(EMPTY_LOG);
+const EMPTY_LOG: { activities: Activity[]; athletes: Athlete[] } = { activities: [], athletes: [] };
+const AwayLogCtx = createContext(EMPTY_LOG);
 
 export function useOpenProfile() {
   return useContext(OpenProfileCtx);
@@ -38,8 +38,11 @@ export function useReigningChampion() {
  * "now" would follow the athlete's name into all of them.
  */
 export function useAwayIn(weekRef: DayKey) {
-  const activities = useContext(AwayLogCtx);
-  return useMemo(() => awayThisWeek(activities, weekRef), [activities, weekRef]);
+  const { activities, athletes } = useContext(AwayLogCtx);
+  return useMemo(
+    () => awayThisWeek(activities, weekRef, athletes),
+    [activities, athletes, weekRef],
+  );
 }
 
 export function ProfileProvider({
@@ -54,8 +57,12 @@ export function ProfileProvider({
   children: ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const log = useMemo(
+    () => ({ activities: state.activities, athletes: state.athletes }),
+    [state.activities, state.athletes],
+  );
   return (
-    <AwayLogCtx.Provider value={state.activities}>
+    <AwayLogCtx.Provider value={log}>
     <ChampionCtx.Provider value={championId}>
       <OpenProfileCtx.Provider value={setSelected}>
         {children}
@@ -138,9 +145,17 @@ export function FlagTag({ flag }: { flag: Flag }) {
       aria-label={`Away in ${flag.label}`}
       role="img"
     >
-      <span className="flex-1" style={{ backgroundColor: flag.from }} />
-      <span className="flex-1" style={{ backgroundColor: flag.mid }} />
-      <span className="flex-1" style={{ backgroundColor: flag.to }} />
+      {flag.sun ? (
+        <span className="flex flex-1 items-center justify-center" style={{ backgroundColor: flag.mid }}>
+          <span className="h-[0.4375rem] w-[0.4375rem] rounded-full" style={{ backgroundColor: flag.from }} />
+        </span>
+      ) : (
+        <>
+          <span className="flex-1" style={{ backgroundColor: flag.from }} />
+          <span className="flex-1" style={{ backgroundColor: flag.mid }} />
+          <span className="flex-1" style={{ backgroundColor: flag.to }} />
+        </>
+      )}
     </span>
   );
 }

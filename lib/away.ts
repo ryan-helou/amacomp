@@ -21,6 +21,8 @@ export interface Flag {
   /** The middle band of the actual flag, for the little striped tag. Kept out of
    *  the text gradient on purpose: white text on a pale deck is no text. */
   mid: string;
+  /** A disc flag (Japan): drawn as a sun, not three stripes. */
+  sun?: boolean;
 }
 
 /**
@@ -42,13 +44,29 @@ export function flagFor(note: string | null): Flag | null {
   return null;
 }
 
+export const JAPAN: Flag = { label: "Japan", from: "#BC002D", mid: "#FFFFFF", to: "#BC002D", sun: true };
+
 /**
- * Athletes excused during the week containing `refDay`, mapped to their flag.
- *
- * Only athletes whose excuse names a country we have colours for appear — an
- * excuse with no note is still an excuse, it just doesn't get a paint job.
+ * Trips that fly a flag WITHOUT an excuse — the athlete is still training and
+ * still owes the quota; this is decoration only. Matched by exact name (Jona
+ * and Jonah are two different people). Inclusive dates.
  */
-export function awayThisWeek(activities: Activity[], refDay: DayKey): Map<string, Flag> {
+export const TRIPS: { name: string; from: DayKey; to: DayKey; flag: Flag }[] = [
+  { name: "Ryan", from: "2026-09-11", to: "2026-09-17", flag: JAPAN },
+];
+
+/**
+ * Athletes away during the week containing `refDay`, mapped to their flag:
+ * anyone excused with a note naming a country we have colours for, plus any
+ * trip overlapping the week. An excuse with no note is still an excuse, it just
+ * doesn't get a paint job.
+ */
+export function awayThisWeek(
+  activities: Activity[],
+  refDay: DayKey,
+  athletes: { id: string; name: string }[] = [],
+  trips = TRIPS,
+): Map<string, Flag> {
   const week = periodRange("week", refDay);
   const out = new Map<string, Flag>();
   for (const a of activities) {
@@ -57,5 +75,32 @@ export function awayThisWeek(activities: Activity[], refDay: DayKey): Map<string
     const flag = flagFor(a.note);
     if (flag) out.set(a.athleteId, flag);
   }
+  for (const t of trips) {
+    if (t.to < week[0] || t.from > week[1]) continue;
+    const who = athletes.find((a) => a.name === t.name);
+    if (who && !out.has(who.id)) out.set(who.id, t.flag);
+  }
   return out;
+}
+
+/**
+ * The lane background for an away athlete. Tricolours get three feathered
+ * bands; a flag with a sun gets a soft wash and a red disc rising at the right
+ * edge, so it reads as Japan rather than as a red-white-red stripe.
+ */
+export function flagWash(flag: Flag): string {
+  if (flag.sun) {
+    return (
+      // A big faint sun half-set past the right edge: large and pale enough
+      // that the score and bar on top stay the darkest things in the lane.
+      `radial-gradient(circle at calc(100% + 0.5rem) 50%, ${flag.from}40 0, ${flag.from}38 3.25rem, ${flag.from}00 3.4rem),` +
+      ` radial-gradient(circle at calc(100% + 0.5rem) 50%, ${flag.from}1F 0, ${flag.from}00 7rem),` +
+      ` linear-gradient(100deg, ${flag.from}26 0%, ${flag.from}00 35%)`
+    );
+  }
+  return (
+    `linear-gradient(100deg, ${flag.from}80 0%, ${flag.from}5C 30%,` +
+    ` ${flag.mid}00 47%, ${flag.mid}00 53%,` +
+    ` ${flag.to}5C 70%, ${flag.to}80 100%)`
+  );
 }

@@ -14,6 +14,7 @@ import {
 } from "@/lib/dates";
 import { SPORT_UNIT, isGrant, isExcuse, type Activity } from "@/lib/types";
 import { toGo } from "@/lib/togo";
+import { flagWash } from "@/lib/away";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import {
@@ -328,10 +329,7 @@ export function WeekTab({
                         aria-hidden
                         className="pointer-events-none absolute inset-0"
                         style={{
-                          backgroundImage:
-                            `linear-gradient(100deg, ${flag.from}80 0%, ${flag.from}5C 30%,` +
-                            ` ${flag.mid}00 47%, ${flag.mid}00 53%,` +
-                            ` ${flag.to}5C 70%, ${flag.to}80 100%)`,
+                          backgroundImage: flagWash(flag),
                         }}
                       />
                       <span
