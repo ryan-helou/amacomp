@@ -1,8 +1,8 @@
 import { activityPoints, ratesOn, unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
 import { getStore } from "./db";
 import { ANNOUNCE_HOUR, announcementIsDue, rateAnnouncementFor } from "./announce";
-import { periodRange } from "./dates";
-import { seasonByNumber, seasonChampions } from "./season";
+import { addDays, daysBetween, periodRange } from "./dates";
+import { seasonByNumber, seasonChampions, seasonFor } from "./season";
 import { hallOfFame } from "./records";
 import { DEFAULT_SETTINGS, type Activity, type Athlete, type Settings } from "./types";
 
@@ -502,10 +502,34 @@ console.log("\nseason window starts at kickoff, not the 1st");
   const S2 = { ...S, seasonStart: "2026-08-03" };
   const s1 = seasonByNumber(1, "2026-08-03");
   check("season 1 opens on the kickoff", s1.start, "2026-08-03");
-  check("season 1 still ends with its month block", s1.end, "2026-09-30");
   check("season 1 is still labelled Aug–Sep", s1.monthsLabel, "Aug–Sep");
-  // Later seasons are pure month blocks — no kickoff to respect.
-  check("season 2 starts on the 1st", seasonByNumber(2, "2026-08-03").start, "2026-10-01");
+
+  // A season ends on the SUNDAY closing the week its month block ends in, so
+  // the last week of a title race is a whole week. Sep 30 2026 is a Wednesday;
+  // its week runs to Sun 4 Oct.
+  check("season 1 runs to the Sunday, not the 30th", s1.end, "2026-10-04");
+  const s2 = seasonByNumber(2, "2026-08-03");
+  check("season 2 opens the Monday after", s2.start, "2026-10-05");
+  check("and closes on a Sunday too", s2.end, "2026-12-06");
+
+  // The days either side of the old month boundary, which are the ones that
+  // change hands: 1-4 Oct still belong to the season that is finishing.
+  check("30 Sep is season 1", seasonFor("2026-09-30", "2026-08-03")?.number, 1);
+  check("2 Oct is STILL season 1", seasonFor("2026-10-02", "2026-08-03")?.number, 1);
+  check("4 Oct is the last day of season 1", seasonFor("2026-10-04", "2026-08-03")?.number, 1);
+  check("5 Oct starts season 2", seasonFor("2026-10-05", "2026-08-03")?.number, 2);
+
+  // Whole weeks, season after season, with no day belonging to two seasons.
+  let gaps = 0;
+  let ragged = 0;
+  for (let n = 1; n <= 8; n++) {
+    const a = seasonByNumber(n, "2026-08-03");
+    const b = seasonByNumber(n + 1, "2026-08-03");
+    if (addDays(a.end, 1) !== b.start) gaps++;
+    if ((daysBetween(a.start, a.end) + 1) % 7 !== 0) ragged++;
+  }
+  check("seasons tile the calendar with no gap or overlap", gaps, 0);
+  check("every season is a whole number of weeks", ragged, 0);
 
   const athletes = [ath("j", "Jona"), ath("r", "Ryan")];
   const acts = [
