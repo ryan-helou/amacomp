@@ -35,6 +35,9 @@ function close(label: string, actual: number, expected: number, tol = 0.005) {
   }
 }
 
+/** The Sunday season 1 closes on — the month block ends Wed 30 Sep. */
+const END = "2026-10-04";
+
 const SETTINGS: Settings = {
   ...DEFAULT_SETTINGS,
   seasonStart: "2026-08-03",
@@ -73,16 +76,16 @@ function run(who: Athlete, day: string, km: number): Activity {
 
 console.log("\ndays: the season's own arithmetic");
 {
-  // Season 1 is 3 Aug – 30 Sep. On 8 Aug, six days have run (3rd through 8th)
-  // and twenty-two remain after today (9th through 30th September is 53, so
-  // check against the helper rather than a hand count).
+  // Season 1 is 3 Aug – Sun 4 Oct: the month block ends on Wed 30 Sep and the
+  // season runs on to the Sunday that closes that week. On 8 Aug six days have
+  // run (3rd through 8th); check the rest against the helper, not a hand count.
   const r = seasonRace([ANA], [], SETTINGS, "2026-08-08")!;
   check("season 1 is found", r.season.number, 1);
   check("start is the kickoff, not the 1st", r.season.start, "2026-08-03");
   check("six days gone on the 8th, today included", r.daysGone, 6);
-  check("days left excludes today", r.daysLeft, daysBetween("2026-08-08", "2026-09-30"));
+  check("days left excludes today", r.daysLeft, daysBetween("2026-08-08", END));
 
-  const last = seasonRace([ANA], [], SETTINGS, "2026-09-30")!;
+  const last = seasonRace([ANA], [], SETTINGS, END)!;
   check("no days left on the final day", last.daysLeft, 0);
 
   // Calendar says August, the kickoff says the 3rd: the 1st is inside season 1's
@@ -96,15 +99,15 @@ console.log("\ndays: the season's own arithmetic");
 console.log("\nthe projection carries recent form forward — without spending today twice");
 {
   // Ana runs 10 km (100 pts) on the opening day. Viewed on 3 Aug the season is
-  // one day old, so the form window is that one day: 100/day, over 58 days
-  // still to come, projects 100 + 5800 = 5900.
+  // one day old, so the form window is that one day: 100/day, over the 62 days
+  // still to come, projects 100 + 6200 = 6300.
   const acts = [run(ANA, "2026-08-03", 10)];
   const r = seasonRace([ANA], acts, SETTINGS, "2026-08-03")!;
   check("one day gone", r.daysGone, 1);
-  check("58 days still to come", r.daysLeft, 58);
+  check("62 days still to come", r.daysLeft, 62);
   check("the form window cannot outrun the season", r.formDays, 1);
   close("rate is points per day of form", r.rows[0].rate, 100);
-  close("projection is now + rate x days left", r.rows[0].projected, 5900);
+  close("projection is now + rate x days left", r.rows[0].projected, 6300);
 
   // Once the season is older than the window, the window stops growing.
   const later = seasonRace([ANA], acts, SETTINGS, "2026-09-01")!;
@@ -128,17 +131,17 @@ console.log("\nthe chase target is where the leader is heading, not where they a
   close("Ana is 100 behind", ana.behind, 100);
 
   // The season is 10 days old, so the form window is those 10 days and holds
-  // everything. Ben's rate is 300/10 = 30/day; 49 days remain, so he is heading
-  // for 300 + 1470 = 1770. Ana needs (1770 - 200) / 49 = 32.04/day to land level.
+  // everything. Ben's rate is 300/10 = 30/day; 53 days remain, so he is heading
+  // for 300 + 1590 = 1890. Ana needs (1890 - 200) / 53 = 31.9/day to land level.
   check("ten days gone", r.daysGone, 10);
-  check("49 days left", r.daysLeft, 49);
-  close("Ben projects to 1770", ben.projected, 1770);
-  close("Ana must beat Ben's pace, not just close the gap", ana.needPerDay!, 1570 / 49);
-  // The naive version — closing the gap alone — is 100/49 = 2.04, which would
+  check("53 days left", r.daysLeft, 53);
+  close("Ben projects to 1890", ben.projected, 1890);
+  close("Ana must beat Ben's pace, not just close the gap", ana.needPerDay!, 1690 / 53);
+  // The naive version — closing the gap alone — is 100/53 = 1.9, which would
   // tell someone 30 points a day adrift that two a day is enough.
   check(
     "and that is far more than merely closing the gap",
-    ana.needPerDay! > (100 / 49) * 5,
+    ana.needPerDay! > (100 / 53) * 5,
     true,
   );
 }
@@ -165,10 +168,12 @@ console.log("\nprojected order CAN differ from the table — the whole reason fo
   close("and Ben has scored 800 in the window", ben.formPoints, 800);
   check("so the projection flips them", [ben.projectedRank, ana.projectedRank], [1, 2]);
   check("and the race is called live", r.leadChanges, true);
-  // The two margins tell opposite stories, which is exactly why both exist:
-  // Ana is 400 up today and 171 down by the end.
+  // The two margins tell opposite stories, which is exactly why both exist.
+  // Ana is 400 up today. Ben's form is 800 over the 14-day window, so 57.1/day,
+  // and 14 days remain to 4 Oct: he lands on 1600 + 800 = 2400 against Ana's
+  // flat 2000, and is 400 up by the end.
   close("the margin today", r.margin, 400);
-  close("the margin on the projection", r.projectedMargin, 1600 + 800 / 14 * 10 - 2000);
+  close("the margin on the projection", r.projectedMargin, 2400 - 2000);
 }
 
 console.log("\na procession is not called a race");
@@ -198,8 +203,8 @@ console.log("\nties share a place and nobody is asked to chase themselves");
 
 console.log("\non the final day there is no per-day answer left to give");
 {
-  const acts = [run(BEN, "2026-09-29", 30), run(ANA, "2026-09-29", 20)];
-  const r = seasonRace([ANA, BEN], acts, SETTINGS, "2026-09-30")!;
+  const acts = [run(BEN, "2026-10-03", 30), run(ANA, "2026-10-03", 20)];
+  const r = seasonRace([ANA, BEN], acts, SETTINGS, END)!;
   const ana = r.rows.find((x) => x.athlete.id === "a")!;
   check("no days left", r.daysLeft, 0);
   check("so no rate can close it", ana.needPerDay, null);
