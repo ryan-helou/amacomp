@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import type { Activity, AppState, Athlete } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
-import { awayThisWeek, MAPLE, type Flag } from "@/lib/away";
+import { awayThisWeek, MAPLE, MAPLE_BOX, type Flag } from "@/lib/away";
 import { AthleteSheet } from "./AthleteSheet";
 
 /**
@@ -160,7 +160,7 @@ export function FlagTag({ flag }: { flag: Flag }) {
         <>
           <span className="flex-1" style={{ backgroundColor: flag.from }} />
           <span className="flex-[2] flex items-center justify-center" style={{ backgroundColor: flag.mid }}>
-            <svg viewBox="-36 -76 72 122" className="h-[0.6875rem] w-[0.6875rem]" aria-hidden>
+            <svg viewBox={MAPLE_BOX} className="h-[0.625rem] w-[0.6875rem]" aria-hidden>
               <path fill={flag.from} d={MAPLE} />
             </svg>
           </span>
