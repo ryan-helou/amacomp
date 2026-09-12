@@ -51,7 +51,12 @@ export function flagFor(note: string | null): Flag | null {
 
 /**
  * The maple leaf from the flag's own construction sheet — eleven points, curved
- * shoulders, a 3.3-wide stem — in a viewBox of `-36 -76 72 122`.
+ * shoulders, a 3.3-wide stem.
+ *
+ * Draw it in `MAPLE_BOX`, which is the path's measured bounding box rather than
+ * the construction sheet's square: the ink runs from y -72 to -3, so a taller
+ * box leaves dead space under the stem and anything centring the box hangs the
+ * leaf visibly high.
  *
  * Hand-drawn polygons were tried twice and both read as a starburst at any size
  * under about 60px: the real leaf's silhouette is carried by the deep narrow
@@ -65,6 +70,9 @@ export const MAPLE =
   "l -0.5,16.6 h 3.3 l -0.3,-16.6 c 0,-0.6 0.4,-1 0.9,-1 l 14.6,1.7 -1.3,-4.3 c -0.2,-0.8 0.1,-1.6 0.7,-2.1 " +
   "l 15,-12.2 -3.1,-1.5 c -1.4,-0.5 -1,-1.2 -0.5,-3.1 l 2.3,-8.4 -8.8,1.9 c -0.9,0.2 -1.5,-0.4 -1.6,-0.9 " +
   "l -1.1,-4 -7,7.8 c -1,1.3 -3,1.3 -2.4,-1.6 l 3,-15.9 -4,2.1 c -1.2,0.7 -2.4,0.8 -3,-0.4 z";
+
+/** The measured bounds of `MAPLE`, so the drawn leaf sits centred in its box. */
+export const MAPLE_BOX = "-32.2 -72.5 63.4 69.8";
 
 export const JAPAN: Flag = { label: "Japan", from: "#BC002D", mid: "#FFFFFF", to: "#BC002D", emblem: "sun" };
 export const CANADA: Flag = { label: "Canada", from: "#D52B1E", mid: "#FFFFFF", to: "#D52B1E", emblem: "leaf" };
@@ -149,7 +157,7 @@ export function flagWash(flag: Flag): {
     // sun, with broad lobes and a short stem.
     const c = flag.from;
     const leaf =
-      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='-36 -76 72 122'>` +
+      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${MAPLE_BOX}'>` +
       `<path fill='${c}' fill-opacity='0.55' d='${MAPLE}'/></svg>`;
     return {
       backgroundImage:
