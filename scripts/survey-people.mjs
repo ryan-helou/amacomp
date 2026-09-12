@@ -28,7 +28,6 @@ const acts = (
     from activities order by occurred_on`)
 ).rows;
 
-const name = (id) => athletes.find((a) => a.id === id)?.name ?? id;
 const pts = (a) =>
   pointsFor(a.km ?? 0, a.sport, settings, a.d, a.open_water) +
   elevationPointsFor(a.elev ?? null, a.sport, settings, a.d);
