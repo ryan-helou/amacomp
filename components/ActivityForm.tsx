@@ -188,7 +188,12 @@ export function ActivityForm({
                 id="km"
                 type="number"
                 inputMode="decimal"
-                step="0.01"
+                // `any`, not a step: Strava files a run as 7.011 km and a step
+                // of 0.01 makes the browser refuse its own imported value —
+                // "Enter a valid value" on a session you cannot retype, which
+                // blocks editing the DATE of anything synced. The server is the
+                // real guard: parseKm rounds to metres and bounds the range.
+                step="any"
                 min="0"
                 value={draft.km}
                 onChange={(e) => setDraft({ ...draft, km: e.target.value })}
@@ -222,8 +227,10 @@ export function ActivityForm({
             <input
               id="elevation"
               type="number"
-              inputMode="numeric"
-              step="1"
+              inputMode="decimal"
+              // Same trap: Strava gives ascent to a tenth (13.2 m), which a
+              // step of 1 rejects.
+              step="any"
               min="0"
               max={MAX_ELEVATION_M}
               value={draft.elevation}
