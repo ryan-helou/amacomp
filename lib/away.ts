@@ -22,8 +22,12 @@ export interface Flag {
   /** The middle band of the actual flag, for the little striped tag. Kept out of
    *  the text gradient on purpose: white text on a pale deck is no text. */
   mid: string;
-  /** A disc flag (Japan): drawn as a sun, not three stripes. */
-  sun?: boolean;
+  /**
+   * Flags that are a symbol on a white field rather than three stripes. These
+   * paint their own opaque field, so they also pin the lane's ink — see
+   * `flagInk`.
+   */
+  emblem?: "sun" | "leaf";
 }
 
 /**
@@ -45,7 +49,8 @@ export function flagFor(note: string | null): Flag | null {
   return null;
 }
 
-export const JAPAN: Flag = { label: "Japan", from: "#BC002D", mid: "#FFFFFF", to: "#BC002D", sun: true };
+export const JAPAN: Flag = { label: "Japan", from: "#BC002D", mid: "#FFFFFF", to: "#BC002D", emblem: "sun" };
+export const CANADA: Flag = { label: "Canada", from: "#D52B1E", mid: "#FFFFFF", to: "#D52B1E", emblem: "leaf" };
 
 /**
  * Trips that fly a flag WITHOUT an excuse — the athlete is still training and
@@ -54,6 +59,7 @@ export const JAPAN: Flag = { label: "Japan", from: "#BC002D", mid: "#FFFFFF", to
  */
 export const TRIPS: { name: string; from: DayKey; to: DayKey; flag: Flag }[] = [
   { name: "Ryan", from: "2026-09-11", to: "2026-09-17", flag: JAPAN },
+  { name: "Alberto", from: "2026-09-12", to: "2026-09-13", flag: CANADA },
 ];
 
 /**
@@ -92,7 +98,7 @@ export function awayThisWeek(
  * deck and keep the scheme's own ink.
  */
 export function flagInk(flag: Flag): CSSProperties {
-  if (!flag.sun) return {};
+  if (!flag.emblem) return {};
   return {
     "--ink": "#0b1f2d",
     "--ink-2": "#3f5f74",
@@ -114,8 +120,29 @@ export function flagWash(flag: Flag): {
   backgroundImage: string;
   backgroundSize?: string;
   backgroundRepeat?: string;
+  backgroundPosition?: string;
 } {
-  if (flag.sun) {
+  if (flag.emblem === "leaf") {
+    // Canada: a red band down each edge and a white field, in the flag's own
+    // 1:2:1 proportions.
+    //
+    // NO MAPLE LEAF. It was drawn and thrown away: the lane is 76px tall with a
+    // full-width bar and the athlete's name across the middle, and a leaf's
+    // lobes merge into a spiky blob at that size behind that much furniture.
+    // Japan's sun survives the same treatment because a circle still reads when
+    // half of it is covered. The bands and the tag carry this one.
+    const c = flag.from;
+    return {
+      backgroundImage:
+        // Feathered rather than hard-edged, for the same reason the tricolour
+        // wash is: a crisp block behind a leaderboard row reads as a rendering
+        // fault, a soft one reads as lit.
+        `linear-gradient(90deg, ${c}7A 0 6%, ${c}4D 12%, ${c}00 19%, ${c}00 81%,` +
+        ` ${c}4D 88%, ${c}7A 94%),` +
+        ` linear-gradient(${flag.mid}E0, ${flag.mid}E0)`,
+    };
+  }
+  if (flag.emblem === "sun") {
     // The actual flag: a white field and a crisp crimson sun dead centre,
     // about 3/5 of the lane's height. Held under half strength because the
     // name and bar run across it. Faint seigaiha waves fill the field so it

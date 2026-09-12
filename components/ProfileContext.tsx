@@ -145,10 +145,18 @@ export function FlagTag({ flag }: { flag: Flag }) {
       aria-label={`Away in ${flag.label}`}
       role="img"
     >
-      {flag.sun ? (
+      {flag.emblem === "sun" ? (
         <span className="flex flex-1 items-center justify-center" style={{ backgroundColor: flag.mid }}>
           <span className="h-[0.4375rem] w-[0.4375rem] rounded-full" style={{ backgroundColor: flag.from }} />
         </span>
+      ) : flag.emblem === "leaf" ? (
+        // Canada's bands are 1:2:1, not thirds — at this size the proportion is
+        // what makes it read as Canadian rather than as any red-white-red flag.
+        <>
+          <span className="flex-1" style={{ backgroundColor: flag.from }} />
+          <span className="flex-[2]" style={{ backgroundColor: flag.mid }} />
+          <span className="flex-1" style={{ backgroundColor: flag.to }} />
+        </>
       ) : (
         <>
           <span className="flex-1" style={{ backgroundColor: flag.from }} />
