@@ -40,5 +40,20 @@ check("the flag is Japan", awayThisWeek([], "2026-09-15", athletes, trips).get("
 console.log("\nnames match exactly");
 check("Jona flagged, Jonah not", flagged("2026-09-08"), ["j1", "r"]);
 
+console.log("\nthe trips actually configured");
+{
+  // Against the real TRIPS, not a fixture: these are the flags flying now.
+  const real = [
+    { id: "r", name: "Ryan" },
+    { id: "a", name: "Alberto" },
+  ];
+  const week = (day: string) => awayThisWeek([], day, real);
+  check("Ryan flies Japan in the week of 7 Sep", week("2026-09-09").get("r")?.label, "Japan");
+  check("Alberto flies Canada that week too", week("2026-09-09").get("a")?.label, "Canada");
+  check("and Canada is a leaf, not stripes", week("2026-09-09").get("a")?.emblem, "leaf");
+  check("Alberto is home the week after", week("2026-09-16").has("a"), false);
+  check("Ryan is still away the week after", week("2026-09-16").get("r")?.label, "Japan");
+}
+
 console.log(failures === 0 ? "\nAll away tests passed.\n" : `\n${failures} away test(s) FAILED.\n`);
 if (failures > 0) process.exit(1);
