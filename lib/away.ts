@@ -126,20 +126,30 @@ export function flagWash(flag: Flag): {
     // Canada: a red band down each edge and a white field, in the flag's own
     // 1:2:1 proportions.
     //
-    // NO MAPLE LEAF. It was drawn and thrown away: the lane is 76px tall with a
-    // full-width bar and the athlete's name across the middle, and a leaf's
-    // lobes merge into a spiky blob at that size behind that much furniture.
-    // Japan's sun survives the same treatment because a circle still reads when
-    // half of it is covered. The bands and the tag carry this one.
+    // The leaf has to be BOLD to survive: the lane is 76px tall with a
+    // full-width bar and the name across it, so a faint one merges into a blob.
+    // It is drawn nearly the lane's full height at the same strength as Japan's
+    // sun, with broad lobes and a short stem.
     const c = flag.from;
+    const leaf =
+      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>` +
+      `<path fill='${c}' fill-opacity='0.55' d='M50 6 58 28 74 22 69 38 88 34 80 48 96 52 72 62` +
+      ` 78 74 58 70 56 74 54 94 46 94 44 74 42 70 22 74 28 62 4 52 20 48 12 34 31 38 26 22 42 28Z'/>` +
+      `</svg>`;
     return {
       backgroundImage:
+        `url("data:image/svg+xml,${encodeURIComponent(leaf)}"),` +
         // Feathered rather than hard-edged, for the same reason the tricolour
         // wash is: a crisp block behind a leaderboard row reads as a rendering
         // fault, a soft one reads as lit.
-        `linear-gradient(90deg, ${c}7A 0 6%, ${c}4D 12%, ${c}00 19%, ${c}00 81%,` +
+        ` linear-gradient(90deg, ${c}7A 0 6%, ${c}4D 12%, ${c}00 19%, ${c}00 81%,` +
         ` ${c}4D 88%, ${c}7A 94%),` +
         ` linear-gradient(${flag.mid}E0, ${flag.mid}E0)`,
+      // Sized to FIT the lane, not fill it: at full height the points are
+      // clipped top and bottom and what is left reads as a starburst.
+      backgroundSize: "auto 76%, 100% 100%, 100% 100%",
+      backgroundRepeat: "no-repeat, no-repeat, no-repeat",
+      backgroundPosition: "center, 0 0, 0 0",
     };
   }
   if (flag.emblem === "sun") {
