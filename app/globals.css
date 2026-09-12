@@ -32,6 +32,14 @@
      MAY BLUR AT ALL — not even a non-fixed child of a fixed wrapper. The header
      is sticky and stays opaque.
 
+     2026-09-11: THE RULE NOW COVERS PROMOTION TOO. The island floated again on
+     Ryan's iPhone with no blur anywhere near it — the fixed wrapper still had
+     `transform: translateZ(0)` and `will-change: transform` from the old
+     mitigation. Blur is not the hazard; a COMPOSITED LAYER pinned to the
+     viewport is, because the compositor keeps its own snapshot and repaints it
+     at a stale scroll position. So: nothing pinned to the viewport may blur,
+     and nothing pinned to the viewport may be promoted.
+
      `glass-raised` (sheets) still blurs and has NOT shown the fault. A sheet is
      modal and short-lived rather than pinned through every scroll of the app, so
      it is not the same exposure — but it is the same mechanism, and if one ever
@@ -248,23 +256,25 @@ body::after {
 }
 
 /*
-  The compositing layer, kept on the FIXED WRAPPER rather than on the island.
-
-  The wrapper is empty, so promoting it costs nothing, and it keeps the two
-  halves of the iOS mitigation cleanly apart: the fixed element owns the layer
-  and does not blur, the island owns the filter and is not fixed.
+  There is no `island-layer` utility any more, and nothing is promoting the
+  fixed tab wrapper. It used to carry `transform: translateZ(0)` and
+  `will-change: transform` — half of the old mitigation from when the island
+  still blurred. The blur went in Aug 2026, the hint stayed behind doing no
+  work, and on 2026-09-11 the island floated up over the list again on Ryan's
+  iPhone. A PROMOTED FIXED LAYER IS THE SAME HAZARD AS A BLURRED ONE: the
+  compositor holds its own snapshot of the layer and hands it back at a stale
+  scroll position during momentum scroll. So the rule at the top of this file
+  now covers both — nothing pinned to the viewport may blur, and nothing pinned
+  to the viewport may be promoted either.
 
   NOTE, because it cost an hour: do NOT hand-write `-webkit-backdrop-filter`
-  alongside `backdrop-filter` in these utilities. Lightning CSS collapses the
-  pair and keeps only the prefixed line, so the standard property never reaches
-  the browser and NOTHING BLURS — silently, in every scheme, with the fill and
-  shadow still applying so it merely looks like flat plastic rather than broken.
-  Declare the standard property alone and let the build add the prefix.
+  alongside `backdrop-filter` in the utilities above. Lightning CSS collapses
+  the pair and keeps only the prefixed line, so the standard property never
+  reaches the browser and NOTHING BLURS — silently, in every scheme, with the
+  fill and shadow still applying so it merely looks like flat plastic rather
+  than broken. Declare the standard property alone and let the build add the
+  prefix.
 */
-@utility island-layer {
-  transform: translateZ(0);
-  will-change: transform;
-}
 
 /* Light through the glass rather than another pane of it, so the primary action
    reads as the lit object on the screen. Keeps AmaComp's blue-to-violet run. */

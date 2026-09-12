@@ -374,14 +374,22 @@ export function AppShell({
       {/* The tab island.
 
           THE WRAPPER IS WHAT IS FIXED, AND IT IS EMPTY: no background, no
-          filter, nothing to repaint. The island inside it is an ordinary
-          element that happens to sit there. That is the whole mitigation for
-          the iOS bug this app is where we first saw — a backdrop-filtered FIXED
-          bar gets repainted at a stale position during momentum scroll and
-          floats over the middle of the leaderboard. The island owns its own
-          compositing layer (translateZ(0) + will-change, in `glass-island`) and
-          `--island` is opaque enough that the blur does less work than it looks
-          like. The escape hatch is written at the top of globals.css.
+          filter, no compositing hint, nothing to repaint. The island inside it
+          is an ordinary element that happens to sit there. This is the iOS bug
+          this app is where we first saw — a fixed bar repainted at a stale
+          position during momentum scroll, floating over the middle of the
+          leaderboard.
+
+          NOTHING PROMOTES THIS WRAPPER. It used to carry `island-layer`
+          (translateZ(0) + will-change: transform), left over from the days when
+          the island blurred and the layer was half of that mitigation. The blur
+          went in Aug 2026 and the hint stayed, doing no work — and on
+          2026-09-11 Ryan's iPhone floated the island over the list again. A
+          promoted FIXED layer is the same hazard as a blurred one: the
+          compositor keeps its own snapshot and hands it back at a stale
+          scroll position. Do not add transform, will-change, filter or
+          backdrop-filter here or to any ancestor. The escape hatch and the full
+          rule are written at the top of globals.css.
 
           The offset clears the safe area rather than sitting inside it, so the
           island reads as floating well clear of the edge: about 26px of screen
@@ -392,7 +400,7 @@ export function AppShell({
           than just looking tighter. Raising it is always safe. */}
       <nav
         aria-label="Sections"
-        className="island-layer pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md px-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)-0.5rem))]"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md px-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)-0.5rem))]"
       >
         <div className="glass-island pointer-events-auto flex gap-1 rounded-[2rem] border border-line p-2">
           {TABS.map((t) => {
