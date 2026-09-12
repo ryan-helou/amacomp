@@ -140,7 +140,10 @@ export function FlagName({
 export function FlagTag({ flag }: { flag: Flag }) {
   return (
     <span
-      className="ml-1.5 inline-flex h-3 w-[1.125rem] shrink-0 overflow-hidden rounded-[3px] align-middle shadow-sm ring-1 ring-black/10"
+      className={`ml-1.5 inline-flex shrink-0 overflow-hidden rounded-[3px] align-middle shadow-sm ring-1 ring-black/10 ${
+        // A leaf needs the extra couple of pixels to be a leaf rather than a dot.
+        flag.emblem === "leaf" ? "h-[0.875rem] w-[1.375rem]" : "h-3 w-[1.125rem]"
+      }`}
       title={`Away in ${flag.label}`}
       aria-label={`Away in ${flag.label}`}
       role="img"
@@ -150,11 +153,20 @@ export function FlagTag({ flag }: { flag: Flag }) {
           <span className="h-[0.4375rem] w-[0.4375rem] rounded-full" style={{ backgroundColor: flag.from }} />
         </span>
       ) : flag.emblem === "leaf" ? (
-        // Canada's bands are 1:2:1, not thirds — at this size the proportion is
-        // what makes it read as Canadian rather than as any red-white-red flag.
+        // Canada's bands are 1:2:1, not thirds, and the leaf goes HERE at full
+        // strength. In the lane behind the name it is a soft wash that the bar
+        // cuts through; this is the one place on the row where nothing covers
+        // it, so this is where it actually reads as a leaf.
         <>
           <span className="flex-1" style={{ backgroundColor: flag.from }} />
-          <span className="flex-[2]" style={{ backgroundColor: flag.mid }} />
+          <span className="flex-[2] flex items-center justify-center" style={{ backgroundColor: flag.mid }}>
+            <svg viewBox="0 0 100 100" className="h-[0.625rem] w-[0.625rem]" aria-hidden>
+              <path
+                fill={flag.from}
+                d="M50 6 58 28 74 22 69 38 88 34 80 48 96 52 72 62 78 74 58 70 56 74 54 94 46 94 44 74 42 70 22 74 28 62 4 52 20 48 12 34 31 38 26 22 42 28Z"
+              />
+            </svg>
+          </span>
           <span className="flex-1" style={{ backgroundColor: flag.to }} />
         </>
       ) : (
