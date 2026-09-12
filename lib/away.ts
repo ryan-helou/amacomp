@@ -49,6 +49,23 @@ export function flagFor(note: string | null): Flag | null {
   return null;
 }
 
+/**
+ * The maple leaf from the flag's own construction sheet — eleven points, curved
+ * shoulders, a 3.3-wide stem — in a viewBox of `-36 -76 72 122`.
+ *
+ * Hand-drawn polygons were tried twice and both read as a starburst at any size
+ * under about 60px: the real leaf's silhouette is carried by the deep narrow
+ * notches and the uneven point lengths, not by eleven evenly spaced spikes.
+ * Rendered side by side, this was the only one recognisable in a 22×14 tag.
+ */
+export const MAPLE =
+  "m 0,-72 -5.5,10.3 c -0.6,1.2 -1.8,1.1 -3,0.4 l -4,-2.1 3,15.9 c 0.6,2.9 -1.4,2.9 -2.4,1.6 " +
+  "l -7,-7.8 -1.1,4 c -0.1,0.5 -0.7,1.1 -1.6,0.9 l -8.8,-1.9 2.3,8.4 c 0.5,1.9 0.9,2.6 -0.5,3.1 " +
+  "l -3.1,1.5 15,12.2 c 0.6,0.5 0.9,1.3 0.7,2.1 l -1.3,4.3 14.6,-1.7 c 0.4,0 0.9,0.4 0.9,1 " +
+  "l -0.5,16.6 h 3.3 l -0.3,-16.6 c 0,-0.6 0.4,-1 0.9,-1 l 14.6,1.7 -1.3,-4.3 c -0.2,-0.8 0.1,-1.6 0.7,-2.1 " +
+  "l 15,-12.2 -3.1,-1.5 c -1.4,-0.5 -1,-1.2 -0.5,-3.1 l 2.3,-8.4 -8.8,1.9 c -0.9,0.2 -1.5,-0.4 -1.6,-0.9 " +
+  "l -1.1,-4 -7,7.8 c -1,1.3 -3,1.3 -2.4,-1.6 l 3,-15.9 -4,2.1 c -1.2,0.7 -2.4,0.8 -3,-0.4 z";
+
 export const JAPAN: Flag = { label: "Japan", from: "#BC002D", mid: "#FFFFFF", to: "#BC002D", emblem: "sun" };
 export const CANADA: Flag = { label: "Canada", from: "#D52B1E", mid: "#FFFFFF", to: "#D52B1E", emblem: "leaf" };
 
@@ -132,10 +149,8 @@ export function flagWash(flag: Flag): {
     // sun, with broad lobes and a short stem.
     const c = flag.from;
     const leaf =
-      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>` +
-      `<path fill='${c}' fill-opacity='0.55' d='M50 6 58 28 74 22 69 38 88 34 80 48 96 52 72 62` +
-      ` 78 74 58 70 56 74 54 94 46 94 44 74 42 70 22 74 28 62 4 52 20 48 12 34 31 38 26 22 42 28Z'/>` +
-      `</svg>`;
+      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='-36 -76 72 122'>` +
+      `<path fill='${c}' fill-opacity='0.55' d='${MAPLE}'/></svg>`;
     return {
       backgroundImage:
         `url("data:image/svg+xml,${encodeURIComponent(leaf)}"),` +
