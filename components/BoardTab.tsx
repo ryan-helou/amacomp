@@ -230,6 +230,14 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
         </p>
       </div>
 
+      {/* Every lane list below is keyed by period and discipline, so switching
+          board builds fresh rows rather than rewriting the numbers inside the
+          old ones. On Ryan's iPhone a Month -> Season switch left the top two
+          lanes painted with September's totals while the third had updated —
+          the rows that kept the same athlete (and so the same avatar) never
+          repainted, only their text had changed. New rows cannot keep a stale
+          paint. The lanes re-run their entrance too, which reads as the board
+          changing on purpose. */}
       {/* The season is the one period that is a race with an ending, so it gets
           the run-in above the lanes. Only on "All": a single-sport board ranks
           by kilometres, and a points projection over it would be answering a
@@ -246,7 +254,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           </p>
         ) : (
           <>
-            <ol className="space-y-0">
+            <ol key={`${period}-${sport}`} className="space-y-0">
               {(climbRows ?? []).map((row, i) => (
                 <li key={row.athlete.id}>
                   {i > 0 && <div className="lane-rope my-1" />}
@@ -270,7 +278,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
             No points in this window yet. The lanes fill as sessions come in.
           </p>
         ) : (
-          <ol className="space-y-0">
+          <ol key={`${period}-${sport}`} className="space-y-0">
             {standings.map((row, i) => (
               <li key={row.athlete.id}>
                 {i > 0 && <div className="lane-rope my-1" />}
@@ -294,7 +302,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           No {SPORT_UI[sport].label.toLowerCase()} logged in this window yet.
         </p>
       ) : (
-        <ol className="space-y-0">
+        <ol key={`${period}-${sport}`} className="space-y-0">
           {(sportRanked ?? []).map((row, i) => (
             <li key={row.athlete.id}>
               {i > 0 && <div className="lane-rope my-1" />}
