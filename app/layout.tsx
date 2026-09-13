@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, Public_Sans, JetBrains_Mono, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import { ServiceWorker } from "@/components/ServiceWorker";
+import { UpdateWatcher } from "@/components/UpdateWatcher";
 import { ThemeScript } from "@/components/ThemeScript";
 
 const display = Archivo({
@@ -77,6 +78,7 @@ export default function RootLayout({
         <ThemeScript />
         {children}
         <ServiceWorker />
+        <UpdateWatcher />
       </body>
     </html>
   );

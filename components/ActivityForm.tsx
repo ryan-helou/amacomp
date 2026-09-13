@@ -128,8 +128,13 @@ export function ActivityForm({
     });
   }
 
+  // Anything typed, or an edit form open on a real session, is unsaved work —
+  // UpdateWatcher will not reload the page out from under it.
+  const unsaved = draft.km !== "" || draft.note !== "" || draft.elevation !== "";
+
   return (
     <form
+      data-unsaved={unsaved ? "" : undefined}
       onSubmit={(e) => {
         e.preventDefault();
         submit();
