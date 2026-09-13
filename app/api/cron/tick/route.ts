@@ -3,10 +3,11 @@ import { getStore } from "@/lib/db";
 import { readState } from "@/lib/state";
 import { pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, standingsForRange, fmtPoints } from "@/lib/scoring";
-import { addDays, leagueToday, parseDayKey, weekStart } from "@/lib/dates";
+import { addDays, daysBetween, leagueToday, parseDayKey, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
 import { runStravaTick } from "@/lib/tick";
 import { seasonByNumber, seasonFor } from "@/lib/season";
+import { closingPhase, seasonClosingMessages } from "@/lib/seasonClose";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,8 @@ export const dynamic = "force-dynamic";
  *   ?job=strava   — every 30 min: pull each linked athlete's new activities, and
  *                   fill in a few personal bests from their streams
  *   ?job=midweek  — Thursday: nudge whoever's last or off the quota pace
- *   ?job=season   — daily: announce a new season + crown the last one's champion
+ *   ?job=season   — daily: announce a new season + crown the last one's champion,
+ *                   and warn everyone as a season closes
  *   ?job=results  — Monday: last week's champion + forfeit list
  *   ?job=deadline — Sunday: who still hasn't hit quota
  */
@@ -149,41 +151,73 @@ export async function GET(req: Request) {
   }
 
   if (job === "season") {
-    // Fires daily but only pushes once per season (meta marker). Announces the
-    // new season and crowns the previous one's champion in a single message.
+    // Fires daily. Two independent things, each sent once per season via its
+    // own meta marker, so a double-fire never double-notifies:
+    //   1. the morning a season opens — announce it and crown the last one
+    //   2. the run-in to its end — a heads-up in the last few days, then the
+    //      last day itself (lib/seasonClose.ts)
+    // They used to be one branch that returned "already announced" for the rest
+    // of the season, which is exactly when the run-in needs to fire.
     const cur = seasonFor(now, state.settings.seasonStart);
     if (!cur || now < state.settings.seasonStart) {
       return NextResponse.json({ ok: true, skipped: "pre-season" });
     }
-    const marker = `season-live-${cur.number}`;
-    if (await store.getMeta(marker)) {
-      return NextResponse.json({ ok: true, sent: 0, note: "already announced" });
-    }
-    await store.setMeta(marker, "1");
+    let sent = 0;
+    const did: string[] = [];
 
-    let crown = "";
-    if (cur.number > 1) {
-      const prev = seasonByNumber(cur.number - 1, state.settings.seasonStart);
-      const prevStandings = standingsForRange(state.athletes, activities, state.settings, [
-        prev.start,
-        prev.end,
-      ]);
-      const champ = prevStandings.find((s) => s.points > 0);
-      if (champ) {
-        crown = `${prev.label} winner: ${champ.athlete.name} (${fmtPoints(champ.points)} pts). `;
+    const liveMarker = `season-live-${cur.number}`;
+    if (!(await store.getMeta(liveMarker))) {
+      await store.setMeta(liveMarker, "1");
+      let crown = "";
+      if (cur.number > 1) {
+        const prev = seasonByNumber(cur.number - 1, state.settings.seasonStart);
+        const prevStandings = standingsForRange(state.athletes, activities, state.settings, [
+          prev.start,
+          prev.end,
+        ]);
+        const champ = prevStandings.find((s) => s.points > 0);
+        if (champ) {
+          crown = `${prev.label} winner: ${champ.athlete.name} (${fmtPoints(champ.points)} pts). `;
+        }
+      }
+      for (const a of state.athletes) {
+        await sendToAthlete(a.id, {
+          title: `${cur.label} is live`,
+          body: `${crown}Fresh board, two months on the line. ${cur.monthsLabel}.`,
+          url: "/",
+          tag: "season",
+        });
+        sent += 1;
+      }
+      did.push("announced");
+    }
+
+    const daysLeft = daysBetween(now, cur.end);
+    const phase = closingPhase(daysLeft);
+    if (phase) {
+      const marker = `season-closing-${phase}-${cur.number}`;
+      if (!(await store.getMeta(marker))) {
+        await store.setMeta(marker, "1");
+        const table = standingsForRange(state.athletes, activities, state.settings, [
+          cur.start,
+          cur.end,
+        ]);
+        for (const m of seasonClosingMessages(table, daysLeft, cur.label)) {
+          await sendToAthlete(m.athleteId, {
+            title: m.title,
+            body: m.body,
+            url: "/",
+            // One tag per phase, so the last-day message replaces the heads-up
+            // on a lock screen rather than stacking under it.
+            tag: `season-closing-${cur.number}`,
+          });
+          sent += 1;
+        }
+        did.push(`closing:${phase}`);
       }
     }
-    let sent = 0;
-    for (const a of state.athletes) {
-      await sendToAthlete(a.id, {
-        title: `${cur.label} is live`,
-        body: `${crown}Fresh board, two months on the line. ${cur.monthsLabel}.`,
-        url: "/",
-        tag: "season",
-      });
-      sent += 1;
-    }
-    return NextResponse.json({ ok: true, sent });
+
+    return NextResponse.json({ ok: true, sent, did, daysLeft });
   }
 
   return NextResponse.json({ error: "Unknown job" }, { status: 400 });
