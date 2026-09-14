@@ -114,6 +114,7 @@ export function PaceClock({
   const remaining = Math.max(goal - points, 0);
   const parts = goal > 0 && !done ? slices(bySport, granted, goal) : [];
   const filled = parts.reduce((sum, p) => sum + p.len, 0);
+  const tip = parts[parts.length - 1]?.tip ?? "";
   const [tx, ty] = pointAt(filled, LANE);
   // A long score ("105.1") is wider than the infield at the usual size.
   const label = fmtPoints(points);
@@ -203,15 +204,16 @@ export function PaceClock({
           );
         })}
 
-        {/* The runner: where you are on the lap. A plain solid grey dot, no
-            outline — the line carries the sport colours, the dot just marks
-            the spot. */}
+        {/* The runner: where you are on the lap. A solid dot in the colour of
+            the leg it's on, with a grey outline. */}
         {points > 0 && !done && (
           <circle
             cx={tx}
             cy={ty}
             r="3.6"
-            fill="var(--color-ink-3)"
+            fill={tip}
+            stroke="var(--color-ink-3)"
+            strokeWidth="1.3"
             opacity={shown ? 1 : 0}
             style={{ transition: `opacity 220ms ease-out ${animate ? Math.round(filled * RELAY_MS) : 0}ms` }}
           />
