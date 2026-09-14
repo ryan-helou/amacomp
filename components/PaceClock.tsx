@@ -16,11 +16,33 @@ const round = (v: number) => Number(v.toFixed(2));
 // Your points run as a narrower line INSIDE it, in lane one, rather than
 // repainting the whole band — a band that fills over its own lane lines stops
 // looking like a track and becomes a fat ring.
+//
+// Every measurement below is derived from R and BAND, never typed in. The first
+// version hard-coded the lane centre, the lane lines and the finish line
+// separately, each close to right, and on a phone the small misses showed: your
+// line hugged the infield instead of sitting in its lane, and the finish line
+// stopped short of the track with a sliver of colour peeking out under it.
 const R = 40;
 const BAND = 13; // the width of the track itself
-const LANE = 35.4; // centre of lane one, just inside the track
-const LANE_W = 4.2;
-const LINES = [37.8, 42.2]; // the two lane lines, either side of lane two
+const INNER = R - BAND / 2; // the track's inside edge
+const OUTER = R + BAND / 2; // and its outside edge
+const LANE_WIDTH = BAND / 3; // three equal lanes
+const LINES = [INNER + LANE_WIDTH, INNER + 2 * LANE_WIDTH]; // the two lane lines
+const LINE_W = 0.5; // how thick those lane lines are drawn
+// The kerb and the outside edge are drawn as white lines too, like a real track.
+// Without the kerb the dark infield and the dark track ran together, so the gap
+// on the inside of your line vanished and the line looked like it was hugging
+// the infield even when it was exactly centred.
+const EDGES = [INNER, OUTER];
+// Lane one as you SEE it: between the inside of the kerb and the inside of the
+// first lane line — half of each line's thickness eats into the lane.
+const LANE_SEEN_IN = INNER + LINE_W / 2;
+const LANE_SEEN_OUT = LINES[0] - LINE_W / 2;
+const LANE = (LANE_SEEN_IN + LANE_SEEN_OUT) / 2; // the middle of lane one
+const GUTTER = 0.55; // clear track either side of your line
+const LANE_W = LANE_SEEN_OUT - LANE_SEEN_IN - 2 * GUTTER; // your line
+const FINISH_ROWS = 8; // chequers down the finish line, filling the band exactly
+const CHEQUER = BAND / FINISH_ROWS;
 const RELAY_MS = 900;
 const track = (r: number) =>
   `M60 ${50 - r}A${r} ${r} 0 0 1 ${60 + r} 50L${60 + r} 70` +
@@ -124,11 +146,12 @@ export function PaceClock({
         </defs>
 
         {/* Infield */}
-        <path d={track(R - BAND / 2 - 0.8)} fill="var(--color-good)" opacity="0.07" />
+        {/* Filled right up to the track's edge, so no dark seam shows between them. */}
+        <path d={track(INNER)} fill="var(--color-good)" opacity="0.07" />
         {/* The track, and its lane lines — both stay visible all the way round. */}
         <path d={track(R)} fill="none" stroke="var(--color-line)" strokeWidth={BAND} opacity="0.5" />
-        {LINES.map((r) => (
-          <path key={r} d={track(r)} fill="none" stroke="#fff" strokeWidth="0.5" opacity="0.55" />
+        {[...EDGES, ...LINES].map((r) => (
+          <path key={r} d={track(r)} fill="none" stroke="#fff" strokeWidth={LINE_W} opacity="0.55" />
         ))}
 
         {/* Your lap, run in lane one. */}
@@ -161,16 +184,18 @@ export function PaceClock({
         )}
 
         {/* Finish line */}
-        {Array.from({ length: 16 }, (_, i) => {
+        {/* Two columns centred on the start, spanning the band edge to edge, so
+            it covers the first sliver of your line rather than stopping short. */}
+        {Array.from({ length: FINISH_ROWS * 2 }, (_, i) => {
           const col = i % 2;
           const row = Math.floor(i / 2);
           return (
             <rect
               key={i}
-              x={58.5 + col * 1.5}
-              y={4 + row * 1.5}
-              width="1.5"
-              height="1.5"
+              x={round(60 - CHEQUER + col * CHEQUER)}
+              y={round(50 - OUTER + row * CHEQUER)}
+              width={round(CHEQUER)}
+              height={round(CHEQUER)}
               // Ink against deck, not against white: on a dark scheme the ink
               // IS near-white, and a white-on-white chequer is no chequer.
               fill={(row + col) % 2 ? "var(--color-deck)" : "var(--color-ink)"}
