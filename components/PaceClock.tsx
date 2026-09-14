@@ -204,15 +204,17 @@ export function PaceClock({
           );
         })}
 
-        {/* The runner: where you are on the lap. */}
+        {/* The runner: where you are on the lap. A solid dot in the colour of
+            the leg it's on, ringed in the page colour so it separates from the
+            line it sits on rather than merging into it. */}
         {points > 0 && !done && (
           <circle
             cx={tx}
             cy={ty}
-            r="3.4"
-            fill="var(--color-tile)"
-            stroke={tip}
-            strokeWidth="2"
+            r="3.6"
+            fill={tip}
+            stroke="var(--color-deck)"
+            strokeWidth="1.3"
             opacity={shown ? 1 : 0}
             style={{ transition: `opacity 220ms ease-out ${animate ? Math.round(filled * RELAY_MS) : 0}ms` }}
           />
