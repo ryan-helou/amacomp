@@ -1,3 +1,5 @@
+import type { DayKey } from "./dates";
+
 export const SPORTS = ["swim", "bike", "run", "gym"] as const;
 export type Sport = (typeof SPORTS)[number];
 
@@ -292,6 +294,25 @@ export interface StravaStatus {
   lastSyncAtISO: string | null;
 }
 
+/**
+ * One athlete's step total for one calendar day, as their iPhone last reported
+ * it. Days are Apple Health's days — midnight to midnight on the phone — not the
+ * league's 3 AM scoring day, because the total arrives already summed by Health.
+ * A later report for the same day REPLACES the earlier one, never adds to it.
+ */
+export interface StepDay {
+  athleteId: string;
+  day: DayKey;
+  steps: number;
+  updatedAt: string;
+}
+
+/** Whether the signed-in athlete's phone is sending steps, and when it last did. */
+export interface StepsLink {
+  connected: boolean;
+  lastSyncAtISO: string | null;
+}
+
 export interface AppState {
   me: Athlete | null;
   isAdmin: boolean;
@@ -301,6 +322,10 @@ export interface AppState {
   strava: StravaStatus;
   /** Personal bests, one entry per Strava activity that produced any. */
   efforts: ActivityEfforts[];
+  /** Daily step totals for everyone, from Apple Health via the Shortcut. */
+  steps: StepDay[];
+  /** The signed-in athlete's own step connection. */
+  stepsLink: StepsLink;
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {

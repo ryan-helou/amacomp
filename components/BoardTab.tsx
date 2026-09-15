@@ -21,11 +21,14 @@ import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
 import { SeasonRace } from "./SeasonRace";
 import { CLIMB_SPORTS, climbLeader, climbStandings, fmtMetres, type ClimbRow } from "@/lib/climb";
+import { fmtSteps, stepStandings, type StepRow } from "@/lib/steps";
 
 // "climb" is not a discipline — it is the same sessions ranked by the metres
 // that go up instead of the kilometres that go along. It rides in the same
 // control because that is where someone looks to change what the board shows.
-type SportFilter = Sport | "all" | "climb";
+// "steps" isn't a discipline either: it's the league's walking, from Apple Health
+// on each phone (see lib/steps.ts), ranked on its own and worth no points.
+type SportFilter = Sport | "all" | "climb" | "steps";
 type BoardPeriod = Period | "season";
 
 // Season sits between Month and the all-time view; "All" is shortened so five
@@ -116,6 +119,11 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
     [sport, state.athletes, state.activities, range],
   );
 
+  const stepRows = useMemo<StepRow[] | null>(
+    () => (sport === "steps" ? stepStandings(state.athletes, state.steps, range) : null),
+    [sport, state.athletes, state.steps, range],
+  );
+
   const titles = useMemo(
     () => championshipsByAthlete(state.athletes, state.activities, state.settings, refDay),
     [state.athletes, state.activities, state.settings, refDay],
@@ -131,6 +139,8 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
   const anySport = (sportRanked ?? []).some((r) => r.value > 0);
   const climbTop = climbRows?.[0]?.total ?? 0;
   const anyClimb = (climbRows ?? []).some((r) => r.total > 0);
+  const stepTop = stepRows?.[0]?.steps ?? 0;
+  const anySteps = (stepRows ?? []).some((r) => r.steps > 0);
 
   return (
     <div className="space-y-4">
@@ -214,11 +224,24 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           >
             <Glyph name="mountain" className="h-[18px] w-[18px]" />
           </button>
+          <button
+            role="tab"
+            aria-selected={sport === "steps"}
+            aria-label="Steps"
+            onClick={() => setSport("steps")}
+            className={`flex h-9 flex-1 items-center justify-center rounded-lg border transition-colors ${
+              sport === "steps" ? "border-ink bg-ink text-on-ink" : "border-line bg-tile text-ink-2"
+            }`}
+          >
+            <Glyph name="footprints" className="h-[18px] w-[18px]" />
+          </button>
         </div>
 
         <p className="mt-2 text-center font-mono text-xs text-ink-3">
           {sport === "climb" ? (
             <span className="text-gold">King of the Mountains · </span>
+          ) : sport === "steps" ? (
+            <span className="text-ink-2">Steps · </span>
           ) : (
             sport !== "all" && (
               <span className={SPORT_UI[sport].text}>
@@ -246,7 +269,31 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
         <SeasonRace state={state} refDay={refDay} meId={state.me?.id} />
       )}
 
-      {sport === "climb" ? (
+      {sport === "steps" ? (
+        !anySteps ? (
+          <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
+            No steps in this window yet. Connect your phone in Settings → Steps and
+            they arrive on their own.
+          </p>
+        ) : (
+          <ol key={`${period}-${sport}`} className="space-y-0">
+            {(stepRows ?? []).map((row, i) => (
+              <li key={row.athlete.id}>
+                {i > 0 && <div className="lane-rope my-1" />}
+                <StepLane
+                  row={row}
+                  top={stepTop}
+                  isMe={row.athlete.id === state.me?.id}
+                  index={i}
+                  champion={reigning === row.athlete.id}
+                  singleDay={period === "today"}
+                  onSelect={() => openProfile(row.athlete.id)}
+                />
+              </li>
+            ))}
+          </ol>
+        )
+      ) : sport === "climb" ? (
         !anyClimb ? (
           <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
             Nobody has climbed anything in this window. Bike and run ascent counts —
@@ -320,13 +367,19 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
         </ol>
       )}
 
-      <p className="pt-1 text-center font-mono text-xs text-ink-3">
-        {SPORT_ORDER.map((s) => {
-          const rates = ratesOn(refDay, state.settings);
-          const climb = elevationRateLabel(rates.elevationPer100m?.[s] ?? 0);
-          return `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(rates.multipliers[s], SPORT_UNIT[s])}${climb ? ` +${climb}` : ""}`;
-        }).join("  ·  ")}
-      </p>
+      {sport === "steps" ? (
+        <p className="pt-1 text-center font-mono text-xs text-ink-3">
+          From Apple Health · worth no points
+        </p>
+      ) : (
+        <p className="pt-1 text-center font-mono text-xs text-ink-3">
+          {SPORT_ORDER.map((s) => {
+            const rates = ratesOn(refDay, state.settings);
+            const climb = elevationRateLabel(rates.elevationPer100m?.[s] ?? 0);
+            return `${SPORT_UI[s].label.toLowerCase()} ${rateLabel(rates.multipliers[s], SPORT_UNIT[s])}${climb ? ` +${climb}` : ""}`;
+          }).join("  ·  ")}
+        </p>
+      )}
       <p className="text-center text-[0.6875rem] text-ink-3">Tap a lane for badges &amp; stats</p>
     </div>
   );
@@ -569,6 +622,82 @@ function SportLane({
           {!isFlat && (
             <div className="mt-1 font-mono text-[0.6875rem] text-ink-3">
               {row.sessions} session{row.sessions === 1 ? "" : "s"}
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/**
+ * A lane on the steps board. Steps aren't a discipline, so the bar is ink rather
+ * than a sport colour, and on longer windows the line under it gives the daily
+ * average and best day — a week's total alone hides whether it was one huge day.
+ */
+function StepLane({
+  row,
+  top,
+  isMe,
+  index,
+  champion,
+  singleDay,
+  onSelect,
+}: {
+  row: StepRow;
+  top: number;
+  isMe: boolean;
+  index: number;
+  champion?: boolean;
+  singleDay: boolean;
+  onSelect: () => void;
+}) {
+  const has = row.steps > 0;
+  const width = top > 0 ? Math.max(row.steps / top, 0) : 0;
+  return (
+    <button
+      onClick={onSelect}
+      className={`lane-enter block w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
+        isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
+      }`}
+      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex w-8 shrink-0 flex-col items-center">
+          <span className={`stamp text-2xl ${row.rank === 1 && has ? "text-gold" : "text-ink-3"}`}>
+            {has ? row.rank : "—"}
+          </span>
+          <span className="eyebrow text-[0.5rem] text-ink-3">lane</span>
+        </div>
+
+        <Avatar athlete={row.athlete} me={isMe} />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <span
+              className={`truncate text-[0.9375rem] font-semibold ${champion ? "text-gold" : "text-ink"}`}
+            >
+              {champion && (
+                <Glyph name="crown" className="mr-1 inline h-3.5 w-3.5 -translate-y-px align-baseline" />
+              )}
+              {row.athlete.name}
+              {isMe && <span className="ml-1.5 text-xs font-normal text-ink-2">you</span>}
+            </span>
+            <span className="shrink-0 whitespace-nowrap">
+              <span className={`stamp text-xl ${has ? "text-ink" : "text-ink-3"}`}>
+                {fmtSteps(row.steps)}
+              </span>
+              <span className="eyebrow ml-1 text-ink-3">steps</span>
+            </span>
+          </div>
+
+          <div className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-deck-2">
+            {has && <div className="h-full rounded-full bg-ink-2" style={{ width: `${width * 100}%` }} />}
+          </div>
+
+          {has && !singleDay && (
+            <div className="mt-1 font-mono text-[0.6875rem] text-ink-3">
+              {fmtSteps(row.steps / Math.max(1, row.days))} a day · best {fmtSteps(row.best)}
             </div>
           )}
         </div>

@@ -24,7 +24,8 @@ export type GlyphName =
   | "diamond"
   | "wave"
   | "heart"
-  | "rocket";
+  | "rocket"
+  | "footprints";
 
 export function Glyph({
   name,
@@ -199,6 +200,15 @@ export function Glyph({
           <path d="M12 3c3 2 4.5 5.5 4.5 9L12 15l-4.5-3c0-3.5 1.5-7 4.5-9Z" />
           <circle cx="12" cy="9" r="1.6" />
           <path d="M9 14.5 6.5 17M15 14.5 17.5 17M12 15.5V19" />
+        </svg>
+      );
+    case "footprints":
+      return (
+        <svg {...common}>
+          <ellipse cx="8" cy="7.5" rx="2.6" ry="4" />
+          <circle cx="8.4" cy="15" r="1.7" />
+          <ellipse cx="16" cy="10.5" rx="2.6" ry="4" />
+          <circle cx="15.6" cy="18" r="1.7" />
         </svg>
       );
   }

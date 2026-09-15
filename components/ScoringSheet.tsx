@@ -14,6 +14,7 @@ import { SportMark } from "./SportMark";
 import { Glyph } from "./Glyph";
 import { NotificationSetup } from "./NotificationSetup";
 import { StravaSetup } from "./StravaSetup";
+import { StepsSetup } from "./StepsSetup";
 import { Avatar } from "./Avatar";
 import { PalettePicker } from "./PalettePicker";
 import type { League } from "./useLeague";
@@ -184,6 +185,10 @@ export function ScoringSheet({
 
         <div className="mt-4">
           <StravaSetup league={league} />
+        </div>
+
+        <div className="mt-4">
+          <StepsSetup league={league} />
         </div>
 
         <div className="mt-4">
