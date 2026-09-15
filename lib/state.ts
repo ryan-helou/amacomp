@@ -46,7 +46,7 @@ export async function readState(): Promise<AppState> {
     me ? store.getStravaByAthlete(me.id) : Promise.resolve(null),
     store.listEfforts(),
     store.listStepDays(),
-    me ? store.getStepsLink(me.id) : Promise.resolve({ connected: false, lastSyncAtISO: null }),
+    me ? store.getStepsLink(me.id) : Promise.resolve({ connected: false, lastSyncAtISO: null, shortcutKey: null }),
   ]);
   if (conn) maybeBackgroundSyncStrava(store, conn);
   return {
