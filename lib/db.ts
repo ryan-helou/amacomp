@@ -9,6 +9,8 @@ import {
   type RateChange,
   type Settings,
   type Sport,
+  type StepDay,
+  type StepsLink,
 } from "./types";
 
 /**
@@ -129,6 +131,15 @@ export interface Store {
   // Small key/value store — used to dedupe scheduled notifications.
   getMeta(key: string): Promise<string | null>;
   setMeta(key: string, value: string): Promise<void>;
+  // Steps — see lib/steps.ts. One row per athlete per day, replaced on report.
+  /** Store the hash of an athlete's step code, replacing any earlier one. */
+  setStepToken(athleteId: string, tokenHash: string): Promise<void>;
+  /** The athlete a step code belongs to (and marks it used), or null. */
+  athleteIdForStepToken(tokenHash: string): Promise<string | null>;
+  getStepsLink(athleteId: string): Promise<StepsLink>;
+  /** Upsert day totals; a day already stored is REPLACED, never added to. */
+  upsertStepDays(athleteId: string, days: { day: string; steps: number }[]): Promise<number>;
+  listStepDays(): Promise<StepDay[]>;
 }
 
 function newId(): string {
@@ -508,6 +519,22 @@ class PgStore implements Store {
             athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
             imported_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
+        // Steps from Apple Health, posted by each athlete's iOS Shortcut.
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS step_tokens (
+            athlete_id TEXT PRIMARY KEY REFERENCES athletes(id) ON DELETE CASCADE,
+            token_hash TEXT NOT NULL UNIQUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            last_used_at TIMESTAMPTZ
+          )`);
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS step_days (
+            athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            day DATE NOT NULL,
+            steps INTEGER NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            PRIMARY KEY (athlete_id, day)
+          )`);
       })();
     }
     return this.ready;
@@ -866,6 +893,65 @@ class PgStore implements Store {
       [key, value],
     );
   }
+
+  async setStepToken(athleteId: string, tokenHash: string): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `INSERT INTO step_tokens (athlete_id, token_hash, created_at, last_used_at)
+       VALUES ($1, $2, now(), NULL)
+       ON CONFLICT (athlete_id) DO UPDATE
+         SET token_hash = EXCLUDED.token_hash, created_at = now(), last_used_at = NULL`,
+      [athleteId, tokenHash],
+    );
+  }
+
+  async athleteIdForStepToken(tokenHash: string): Promise<string | null> {
+    await this.init();
+    const r = await this.pool.query(
+      `UPDATE step_tokens SET last_used_at = now() WHERE token_hash = $1 RETURNING athlete_id`,
+      [tokenHash],
+    );
+    return r.rows[0]?.athlete_id ?? null;
+  }
+
+  async getStepsLink(athleteId: string): Promise<StepsLink> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT last_used_at FROM step_tokens WHERE athlete_id = $1`,
+      [athleteId],
+    );
+    const row = r.rows[0];
+    return {
+      connected: !!row,
+      lastSyncAtISO: row?.last_used_at ? new Date(row.last_used_at).toISOString() : null,
+    };
+  }
+
+  async upsertStepDays(athleteId: string, days: { day: string; steps: number }[]): Promise<number> {
+    await this.init();
+    if (days.length === 0) return 0;
+    const r = await this.pool.query(
+      `INSERT INTO step_days (athlete_id, day, steps, updated_at)
+       SELECT $1, d::date, s, now() FROM unnest($2::text[], $3::int[]) AS t(d, s)
+       ON CONFLICT (athlete_id, day) DO UPDATE SET steps = EXCLUDED.steps, updated_at = now()`,
+      [athleteId, days.map((d) => d.day), days.map((d) => d.steps)],
+    );
+    return r.rowCount ?? days.length;
+  }
+
+  async listStepDays(): Promise<StepDay[]> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT athlete_id, to_char(day, 'YYYY-MM-DD') AS day, steps, updated_at
+         FROM step_days ORDER BY day`,
+    );
+    return r.rows.map((row) => ({
+      athleteId: row.athlete_id as string,
+      day: row.day as string,
+      steps: Number(row.steps),
+      updatedAt: new Date(row.updated_at).toISOString(),
+    }));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1077,6 +1163,8 @@ class MemoryStore implements Store {
 
   private subs = new Map<string, StoredSub>(); // endpoint → sub
   private meta = new Map<string, string>();
+  private stepTokens = new Map<string, { athleteId: string; lastUsedAt: string | null }>(); // hash → owner
+  private stepDays = new Map<string, StepDay>(); // `${athleteId}|${day}` → row
 
   async savePushSub(athleteId: string, sub: PushSub) {
     this.subs.set(sub.endpoint, { athleteId, sub });
@@ -1095,6 +1183,37 @@ class MemoryStore implements Store {
   }
   async setMeta(key: string, value: string) {
     this.meta.set(key, value);
+  }
+
+  async setStepToken(athleteId: string, tokenHash: string) {
+    for (const [hash, v] of this.stepTokens) if (v.athleteId === athleteId) this.stepTokens.delete(hash);
+    this.stepTokens.set(tokenHash, { athleteId, lastUsedAt: null });
+  }
+
+  async athleteIdForStepToken(tokenHash: string) {
+    const v = this.stepTokens.get(tokenHash);
+    if (!v) return null;
+    v.lastUsedAt = new Date().toISOString();
+    return v.athleteId;
+  }
+
+  async getStepsLink(athleteId: string) {
+    for (const v of this.stepTokens.values()) {
+      if (v.athleteId === athleteId) return { connected: true, lastSyncAtISO: v.lastUsedAt };
+    }
+    return { connected: false, lastSyncAtISO: null };
+  }
+
+  async upsertStepDays(athleteId: string, days: { day: string; steps: number }[]) {
+    const now = new Date().toISOString();
+    for (const d of days) {
+      this.stepDays.set(`${athleteId}|${d.day}`, { athleteId, day: d.day, steps: d.steps, updatedAt: now });
+    }
+    return days.length;
+  }
+
+  async listStepDays() {
+    return [...this.stepDays.values()].sort((a, b) => a.day.localeCompare(b.day));
   }
 }
 
