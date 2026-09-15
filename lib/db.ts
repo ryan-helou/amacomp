@@ -137,6 +137,10 @@ export interface Store {
   /** The athlete a step code belongs to (and marks it used), or null. */
   athleteIdForStepToken(tokenHash: string): Promise<string | null>;
   getStepsLink(athleteId: string): Promise<StepsLink>;
+  /** Store a personal shortcut and the code baked into it, replacing any earlier code. */
+  setStepShortcut(athleteId: string, tokenHash: string, key: string, file: Uint8Array): Promise<void>;
+  /** The personal shortcut behind a secret key, or null. */
+  getStepShortcut(key: string): Promise<Uint8Array | null>;
   /** Upsert day totals; a day already stored is REPLACED, never added to. */
   upsertStepDays(athleteId: string, days: { day: string; steps: number }[]): Promise<number>;
   listStepDays(): Promise<StepDay[]>;
@@ -527,6 +531,9 @@ class PgStore implements Store {
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             last_used_at TIMESTAMPTZ
           )`);
+        // A personal shortcut with the code baked in, fetched by a secret key.
+        await this.pool.query(`ALTER TABLE step_tokens ADD COLUMN IF NOT EXISTS shortcut BYTEA`);
+        await this.pool.query(`ALTER TABLE step_tokens ADD COLUMN IF NOT EXISTS shortcut_key TEXT UNIQUE`);
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS step_days (
             athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
@@ -900,9 +907,28 @@ class PgStore implements Store {
       `INSERT INTO step_tokens (athlete_id, token_hash, created_at, last_used_at)
        VALUES ($1, $2, now(), NULL)
        ON CONFLICT (athlete_id) DO UPDATE
-         SET token_hash = EXCLUDED.token_hash, created_at = now(), last_used_at = NULL`,
+         SET token_hash = EXCLUDED.token_hash, created_at = now(), last_used_at = NULL,
+             shortcut = NULL, shortcut_key = NULL`,
       [athleteId, tokenHash],
     );
+  }
+
+  async setStepShortcut(athleteId: string, tokenHash: string, key: string, file: Uint8Array): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `INSERT INTO step_tokens (athlete_id, token_hash, created_at, last_used_at, shortcut, shortcut_key)
+       VALUES ($1, $2, now(), NULL, $4, $3)
+       ON CONFLICT (athlete_id) DO UPDATE
+         SET token_hash = EXCLUDED.token_hash, created_at = now(), last_used_at = NULL,
+             shortcut = EXCLUDED.shortcut, shortcut_key = EXCLUDED.shortcut_key`,
+      [athleteId, tokenHash, key, Buffer.from(file)],
+    );
+  }
+
+  async getStepShortcut(key: string): Promise<Uint8Array | null> {
+    await this.init();
+    const r = await this.pool.query(`SELECT shortcut FROM step_tokens WHERE shortcut_key = $1`, [key]);
+    return r.rows[0]?.shortcut ?? null;
   }
 
   async athleteIdForStepToken(tokenHash: string): Promise<string | null> {
@@ -917,13 +943,14 @@ class PgStore implements Store {
   async getStepsLink(athleteId: string): Promise<StepsLink> {
     await this.init();
     const r = await this.pool.query(
-      `SELECT last_used_at FROM step_tokens WHERE athlete_id = $1`,
+      `SELECT last_used_at, shortcut_key FROM step_tokens WHERE athlete_id = $1`,
       [athleteId],
     );
     const row = r.rows[0];
     return {
-      connected: !!row,
+      connected: !!row?.last_used_at,
       lastSyncAtISO: row?.last_used_at ? new Date(row.last_used_at).toISOString() : null,
+      shortcutKey: row?.shortcut_key ?? null,
     };
   }
 
@@ -1163,7 +1190,10 @@ class MemoryStore implements Store {
 
   private subs = new Map<string, StoredSub>(); // endpoint → sub
   private meta = new Map<string, string>();
-  private stepTokens = new Map<string, { athleteId: string; lastUsedAt: string | null }>(); // hash → owner
+  private stepTokens = new Map<
+    string,
+    { athleteId: string; lastUsedAt: string | null; key?: string; file?: Uint8Array }
+  >(); // hash → owner
   private stepDays = new Map<string, StepDay>(); // `${athleteId}|${day}` → row
 
   async savePushSub(athleteId: string, sub: PushSub) {
@@ -1199,9 +1229,21 @@ class MemoryStore implements Store {
 
   async getStepsLink(athleteId: string) {
     for (const v of this.stepTokens.values()) {
-      if (v.athleteId === athleteId) return { connected: true, lastSyncAtISO: v.lastUsedAt };
+      if (v.athleteId === athleteId) {
+        return { connected: !!v.lastUsedAt, lastSyncAtISO: v.lastUsedAt, shortcutKey: v.key ?? null };
+      }
     }
-    return { connected: false, lastSyncAtISO: null };
+    return { connected: false, lastSyncAtISO: null, shortcutKey: null };
+  }
+
+  async setStepShortcut(athleteId: string, tokenHash: string, key: string, file: Uint8Array) {
+    await this.setStepToken(athleteId, tokenHash);
+    Object.assign(this.stepTokens.get(tokenHash)!, { key, file });
+  }
+
+  async getStepShortcut(key: string) {
+    for (const v of this.stepTokens.values()) if (v.key === key) return v.file ?? null;
+    return null;
   }
 
   async upsertStepDays(athleteId: string, days: { day: string; steps: number }[]) {

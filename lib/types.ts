@@ -309,8 +309,14 @@ export interface StepDay {
 
 /** Whether the signed-in athlete's phone is sending steps, and when it last did. */
 export interface StepsLink {
+  /** A report has arrived with their code — not merely that a code exists. */
   connected: boolean;
   lastSyncAtISO: string | null;
+  /**
+   * The secret path segment for their personal shortcut (code baked in), when
+   * one has been made for them — see scripts/make-step-shortcuts.mjs.
+   */
+  shortcutKey: string | null;
 }
 
 export interface AppState {
