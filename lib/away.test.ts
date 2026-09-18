@@ -48,11 +48,10 @@ console.log("\nthe trips actually configured");
     { id: "a", name: "Alberto" },
   ];
   const week = (day: string) => awayThisWeek([], day, real);
-  check("Ryan flies Japan in the week of 7 Sep", week("2026-09-09").get("r")?.label, "Japan");
-  check("Alberto flies Canada that week too", week("2026-09-09").get("a")?.label, "Canada");
+  check("Alberto flew Canada in the week of 7 Sep", week("2026-09-09").get("a")?.label, "Canada");
   check("and Canada is a leaf, not stripes", week("2026-09-09").get("a")?.emblem, "leaf");
   check("Alberto is home the week after", week("2026-09-16").has("a"), false);
-  check("Ryan is still away the week after", week("2026-09-16").get("r")?.label, "Japan");
+  check("nobody flies Japan any more", week("2026-09-09").has("r"), false);
 }
 
 console.log(failures === 0 ? "\nAll away tests passed.\n" : `\n${failures} away test(s) FAILED.\n`);

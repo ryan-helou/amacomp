@@ -74,6 +74,7 @@ export const MAPLE =
 /** The measured bounds of `MAPLE`, so the drawn leaf sits centred in its box. */
 export const MAPLE_BOX = "-32.2 -72.5 63.4 69.8";
 
+/** Kept for the next trip there — the sun field and waves are already drawn. */
 export const JAPAN: Flag = { label: "Japan", from: "#BC002D", mid: "#FFFFFF", to: "#BC002D", emblem: "sun" };
 export const CANADA: Flag = { label: "Canada", from: "#D52B1E", mid: "#FFFFFF", to: "#D52B1E", emblem: "leaf" };
 
@@ -83,7 +84,6 @@ export const CANADA: Flag = { label: "Canada", from: "#D52B1E", mid: "#FFFFFF", 
  * and Jonah are two different people). Inclusive dates.
  */
 export const TRIPS: { name: string; from: DayKey; to: DayKey; flag: Flag }[] = [
-  { name: "Ryan", from: "2026-09-11", to: "2026-09-17", flag: JAPAN },
   { name: "Alberto", from: "2026-09-12", to: "2026-09-13", flag: CANADA },
 ];
 
