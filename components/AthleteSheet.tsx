@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { Activity } from "@/lib/types";
 import {
   SPORT_ORDER,
   activityPoints,
@@ -23,6 +24,7 @@ import { weeklyTrend } from "@/lib/stats";
 import { firstSeason, seasonFor } from "@/lib/season";
 import { formatDay, weekStart, type DayKey } from "@/lib/dates";
 import { Glyph, type GlyphName } from "./Glyph";
+import { SportMark } from "./SportMark";
 import { Avatar } from "./Avatar";
 import { TrendChart } from "./TrendChart";
 
@@ -31,14 +33,17 @@ export function AthleteSheet({
   athleteId,
   refDay,
   reigning,
+  send,
   onClose,
 }: {
   state: AppState;
   athleteId: string;
   refDay: DayKey;
   reigning?: string | null;
+  send?: (url: string, init?: RequestInit) => Promise<string | null>;
   onClose: () => void;
 }) {
+  const [removing, setRemoving] = useState<string | null>(null);
   const athlete = state.athletes.find((a) => a.id === athleteId);
   const isChampion = !!athlete && reigning === athlete.id;
 
@@ -111,6 +116,9 @@ export function AthleteSheet({
       biggestWeek,
       activeDays: daySet.size,
       firstDay,
+      // Newest first, for the admin list below. Ten is enough to reach a bad
+      // import without turning the card into a second Log tab.
+      recent: [...mine].sort((x, y) => (x.occurredOn < y.occurredOn ? 1 : -1)).slice(0, 10),
     };
   }, [athlete, athleteId, state, refDay]);
 
@@ -301,6 +309,19 @@ export function AthleteSheet({
           ))}
         </div>
 
+        {/* An admin's broom. Everyone else's sessions are theirs to edit in
+            their own Log; this exists because Strava sometimes files something
+            as a discipline it isn't, and only an admin can strike it off. */}
+        {state.isAdmin && send && data.recent.length > 0 && (
+          <AdminSessions
+            state={state}
+            sessions={data.recent}
+            send={send}
+            busyId={removing}
+            setBusyId={setRemoving}
+          />
+        )}
+
         {data.firstDay && (
           <p className="mt-4 text-center font-mono text-[0.6875rem] text-ink-3">
             Logging since {formatDay(data.firstDay as DayKey)}
@@ -323,6 +344,97 @@ export function AthleteSheet({
           />
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * The last ten sessions, with a delete — admin only.
+ *
+ * The Log tab only ever shows your own, so before this an admin could see a
+ * wrong session on someone's card (a Strava import filed as the wrong
+ * discipline, say) and have no way to remove it. The server already allowed
+ * it; only the screen was missing.
+ */
+function AdminSessions({
+  state,
+  sessions,
+  send,
+  busyId,
+  setBusyId,
+}: {
+  state: AppState;
+  sessions: Activity[];
+  send: (url: string, init?: RequestInit) => Promise<string | null>;
+  busyId: string | null;
+  setBusyId: (id: string | null) => void;
+}) {
+  const [confirm, setConfirm] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function remove(id: string) {
+    setBusyId(id);
+    const err = await send(`/api/activities/${id}`, { method: "DELETE" });
+    setBusyId(null);
+    setConfirm(null);
+    setError(err);
+  }
+
+  return (
+    <div className="mt-5">
+      <h3 className="eyebrow text-ink-2">Recent sessions · admin</h3>
+      <ul className="mt-2 space-y-1">
+        {sessions.map((a) => {
+          const ui = SPORT_UI[a.sport];
+          const pts = activityPoints(a, state.settings);
+          return (
+            <li
+              key={a.id}
+              className="flex items-center gap-2 rounded-lg border border-line bg-tile px-3 py-2"
+            >
+              <SportMark sport={a.sport} className="h-4 w-4 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[0.8125rem] text-ink">
+                  {a.note?.trim() || ui.label}
+                </div>
+                <div className="font-mono text-[0.6875rem] text-ink-3">
+                  {formatDay(a.occurredOn as DayKey)} · {fmtPoints(pts)} pts
+                  {a.source === "strava" ? " · Strava" : ""}
+                </div>
+              </div>
+              {confirm === a.id ? (
+                <>
+                  <button
+                    onClick={() => remove(a.id)}
+                    disabled={busyId === a.id}
+                    className="eyebrow shrink-0 rounded-md bg-run px-2 py-1 text-white disabled:opacity-40"
+                  >
+                    {busyId === a.id ? "…" : "Delete"}
+                  </button>
+                  <button
+                    onClick={() => setConfirm(null)}
+                    className="eyebrow shrink-0 rounded-md border border-line px-2 py-1 text-ink-2"
+                  >
+                    Keep
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setError(null);
+                    setConfirm(a.id);
+                  }}
+                  aria-label={`Delete ${a.note?.trim() || ui.label}`}
+                  className="eyebrow shrink-0 rounded-md border border-line px-2 py-1 text-ink-2"
+                >
+                  Remove
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {error && <p className="mt-1.5 text-xs font-medium text-run">{error}</p>}
     </div>
   );
 }
