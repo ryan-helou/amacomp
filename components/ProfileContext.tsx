@@ -49,11 +49,14 @@ export function ProfileProvider({
   state,
   refDay,
   championId = null,
+  send,
   children,
 }: {
   state: AppState;
   refDay: DayKey;
   championId?: string | null;
+  /** Passed through so an admin can strike a bad session off someone's card. */
+  send?: (url: string, init?: RequestInit) => Promise<string | null>;
   children: ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -72,6 +75,7 @@ export function ProfileProvider({
             athleteId={selected}
             refDay={refDay}
             reigning={championId}
+            send={send}
             onClose={() => setSelected(null)}
           />
         )}
