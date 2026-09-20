@@ -200,9 +200,13 @@ export function sportOf(a: StravaActivity): Sport | null {
   if (t.includes("ride") || t.includes("bike") || t === "velomobile" || t.includes("handcycle"))
     return "bike";
   if (t.includes("run")) return "run"; // Run, TrailRun, VirtualRun
+  // Gym means a lift. Strava's generic "Workout" is deliberately NOT here: it's
+  // the bucket its app drops everything it has no type for into, so volleyball,
+  // a squash game and a stretch session all arrive as "Workout" and were being
+  // scored as lifts. A real lift comes across as WeightTraining, Crossfit or
+  // similar; anything logged as a plain Workout has to be typed in by hand.
   if (
     t.includes("weight") ||
-    t === "workout" ||
     t.includes("crossfit") ||
     t.includes("strength") ||
     t.includes("highintensity") // Strava's "HighIntensityIntervalTraining"

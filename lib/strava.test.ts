@@ -1,4 +1,4 @@
-import { activityLocalDay, toImport, type StravaActivity } from "./strava";
+import { activityLocalDay, sportOf, toImport, type StravaActivity } from "./strava";
 import { RESET_HOUR, logDayAt, toDayKey, weekStart } from "./dates";
 
 /**
@@ -149,6 +149,19 @@ console.log("\ntoImport carries the ascent");
   check("a missing field stays null", toImport("a", rode(undefined))?.input.elevationM, null);
   check("rounded to a tenth of a metre", toImport("a", rode(311.26))?.input.elevationM, 311.3);
   check("a negative reading is clamped to 0", toImport("a", rode(-5))?.input.elevationM, 0);
+}
+
+console.log("\nwhat counts as a gym lift");
+{
+  const as = (sport_type: string) => sportOf({ id: 3, sport_type, start_date_local: "2026-09-19T15:00:00Z" });
+  check("WeightTraining is a lift", as("WeightTraining"), "gym");
+  check("Crossfit is a lift", as("Crossfit"), "gym");
+  check("HIIT is a lift", as("HighIntensityIntervalTraining"), "gym");
+  // Strava's catch-all type. Volleyball, squash and a stretch all land here, so
+  // it can't be a lift — this is what handed amaGoh gym points for volleyball.
+  check("a plain Workout is not", as("Workout"), null);
+  check("and neither is a walk", as("Walk"), null);
+  check("runs and rides are untouched", [as("TrailRun"), as("VirtualRide")], ["run", "bike"]);
 }
 
 console.log(failures === 0 ? "\nAll strava date tests passed.\n" : `\n${failures} failing.\n`);
