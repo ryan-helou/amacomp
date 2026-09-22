@@ -51,7 +51,7 @@ export function AthleteSheet({
     if (!athlete) return null;
     const { athletes, activities, settings } = state;
     const badges = badgesFor(athleteId, athletes, activities, settings, refDay);
-    const streak = streakFor(athleteId, activities, settings, refDay);
+    const streak = streakFor(athleteId, activities, settings, refDay, athlete?.name);
     const titles =
       championshipsByAthlete(athletes, activities, settings, refDay).get(athleteId) ?? 0;
 
@@ -69,7 +69,7 @@ export function AthleteSheet({
       season.end,
     ]).find((s) => s.athlete.id === athleteId);
 
-    const trend = weeklyTrend(athleteId, activities, settings, refDay, 8);
+    const trend = weeklyTrend(athleteId, activities, settings, refDay, 8, athlete?.name);
 
     // Personal bests + lifetime totals from this athlete's own log — awarded
     // points aren't sessions, so they never set a personal best.

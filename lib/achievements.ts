@@ -14,6 +14,7 @@ import {
 } from "./dates";
 import {
   activityPoints,
+  goalFor,
   unscoredGymIds,
   standingsForRange,
   type Standing,
@@ -72,11 +73,15 @@ export function streakFor(
   activities: Activity[],
   settings: Settings,
   refDay: DayKey = today(),
+  /** Their name, so a personal weekly goal applies. Without it, the league goal. */
+  name?: string | null,
 ): Streak {
-  const goal = settings.weeklyGoal;
   const weeks = weeklyPoints(activities, settings).get(athleteId) ?? new Map();
   const timeline = weekTimeline(activities, refDay);
-  const hit = (wk: DayKey) => (weeks.get(wk) ?? 0) >= goal && goal > 0;
+  const hit = (wk: DayKey) => {
+    const goal = goalFor(name, settings, wk);
+    return goal > 0 && (weeks.get(wk) ?? 0) >= goal;
+  };
 
   // Best: longest run of consecutive hit weeks across the whole timeline.
   let best = 0;
@@ -195,7 +200,13 @@ export function badgesFor(
     (s) => s.has("swim") && s.has("bike") && s.has("run"),
   ).length;
   const distinctSports = sportsEver.size;
-  const { best } = streakFor(athleteId, activities, settings, refDay);
+  const { best } = streakFor(
+    athleteId,
+    activities,
+    settings,
+    refDay,
+    athletes.find((a) => a.id === athleteId)?.name,
+  );
   const wins = championshipsByAthlete(athletes, activities, settings, refDay).get(athleteId) ?? 0;
   const seasonTitles = seasonChampions(
     athletes,
@@ -273,12 +284,12 @@ export function lastWeekRecap(
   if (range[0] < weekStart(settings.seasonStart)) return null;
   const standings = standingsForRange(athletes, activities, settings, range);
   if (!standings.some((s) => s.points > 0)) return null;
-  const goal = settings.weeklyGoal;
   return {
     rangeLabel: formatRange(range),
     champion: standings[0],
-    hit: standings.filter((s) => s.points >= goal),
-    missed: standings.filter((s) => s.points < goal && !s.excused),
+    // Each row carries its own goal — Jonah's week is not everyone's week.
+    hit: standings.filter((s) => s.points >= s.goal),
+    missed: standings.filter((s) => s.points < s.goal && !s.excused),
     excused: standings.filter((s) => s.excused),
   };
 }

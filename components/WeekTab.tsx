@@ -67,12 +67,14 @@ export function WeekTab({
 
   const meId = state.me?.id ?? "";
   const mine = standings.find((s) => s.athlete.id === meId);
-  const goal = state.settings.weeklyGoal;
+  // Your own quota, which isn't necessarily the league's — see `goalFor`. Every
+  // lane below uses ITS athlete's goal, `row.goal`, for the same reason.
+  const goal = mine?.goal ?? state.settings.weeklyGoal;
   const range = periodRange("week", weekRef);
   // Excused counts as through: they are not on the hook for the forfeit, and
   // leaving them in the denominator makes a week that everyone survived read as
   // "3/4 through" forever.
-  const met = standings.filter((s) => s.points >= goal || s.excused).length;
+  const met = standings.filter((s) => s.points >= s.goal || s.excused).length;
   const champ = useReigningChampion();
   // Keyed to the week ON SCREEN, not to today — this tab pages back through
   // finished weeks, and an excuse belongs to the week it was granted for.
@@ -291,15 +293,17 @@ export function WeekTab({
 
         <ul className="mt-3 space-y-2">
           {standings.map((row) => {
-            const done = row.points >= goal;
+            const done = row.points >= row.goal;
             const excused = row.excused;
             // Stack the bar: earned first, then the hatched granted tail.
             const granted = row.grantedPoints;
             const earned = Math.max(row.points - granted, 0);
-            const earnedShown = goal > 0 ? Math.min(earned, goal) : 0;
-            const grantedShown = goal > 0 ? Math.min(Math.max(granted, 0), goal - earnedShown) : 0;
-            const earnedPct = goal > 0 ? (earnedShown / goal) * 100 : 0;
-            const grantedPct = goal > 0 ? (grantedShown / goal) * 100 : 0;
+            const rowGoal = row.goal;
+            const earnedShown = rowGoal > 0 ? Math.min(earned, rowGoal) : 0;
+            const grantedShown =
+              rowGoal > 0 ? Math.min(Math.max(granted, 0), rowGoal - earnedShown) : 0;
+            const earnedPct = rowGoal > 0 ? (earnedShown / rowGoal) * 100 : 0;
+            const grantedPct = rowGoal > 0 ? (grantedShown / rowGoal) * 100 : 0;
             const isMe = row.athlete.id === meId;
             const isOpen = expanded.has(row.athlete.id);
             const gold = champ === row.athlete.id;
@@ -383,7 +387,7 @@ export function WeekTab({
                         )}
                         <span>
                           <span className="text-ink">{fmtPoints(row.points)}</span>
-                          <span className="text-ink-3">/{fmtPoints(goal)}</span>
+                          <span className="text-ink-3">/{fmtPoints(rowGoal)}</span>
                         </span>
                       </span>
                     </div>
@@ -493,8 +497,8 @@ export function WeekTab({
                     {state.isAdmin && (
                       <AdminGrant
                         athleteName={row.athlete.name}
-                        shortfall={Math.max(goal - row.points, 0)}
-                        goal={goal}
+                        shortfall={Math.max(rowGoal - row.points, 0)}
+                        goal={rowGoal}
                         excused={excused}
                         busy={busy}
                         onExcuse={() =>

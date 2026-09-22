@@ -120,6 +120,9 @@ export async function PUT(req: Request) {
     multipliers: current.multipliers,
     elevationPer100m: current.elevationPer100m,
     rateChanges,
+    // Carried through untouched: this sheet doesn't edit per-athlete goals, and
+    // dropping them here would quietly put everyone back on the league quota.
+    goalChanges: current.goalChanges,
     openWaterPerKm,
     runAscentMetresPerKm,
     weeklyGoal: Math.round(weeklyGoal * 10) / 10,
