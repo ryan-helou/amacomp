@@ -300,10 +300,11 @@ export const DEFAULT_SETTINGS: Settings = {
   openWaterPerKm: 20,
   runAscentMetresPerKm: 100,
   weeklyGoal: 100,
-  // Ryan's call 2026-09-22: Jonah's week drops to 50. Dated from the Monday of
-  // the week it was asked in, so the weeks already on the board — including the
-  // 65 he posted the week before — keep the 100 they were judged against.
-  goalChanges: [{ from: "2026-09-21", goals: { Jonah: 50 } }],
+  // Ryan's call 2026-09-22: Jonah's week drops to 50, backdated on his
+  // instruction to the week of 14 Sep — so the 65 he posted that week clears
+  // his quota instead of missing it. Weeks before that keep the 100 they were
+  // judged against.
+  goalChanges: [{ from: "2026-09-14", goals: { Jonah: 50 } }],
   seasonStart: "2026-08-03",
   forfeit: "Run a marathon — unless the lads excuse you",
 };
