@@ -646,10 +646,13 @@ function personalGoals() {
   check("the ring fills against the personal goal", Math.round(jonah.goalProgress * 100) / 100, 1.2);
 
   // And the shipped default is the one production will read.
-  check("the shipped default lowers Jonah from the week of 21 Sep",
-    goalFor("Jonah", DEFAULT_SETTINGS, "2026-09-21"), 50);
+  check("the shipped default lowers Jonah from the week of 14 Sep",
+    goalFor("Jonah", DEFAULT_SETTINGS, "2026-09-14"), 50);
+  check("it still applies the week after", goalFor("Jonah", DEFAULT_SETTINGS, "2026-09-21"), 50);
+  // The 65-pt week of 14 Sep is the one being forgiven; the 100-pt weeks before
+  // it are not, or the change would rewrite the whole season's forfeits.
   check("but not the week before it",
-    goalFor("Jonah", DEFAULT_SETTINGS, "2026-09-20"), 100);
+    goalFor("Jonah", DEFAULT_SETTINGS, "2026-09-13"), 100);
 }
 
 personalGoals();
