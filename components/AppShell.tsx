@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, logToday, parseDayKey, today, weekStart, type DayKey } from "@/lib/dates";
-import { fmtPoints, standingsFor } from "@/lib/scoring";
+import { fmtPoints, goalFor, standingsFor } from "@/lib/scoring";
 import { reigningChampionId, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
 import type { AppState } from "@/lib/types";
 import { announcementIsDue, rateAnnouncementFor, type RateAnnouncement } from "@/lib/announce";
@@ -115,6 +115,8 @@ export function AppShell({
   );
   const mine = week.find((s) => s.athlete.id === state.me?.id);
   const myWeekPoints = mine?.points ?? 0;
+  // Your own quota — the header fraction reads against the goal that judges you.
+  const myGoal = mine?.goal ?? state.settings.weeklyGoal;
 
   // After the Strava OAuth round-trip we land back here with ?strava=…; the page
   // already re-rendered with the fresh connection + imported sessions, so this
@@ -187,7 +189,7 @@ export function AppShell({
 
   const [fireKey, setFireKey] = useState(0);
   useEffect(() => {
-    const goal = state.settings.weeklyGoal;
+    const goal = goalFor(state.me?.name, state.settings, weekStart(refDay));
     if (!state.me || goal <= 0 || myWeekPoints < goal) return;
     // Celebrate crossing the quota once per athlete per week.
     const key = `amacomp-celebrated-${state.me.id}-${weekStart(refDay)}`;
@@ -199,7 +201,7 @@ export function AppShell({
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFireKey((k) => k + 1);
-  }, [state.me, myWeekPoints, state.settings.weeklyGoal, refDay]);
+  }, [state.me, myWeekPoints, state.settings, refDay]);
 
   // Seasons — a one-time "season champion" celebration once a season has
   // finished. (The in-app "season is live" banner was retired; the full-screen
@@ -327,7 +329,7 @@ export function AppShell({
             <div className="text-right">
               <div className="stamp text-xl">
                 <span className="accent-text">{fmtPoints(mine?.points ?? 0)}</span>
-                <span className="text-ink-3">/{fmtPoints(state.settings.weeklyGoal)}</span>
+                <span className="text-ink-3">/{fmtPoints(myGoal)}</span>
               </div>
               <div className="eyebrow text-ink-3">this week</div>
             </div>

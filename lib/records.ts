@@ -113,6 +113,9 @@ const emptyPeak = (): Peak => ({ holderId: null, value: 0, detail: "" });
 export function hallOfFame(activities: Activity[], settings: Settings): HallRecord[] {
   const unscored = unscoredGymIds(activities);
   const pts = (a: Activity) => activityPoints(a, settings, unscored);
+  // The league goal, deliberately, not anyone's personal one: these are records
+  // held against each other, so the quota streak and the fastest quota have to
+  // mean the same feat for everybody.
   const goal = settings.weeklyGoal;
 
   // Per-athlete bests for the records that come straight off a single session.

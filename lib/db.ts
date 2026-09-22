@@ -6,6 +6,7 @@ import {
   type ActivitySource,
   type ActivityEfforts,
   type Athlete,
+  type GoalChange,
   type RateChange,
   type Settings,
   type Sport,
@@ -198,6 +199,30 @@ function mergeRateChanges(raw: unknown): RateChange[] {
   return changes.sort((a, b) => a.from.localeCompare(b.from));
 }
 
+/**
+ * Per-athlete weekly goals, read the same way as the rate changes: a malformed
+ * entry is dropped rather than guessed, and absent entirely it falls back to the
+ * shipped default. Names are kept verbatim — matching is exact on purpose.
+ */
+function mergeGoalChanges(raw: unknown): GoalChange[] | undefined {
+  if (!Array.isArray(raw)) return DEFAULT_SETTINGS.goalChanges;
+  const changes: GoalChange[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const e = entry as Record<string, unknown>;
+    const from = e.from;
+    if (typeof from !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(from)) continue;
+    if (!e.goals || typeof e.goals !== "object") continue;
+    const goals: Record<string, number> = {};
+    for (const [name, v] of Object.entries(e.goals as Record<string, unknown>)) {
+      if (typeof v === "number" && Number.isFinite(v) && v >= 0) goals[name] = v;
+    }
+    if (Object.keys(goals).length === 0) continue;
+    changes.push({ from, goals });
+  }
+  return changes.sort((a, b) => a.from.localeCompare(b.from));
+}
+
 function mergeSettings(raw: unknown): Settings {
   const value = (raw ?? {}) as Partial<Settings>;
   const m = (value.multipliers ?? {}) as Partial<Record<Sport, number>>;
@@ -220,6 +245,7 @@ function mergeSettings(raw: unknown): Settings {
       gym: num(e.gym, DEFAULT_SETTINGS.elevationPer100m.gym),
     },
     rateChanges: mergeRateChanges(value.rateChanges),
+    goalChanges: mergeGoalChanges(value.goalChanges),
     openWaterPerKm: num(value.openWaterPerKm, DEFAULT_SETTINGS.openWaterPerKm),
     runAscentMetresPerKm: num(
       value.runAscentMetresPerKm, DEFAULT_SETTINGS.runAscentMetresPerKm),

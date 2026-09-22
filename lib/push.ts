@@ -165,8 +165,7 @@ export async function notifyQuotaHits(
 ): Promise<void> {
   if (!ensureConfigured()) return;
   if (newActivityIds.length === 0) return;
-  const goal = settings.weeklyGoal;
-  if (goal <= 0) return;
+  if (settings.weeklyGoal <= 0 && !settings.goalChanges?.length) return;
 
   const range = periodRange("week", leagueToday());
   const fresh = new Set(newActivityIds);
@@ -187,6 +186,10 @@ export async function notifyQuotaHits(
     (s) => s.athlete.id === actorId,
   );
   if (!after || !before) return;
+  // The actor's own quota — a lowered goal is a real quota, and crossing it is
+  // still news (see `goalFor`).
+  const goal = after.goal;
+  if (goal <= 0) return;
   if (after.points < goal) return; // still below quota
   if (before.points >= goal) return; // was already through
 

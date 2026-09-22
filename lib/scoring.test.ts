@@ -1,4 +1,4 @@
-import { activityPoints, ratesOn, unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
+import { activityPoints, goalFor, ratesOn, unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
 import { getStore } from "./db";
 import { ANNOUNCE_HOUR, announcementIsDue, rateAnnouncementFor } from "./announce";
 import { addDays, daysBetween, periodRange } from "./dates";
@@ -603,6 +603,56 @@ async function storedRateChangesAreNormalised() {
   check("the live bike climb rate survives the merge",
     ratesOn("2026-08-31", prod).elevationPer100m.bike, 1);
 }
+
+/**
+ * A personal weekly goal, dated.
+ *
+ * The point of the date is that a week already on the board keeps the quota it
+ * was judged against: lowering Jonah's goal must not reach back and un-miss the
+ * 65-point week he had before the change.
+ */
+function personalGoals() {
+  console.log("\na personal weekly goal");
+  const S: Settings = {
+    ...DEFAULT_SETTINGS,
+    multipliers: { swim: 20, bike: 1, run: 5, gym: 5 },
+    weeklyGoal: 100,
+    goalChanges: [{ from: "2026-09-21", goals: { Jonah: 50 } }],
+  };
+  check("Jonah's goal from the change on", goalFor("Jonah", S, "2026-09-21"), 50);
+  check("and the week before is still 100", goalFor("Jonah", S, "2026-09-14"), 100);
+  check("everyone else is untouched", goalFor("Philippe", S, "2026-09-21"), 100);
+  // Jona and Jonah are two different people; a prefix must not match.
+  check("Jona keeps the league goal", goalFor("Jona", S, "2026-09-21"), 100);
+  check("an unknown name gets the league goal", goalFor("Nobody", S, "2026-09-21"), 100);
+  check("no name at all gets the league goal", goalFor(null, S, "2026-09-21"), 100);
+
+  const athletes: Athlete[] = [ath("jonah", "Jonah"), ath("jona", "Jona")];
+  const jog = (athleteId: string, occurredOn: string, id: string): Activity => ({
+    id, athleteId, sport: "run", km: 5, occurredOn, note: null, createdAt: `${occurredOn}T12:00:00Z`,
+    source: "manual", points: null, elevationM: null, openWater: null,
+  });
+  // 60 points each (three 5 km runs at the dated 4/km): clears a 50 goal, short of 100.
+  const acts: Activity[] = [];
+  for (let i = 0; i < 3; i++) {
+    const day = `2026-09-2${1 + i}`;
+    acts.push(jog("jonah", day, `h${i}`), jog("jona", day, `j${i}`));
+  }
+  const rows = standingsForRange(athletes, acts, S, ["2026-09-21", "2026-09-27"]);
+  const jonah = rows.find((r) => r.athlete.id === "jonah")!;
+  const jona = rows.find((r) => r.athlete.id === "jona")!;
+  check("the same points clear Jonah's quota", [jonah.points >= jonah.goal, jonah.goal], [true, 50]);
+  check("and leave Jona short of his", [jona.points >= jona.goal, jona.goal], [false, 100]);
+  check("the ring fills against the personal goal", Math.round(jonah.goalProgress * 100) / 100, 1.2);
+
+  // And the shipped default is the one production will read.
+  check("the shipped default lowers Jonah from the week of 21 Sep",
+    goalFor("Jonah", DEFAULT_SETTINGS, "2026-09-21"), 50);
+  check("but not the week before it",
+    goalFor("Jonah", DEFAULT_SETTINGS, "2026-09-20"), 100);
+}
+
+personalGoals();
 
 storedRateChangesAreNormalised().then(() => {
   console.log(failures === 0 ? "\nAll passed.\n" : `\n${failures} FAILED\n`);

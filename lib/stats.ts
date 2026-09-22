@@ -1,6 +1,6 @@
 import type { Activity, Athlete, Settings, Sport } from "./types";
 import { SPORT_UNIT, isGrant } from "./types";
-import { activityPoints, standingsForRange, unscoredGymIds } from "./scoring";
+import { activityPoints, goalFor, standingsForRange, unscoredGymIds } from "./scoring";
 import { addDays, today, weekEnd, weekStart, type DayKey } from "./dates";
 
 export interface TrendWeek {
@@ -17,6 +17,8 @@ export function weeklyTrend(
   settings: Settings,
   refDay: DayKey = today(),
   weeks = 8,
+  /** Their name, so a personal weekly goal applies (see `goalFor`). */
+  name?: string | null,
 ): TrendWeek[] {
   const keys: DayKey[] = [];
   let wk = weekStart(refDay);
@@ -38,7 +40,7 @@ export function weeklyTrend(
       weekKey: w,
       label: `${Number(d)}/${Number(m)}`,
       points,
-      hit: settings.weeklyGoal > 0 && points >= settings.weeklyGoal,
+      hit: goalFor(name, settings, w) > 0 && points >= goalFor(name, settings, w),
     };
   });
 }

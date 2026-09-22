@@ -3,6 +3,31 @@ import { SPORTS, SPORT_UNIT, isGrant, isExcuse } from "./types";
 import { inRange, type DayKey, type Period, periodRange } from "./dates";
 import { MAX_SCORING_GYM_PER_DAY } from "./validate";
 
+/**
+ * One athlete's weekly goal on a given day.
+ *
+ * Dated like `ratesOn`, and for the same reason: the quota a week was judged
+ * against can't change after the fact, or lowering someone's goal would erase
+ * forfeits already earned. Matched on the exact name — Jona and Jonah are two
+ * different people — so a typo quietly leaves the league goal in place rather
+ * than handing someone an easier week.
+ */
+export function goalFor(
+  name: string | null | undefined,
+  settings: Settings,
+  day: DayKey,
+): number {
+  let goal = settings.weeklyGoal;
+  if (!name) return goal;
+  // Oldest first, so the newest change that has already started wins.
+  for (const change of settings.goalChanges ?? []) {
+    if (change.from > day) continue;
+    const g = change.goals?.[name];
+    if (typeof g === "number" && Number.isFinite(g) && g >= 0) goal = g;
+  }
+  return goal;
+}
+
 /** The scoring rates in force on a given day. */
 export interface Rates {
   multipliers: Record<Sport, number>;
@@ -166,6 +191,8 @@ export interface Standing {
   rank: number;
   /** Fraction of the weekly goal reached — only meaningful for the week view. */
   goalProgress: number;
+  /** The athlete's own weekly goal over this range (see `goalFor`). */
+  goal: number;
   /** Sessions that came in from Strava rather than being typed by hand. */
   stravaSessions: number;
   /** Gym workouts in this window that were past the daily cap and scored nothing. */
@@ -209,6 +236,7 @@ export function standingsForRange(
       kmBySport: emptySportMap(),
       rank: 0,
       goalProgress: 0,
+      goal: settings.weeklyGoal,
       stravaSessions: 0,
       unscoredSessions: 0,
       grantedPoints: 0,
@@ -265,8 +293,8 @@ export function standingsForRange(
       prev = row.points;
     }
     row.rank = rank;
-    row.goalProgress =
-      settings.weeklyGoal > 0 ? row.points / settings.weeklyGoal : 0;
+    row.goal = goalFor(row.athlete.name, settings, range[0]);
+    row.goalProgress = row.goal > 0 ? row.points / row.goal : 0;
   }
 
   return list;

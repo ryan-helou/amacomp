@@ -252,12 +252,32 @@ export interface Settings {
    * 0 turns it off.
    */
   runAscentMetresPerKm: number;
-  /** Points every athlete is expected to hit each week. */
+  /** Points every athlete is expected to hit each week, unless `goalChanges`
+   *  lowers or raises it for them. */
   weeklyGoal: number;
+  /**
+   * Per-athlete weekly goals, dated like `rateChanges` and for the same reason:
+   * a week already scored keeps the quota it was scored against, so changing
+   * someone's goal can't retroactively hand back a forfeit they earned or take
+   * one they didn't.
+   *
+   * Keyed by EXACT athlete name, like `TRIPS` in lib/away.ts — Jona and Jonah
+   * are two different people. A name that matches nobody is simply ignored.
+   * Each entry is a partial: it names only the athletes whose goal moves.
+   */
+  goalChanges?: GoalChange[];
   /** The competition only counts sessions on/after this local day (`YYYY-MM-DD`). */
   seasonStart: string;
   /** What the weekly loser owes — shown wherever the stakes come up. */
   forfeit: string;
+}
+
+/** One dated set of per-athlete weekly goals. */
+export interface GoalChange {
+  /** Inclusive local day (`YYYY-MM-DD`) the goals start applying from. */
+  from: string;
+  /** Athlete name → their weekly goal in points. */
+  goals: Record<string, number>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -280,6 +300,10 @@ export const DEFAULT_SETTINGS: Settings = {
   openWaterPerKm: 20,
   runAscentMetresPerKm: 100,
   weeklyGoal: 100,
+  // Ryan's call 2026-09-22: Jonah's week drops to 50. Dated from the Monday of
+  // the week it was asked in, so the weeks already on the board — including the
+  // 65 he posted the week before — keep the 100 they were judged against.
+  goalChanges: [{ from: "2026-09-21", goals: { Jonah: 50 } }],
   seasonStart: "2026-08-03",
   forfeit: "Run a marathon — unless the lads excuse you",
 };
