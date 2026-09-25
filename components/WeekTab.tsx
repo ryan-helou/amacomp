@@ -243,9 +243,23 @@ export function WeekTab({
             points of the line, so this is the arithmetic almost everyone is
             doing in their head at the point they look at this screen. Current
             week only — on a finished one it would be advice about a week nobody
-            can score in any more. */}
+            can score in any more.
+
+            Once quota is met the question changes: the line is behind you and
+            the only number that matters is the one ahead of you on the board,
+            so the same chips switch to what it takes to pass them. */}
         {isCurrentWeek && mine && !mine.excused && mine.points < goal && (
           <ToGo shortfall={goal - mine.points} settings={state.settings} day={logDay} />
+        )}
+        {isCurrentWeek && mine && mine.points >= goal && h2h && !h2h.leading && (
+          <ToGo
+            // A dead heat is not a pass, so ask for a tenth more than the gap —
+            // the smallest amount the board can actually tell apart.
+            shortfall={-h2h.diff + 0.1}
+            label={`${fmtPoints(-h2h.diff)} to pass ${h2h.rival.athlete.name} — any one of`}
+            settings={state.settings}
+            day={logDay}
+          />
         )}
       </section>
 
@@ -775,10 +789,13 @@ function ToGo({
   shortfall,
   settings,
   day,
+  label,
 }: {
   shortfall: number;
   settings: Parameters<typeof toGo>[1];
   day: DayKey;
+  /** Overrides the quota wording — used when the target is the athlete ahead. */
+  label?: string;
 }) {
   // Days left in the week, today included — only used to tell whether the gym
   // answer is reachable.
@@ -791,7 +808,7 @@ function ToGo({
   return (
     <div className="mt-4 w-full">
       <p className="eyebrow text-center text-ink-3">
-        {fmtPoints(shortfall)} to go — any one of
+        {label ?? `${fmtPoints(shortfall)} to go — any one of`}
       </p>
       <div className="mt-2 flex flex-wrap items-stretch justify-center gap-1.5">
         {options.map((o) => {
