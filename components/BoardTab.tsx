@@ -464,13 +464,20 @@ function Lane({
                   />
                 );
               })}
-            {scored && row.grantedPoints > 0 && (
+            {scored && row.awardedPoints > 0 && (
+              <div
+                className="bg-ink-3"
+                style={{ width: `${(row.awardedPoints / row.points) * width * 100}%` }}
+                title={`Awarded: ${fmtPoints(row.awardedPoints)} pts`}
+              />
+            )}
+            {scored && row.excusedPoints > 0 && (
               <div
                 style={{
-                  width: `${(row.grantedPoints / row.points) * width * 100}%`,
+                  width: `${(row.excusedPoints / row.points) * width * 100}%`,
                   backgroundImage: GRANT_HATCH,
                 }}
-                title={`Awarded: ${fmtPoints(row.grantedPoints)} pts`}
+                title={`Excused: ${fmtPoints(row.excusedPoints)} pts`}
               />
             )}
           </div>

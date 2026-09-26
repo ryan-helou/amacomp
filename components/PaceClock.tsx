@@ -5,6 +5,8 @@ import { SPORT_ORDER, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import type { Sport } from "@/lib/types";
 
+// Awarded points belong to no discipline, so they run in a neutral — present on
+// the lap like everything else, rather than called out as not-really-yours.
 const GRANT_TIP = "#8a93a6";
 // Round trig to dodge an SSR hydration mismatch (Node vs browser last-bit trig).
 const round = (v: number) => Number(v.toFixed(2));
@@ -69,8 +71,14 @@ function pointAt(f: number, r: number): [number, number] {
 
 type Slice = { key: string; tip: string; grant: boolean; start: number; len: number };
 
-/** Each discipline's share of the quota end to end, then the granted share, as fractions of one lap. */
-function slices(bySport: Partial<Record<Sport, number>> | undefined, granted: number, goal: number): Slice[] {
+/** Each discipline's share of the quota end to end, then awarded points, then an
+ *  excused top-up, as fractions of one lap. */
+function slices(
+  bySport: Partial<Record<Sport, number>> | undefined,
+  awarded: number,
+  excused: number,
+  goal: number,
+): Slice[] {
   const out: Slice[] = [];
   let cursor = 0;
   for (const s of SPORT_ORDER) {
@@ -80,8 +88,13 @@ function slices(bySport: Partial<Record<Sport, number>> | undefined, granted: nu
     out.push({ key: s, tip: SPORT_UI[s].paint, grant: false, start: cursor, len });
     cursor += len;
   }
-  const len = Math.min(granted / goal, 1 - cursor);
-  if (granted > 0 && len > 0.0001) out.push({ key: "granted", tip: GRANT_TIP, grant: true, start: cursor, len });
+  const awardedLen = Math.min(awarded / goal, 1 - cursor);
+  if (awarded > 0 && awardedLen > 0.0001) {
+    out.push({ key: "awarded", tip: GRANT_TIP, grant: false, start: cursor, len: awardedLen });
+    cursor += awardedLen;
+  }
+  const len = Math.min(excused / goal, 1 - cursor);
+  if (excused > 0 && len > 0.0001) out.push({ key: "excused", tip: GRANT_TIP, grant: true, start: cursor, len });
   return out;
 }
 
@@ -95,24 +108,27 @@ function slices(bySport: Partial<Record<Sport, number>> | undefined, granted: nu
  */
 export function PaceClock({
   bySport,
-  granted = 0,
+  awarded = 0,
+  excused = 0,
   goal,
   size = 200,
   animate = true,
 }: {
   bySport?: Partial<Record<Sport, number>>;
-  /** Points awarded by the admin this week — a hatched leg, not a sport colour. */
-  granted?: number;
+  /** Points awarded by the admin this week — a plain neutral leg. */
+  awarded?: number;
+  /** A waived week's top-up — hatched, because it wasn't run. */
+  excused?: number;
   goal: number;
   size?: number;
   animate?: boolean;
 }) {
   const hatch = `hatch-${useId().replace(/:/g, "")}`;
   const earned = SPORT_ORDER.reduce((sum, s) => sum + (bySport?.[s] ?? 0), 0);
-  const points = earned + granted;
+  const points = earned + awarded + excused;
   const done = goal > 0 && points >= goal;
   const remaining = Math.max(goal - points, 0);
-  const parts = goal > 0 && !done ? slices(bySport, granted, goal) : [];
+  const parts = goal > 0 && !done ? slices(bySport, awarded, excused, goal) : [];
   const filled = parts.reduce((sum, p) => sum + p.len, 0);
   const tip = parts[parts.length - 1]?.tip ?? "";
   const [tx, ty] = pointAt(filled, LANE);
@@ -134,7 +150,7 @@ export function PaceClock({
       style={{ width: size, height: size }}
       role="img"
       aria-label={`${fmtPoints(points)} of ${fmtPoints(goal)} points this week${
-        granted > 0 ? `, ${fmtPoints(granted)} awarded by admin` : ""
+        excused > 0 ? `, ${fmtPoints(excused)} from an excused week` : ""
       }`}
     >
       <svg viewBox="0 0 120 120" className="h-full w-full">
