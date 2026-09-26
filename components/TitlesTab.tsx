@@ -1,38 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { SPORT_ORDER, fmtKm, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, type AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { monthlyChampions, weekWinsBoard } from "@/lib/achievements";
-import { hallOfFame } from "@/lib/records";
 import { seasonChampions } from "@/lib/season";
 import { teamTotals } from "@/lib/stats";
 import { AthleteName, useOpenProfile } from "./ProfileContext";
 import { Glyph } from "./Glyph";
+import { HallOfFame } from "./HallOfFame";
 import { Avatar } from "./Avatar";
-import { SportMark } from "./SportMark";
-import { RecordSheet } from "./RecordSheet";
 
 export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const openProfile = useOpenProfile();
-  const [openRecord, setOpenRecord] = useState<string | null>(null);
-  const [showUnclaimed, setShowUnclaimed] = useState(false);
 
-  const athleteById = useMemo(
-    () => new Map(state.athletes.map((a) => [a.id, a])),
-    [state.athletes],
-  );
-  const records = useMemo(
-    () => hallOfFame(state.activities, state.settings),
-    [state.activities, state.settings],
-  );
-  const shownRecords = useMemo(() => records.filter((r) => r.holderId), [records]);
-  const unclaimed = useMemo(() => records.filter((r) => !r.holderId), [records]);
-  // Which record's ranking is open. Tapping a record shows who else has a mark
-  // on it — the same move as the Records tab, so the two read the same way.
-  const [openRanking, setOpenRanking] = useState<string | null>(null);
   const seasons = useMemo(
     () =>
       seasonChampions(
@@ -69,141 +52,11 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
           </span>
           <h2 className="stamp text-xl text-gold">HALL OF FAME</h2>
         </div>
-        <p className="mt-1 text-[0.8125rem] text-ink-2">
-          All-time records. Beat one and your name goes up.
-        </p>
-        <ul className="mt-3 space-y-2">
-          {shownRecords.map((r) => {
-            const holder = r.holderId ? athleteById.get(r.holderId) : null;
-            const shown = r.unit === "km" ? fmtKm(r.value) : fmtPoints(r.value);
-            const body = (
-              <>
-                <span className="shrink-0 text-gold">
-                  {r.sport ? (
-                    <SportMark sport={r.sport} className="h-6 w-6" />
-                  ) : r.glyph ? (
-                    <Glyph name={r.glyph} className="h-6 w-6" />
-                  ) : null}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="eyebrow text-ink-2">{r.label}</div>
-                  {holder ? (
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <Avatar athlete={holder} className="h-5 w-5 text-[0.5rem]" />
-                      <span className="truncate text-[0.8125rem] font-semibold text-ink">
-                        {holder.name}
-                      </span>
-                      <span className="shrink-0 font-mono text-[0.625rem] text-ink-3">
-                        {r.detail}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="mt-1 text-[0.8125rem] text-ink-3">Unclaimed — go get it.</div>
-                  )}
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="stamp text-xl text-gold">{holder ? shown : "—"}</div>
-                  <div className="eyebrow text-ink-3">{r.unit}</div>
-                </div>
-              </>
-            );
-            const cls =
-              "flex w-full items-center gap-3 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3 text-left";
-            const open = openRanking === r.key;
-            return (
-              <li key={r.key}>
-                {holder ? (
-                  <button
-                    onClick={() => setOpenRanking(open ? null : r.key)}
-                    aria-expanded={open}
-                    aria-label={`Rankings for ${r.label}`}
-                    className={cls}
-                  >
-                    {body}
-                  </button>
-                ) : (
-                  <div className={cls}>{body}</div>
-                )}
-
-                {open && (
-                  <ol className="mt-1 space-y-1 rounded-xl border border-gold/30 bg-gold/[0.03] px-3.5 py-2.5">
-                    {r.entries.map((e, i) => {
-                      const who = athleteById.get(e.athleteId);
-                      const v = r.unit === "km" ? fmtKm(e.value) : fmtPoints(e.value);
-                      return (
-                        <li key={e.athleteId} className="flex items-center gap-2.5 py-1">
-                          <span className="w-4 shrink-0 font-mono text-xs text-ink-3">{i + 1}</span>
-                          {who && <Avatar athlete={who} className="h-6 w-6 shrink-0 text-[0.5625rem]" />}
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[0.8125rem] text-ink-2">
-                              {who?.name ?? "—"}
-                            </span>
-                            <span className="block truncate font-mono text-[0.625rem] text-ink-3">
-                              {e.detail}
-                            </span>
-                          </span>
-                          <span className="shrink-0 font-mono text-[0.8125rem] text-ink">
-                            {v}
-                            <span className="text-[0.625rem] text-ink-3"> {r.unit}</span>
-                          </span>
-                        </li>
-                      );
-                    })}
-                    {/* The record sheet still lives here — it explains the top
-                        mark, which is a different question from who else has one. */}
-                    <li className="border-t border-gold/20 pt-2">
-                      <button
-                        onClick={() => setOpenRecord(r.key)}
-                        className="eyebrow text-[0.625rem] text-gold"
-                      >
-                        How {holder?.name} set it
-                      </button>
-                    </li>
-                  </ol>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* Unclaimed records collapse into one line. On day one every record is
-            unclaimed, and nine identical "go get it" rows is an empty shelf —
-            this keeps it a trophy case that fills up, without hiding anything. */}
-        {unclaimed.length > 0 && (
-          <div className="mt-2">
-            <button
-              onClick={() => setShowUnclaimed((v) => !v)}
-              aria-expanded={showUnclaimed}
-              className="flex w-full items-center gap-2 rounded-xl border border-dashed border-line px-4 py-3 text-left"
-            >
-              <span className="eyebrow flex-1 text-ink-2">
-                {unclaimed.length} record{unclaimed.length === 1 ? "" : "s"} up for grabs
-              </span>
-              <span className="eyebrow text-ink-3">{showUnclaimed ? "Hide" : "Show"}</span>
-            </button>
-            {showUnclaimed && (
-              <ul className="mt-2 space-y-1.5">
-                {unclaimed.map((r) => (
-                  <li
-                    key={r.key}
-                    className="flex items-center gap-3 rounded-xl pane border border-line bg-tile px-4 py-2.5"
-                  >
-                    <span className="shrink-0 text-ink-3">
-                      {r.sport ? (
-                        <SportMark sport={r.sport} className="h-5 w-5" />
-                      ) : r.glyph ? (
-                        <Glyph name={r.glyph} className="h-5 w-5" />
-                      ) : null}
-                    </span>
-                    <span className="eyebrow flex-1 text-ink-2">{r.label}</span>
-                    <span className="eyebrow shrink-0 text-ink-3">{r.unit}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+        <div className="mt-3">
+          <HallOfFame state={state} />
+        </div>
       </section>
+
       <section>
         <h2 className="eyebrow text-ink-2">Together so far</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -289,7 +142,7 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
         <p className="mt-1 text-[0.8125rem] text-ink-2">
           Every two months is a new season. Winner eats free and wears{" "}
           <span className="font-semibold text-gold">gold</span> all next season. Last place
-          cooks — everyone chips in but the champ.
+          hosts the potluck — everyone brings a dish but the champ.
         </p>
         <ul className="mt-3 space-y-2">
           {seasons.map((s) => (
@@ -388,14 +241,6 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
         )}
       </section>
 
-      {openRecord &&
-        (() => {
-          const r = records.find((x) => x.key === openRecord);
-          if (!r) return null;
-          return (
-            <RecordSheet record={r} state={state} onClose={() => setOpenRecord(null)} />
-          );
-        })()}
     </div>
   );
 }

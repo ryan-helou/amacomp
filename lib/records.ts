@@ -37,9 +37,18 @@ export interface HallEntry {
   context?: RecordContext;
 }
 
+/**
+ * Which shelf of the trophy case a record sits on. Eighteen records in one
+ * column read as noise; grouped by what they actually measure, the case can be
+ * skimmed — and the units line up inside a group, which is what made the flat
+ * list look ragged.
+ */
+export type HallGroup = "points" | "distance" | "volume" | "consistency";
+
 export interface HallRecord {
   key: string;
   label: string;
+  group: HallGroup;
   /** A monochrome glyph for the abstract records… */
   glyph?: GlyphName;
   /** …or a discipline, for the distance records. */
@@ -473,23 +482,23 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
   };
 
   return [
-    { key: "week", label: "Biggest week", glyph: "trophy", unit: "pts", ...bestWeek , entries: E.week },
-    { key: "month", label: "Biggest month", glyph: "medal", unit: "pts", ...bestMonth , entries: E.month },
-    { key: "day", label: "Most points in a day", glyph: "bolt", unit: "pts", ...bestDay , entries: E.day },
-    { key: "session", label: "Biggest single session", glyph: "star", unit: "pts", ...bigDaySession , entries: E.session },
-    { key: "kmmonth", label: "Most km in a month", glyph: "compass", unit: "km", ...bestKmMonth , entries: E.kmmonth },
-    { key: "kmweek", label: "Most km in a week", glyph: "mountain", unit: "km", ...bestKmWeek , entries: E.kmweek },
-    { key: "kmday", label: "Most km in a day", glyph: "target", unit: "km", ...bestKmDay , entries: E.kmday },
-    { key: "fullday", label: "Most disciplines in a day", glyph: "rings", unit: "sports", ...fullestDay , entries: E.fullday },
-    { key: "busiest", label: "Busiest week", glyph: "trio", unit: "sessions", ...busiestWeek , entries: E.busiest },
-    { key: "busiestday", label: "Busiest day", glyph: "rocket", unit: "sessions", ...busiestDay , entries: E.busiestday },
-    { key: "gymweek", label: "Most gym workouts", glyph: "dumbbell", unit: "sessions", ...mostGymWeek , entries: E.gymweek },
-    { key: "streak", label: "Longest streak", glyph: "flame", unit: "days", ...longestStreak , entries: E.streak },
-    { key: "quotastreak", label: "Longest quota streak", glyph: "shield", unit: "weeks", ...quotaStreak , entries: E.quotastreak },
-    { key: "fastquota", label: "Fastest to quota", glyph: "diamond", unit: "days", ...fastestQuota , entries: E.fastquota },
-    { key: "activemonth", label: "Most active days in a month", glyph: "flag", unit: "days", ...mostActiveMonth , entries: E.activemonth },
-    { key: "run", label: "Longest run", sport: "run", unit: "km", ...longestRun , entries: E.run },
-    { key: "ride", label: "Longest ride", sport: "bike", unit: "km", ...longestRide , entries: E.ride },
-    { key: "swim", label: "Longest swim", sport: "swim", unit: "km", ...longestSwim , entries: E.swim },
+    { key: "week", label: "Biggest week", group: "points", glyph: "trophy", unit: "pts", ...bestWeek , entries: E.week },
+    { key: "month", label: "Biggest month", group: "points", glyph: "medal", unit: "pts", ...bestMonth , entries: E.month },
+    { key: "day", label: "Most points in a day", group: "points", glyph: "bolt", unit: "pts", ...bestDay , entries: E.day },
+    { key: "session", label: "Biggest single session", group: "points", glyph: "star", unit: "pts", ...bigDaySession , entries: E.session },
+    { key: "kmmonth", label: "Most km in a month", group: "distance", glyph: "compass", unit: "km", ...bestKmMonth , entries: E.kmmonth },
+    { key: "kmweek", label: "Most km in a week", group: "distance", glyph: "mountain", unit: "km", ...bestKmWeek , entries: E.kmweek },
+    { key: "kmday", label: "Most km in a day", group: "distance", glyph: "target", unit: "km", ...bestKmDay , entries: E.kmday },
+    { key: "fullday", label: "Most disciplines in a day", group: "volume", glyph: "rings", unit: "sports", ...fullestDay , entries: E.fullday },
+    { key: "busiest", label: "Busiest week", group: "volume", glyph: "trio", unit: "sessions", ...busiestWeek , entries: E.busiest },
+    { key: "busiestday", label: "Busiest day", group: "volume", glyph: "rocket", unit: "sessions", ...busiestDay , entries: E.busiestday },
+    { key: "gymweek", label: "Most gym workouts", group: "volume", glyph: "dumbbell", unit: "sessions", ...mostGymWeek , entries: E.gymweek },
+    { key: "streak", label: "Longest streak", group: "consistency", glyph: "flame", unit: "days", ...longestStreak , entries: E.streak },
+    { key: "quotastreak", label: "Longest quota streak", group: "consistency", glyph: "shield", unit: "weeks", ...quotaStreak , entries: E.quotastreak },
+    { key: "fastquota", label: "Fastest to quota", group: "consistency", glyph: "diamond", unit: "days", ...fastestQuota , entries: E.fastquota },
+    { key: "activemonth", label: "Most days in a month", group: "consistency", glyph: "flag", unit: "days", ...mostActiveMonth , entries: E.activemonth },
+    { key: "run", label: "Longest run", group: "distance", sport: "run", unit: "km", ...longestRun , entries: E.run },
+    { key: "ride", label: "Longest ride", group: "distance", sport: "bike", unit: "km", ...longestRide , entries: E.ride },
+    { key: "swim", label: "Longest swim", group: "distance", sport: "swim", unit: "km", ...longestSwim , entries: E.swim },
   ];
 }
