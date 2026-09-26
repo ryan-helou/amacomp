@@ -243,13 +243,22 @@ export function AthleteSheet({
                   />
                 );
               })}
-              {data.allTime!.grantedPoints > 0 && (
+              {/* Awarded points are a plain neutral slice; only an excused
+                  week is hatched. */}
+              {data.allTime!.awardedPoints > 0 && (
+                <div
+                  className="bg-ink-3"
+                  style={{ width: `${(data.allTime!.awardedPoints / data.allTime!.points) * 100}%` }}
+                  title={`Awarded: ${fmtPoints(data.allTime!.awardedPoints)} pts`}
+                />
+              )}
+              {data.allTime!.excusedPoints > 0 && (
                 <div
                   style={{
-                    width: `${(data.allTime!.grantedPoints / data.allTime!.points) * 100}%`,
+                    width: `${(data.allTime!.excusedPoints / data.allTime!.points) * 100}%`,
                     backgroundImage: GRANT_HATCH,
                   }}
-                  title={`Awarded: ${fmtPoints(data.allTime!.grantedPoints)} pts`}
+                  title={`Excused: ${fmtPoints(data.allTime!.excusedPoints)} pts`}
                 />
               )}
             </div>
@@ -259,8 +268,11 @@ export function AthleteSheet({
                   {SPORT_UI[s].label} {fmtPoints(data.allTime!.bySport[s])}
                 </span>
               ))}
-              {data.allTime!.grantedPoints > 0 && (
-                <span className="text-ink-2">Awarded {fmtPoints(data.allTime!.grantedPoints)}</span>
+              {data.allTime!.awardedPoints > 0 && (
+                <span className="text-ink-2">Awarded {fmtPoints(data.allTime!.awardedPoints)}</span>
+              )}
+              {data.allTime!.excusedPoints > 0 && (
+                <span className="text-ink-2">Excused {fmtPoints(data.allTime!.excusedPoints)}</span>
               )}
             </div>
           </div>

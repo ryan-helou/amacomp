@@ -476,7 +476,9 @@ console.log("\nadmin grants: awarded points, not a session");
   const st = standingsForRange(athletes, acts, S, ["2026-08-10", "2026-08-16"]);
   const ann = st.find((s) => s.athlete.id === "a")!;
   check("grant lifts the total 50+50=100", ann.points, 100);
-  check("grantedPoints tracked separately", ann.grantedPoints, 50);
+  check("an award is tracked apart from the sport split", ann.awardedPoints, 50);
+  // An award is not an excuse: it must not fill the hatched, waived-week slice.
+  check("and is not counted as an excused top-up", ann.excusedPoints, 0);
   check("grant is not counted as a session", ann.sessions, 1);
   check("grant doesn't touch the sport split", ann.bySport.run, 50);
   check("grant doesn't add distance km", ann.km, 10);
@@ -510,7 +512,8 @@ console.log("\nexcuse: waive the week, flagged excused");
   const st = standingsForRange(athletes, acts, S, ["2026-08-10", "2026-08-16"]);
   const ann = st.find((s) => s.athlete.id === "a")!;
   check("excuse lifts the total to quota", ann.points, 100);
-  check("excuse counts as granted points", ann.grantedPoints, 60);
+  check("an excuse counts as an excused top-up", ann.excusedPoints, 60);
+  check("and not as an award", ann.awardedPoints, 0);
   check("row is flagged excused", ann.excused, true);
   check("excuse is not a session", ann.sessions, 1);
 }
@@ -522,6 +525,8 @@ console.log("\nexcuse: waive the week, flagged excused");
     "2026-08-16",
   ]);
   check("a plain award doesn't flag excused", st[0].excused, false);
+  check("and shows as awarded, not excused",
+    [st[0].awardedPoints, st[0].excusedPoints], [50, 0]);
 }
 
 console.log("\nseason window starts at kickoff, not the 1st");

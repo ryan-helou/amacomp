@@ -197,9 +197,18 @@ export interface Standing {
   stravaSessions: number;
   /** Gym workouts in this window that were past the daily cap and scored nothing. */
   unscoredSessions: number;
-  /** Points the admin awarded directly (already included in `points`), tracked
-   *  separately so the UI can show them as granted rather than earned. */
-  grantedPoints: number;
+  /**
+   * Points from an EXCUSE top-up (already included in `points`), tracked apart
+   * because a waived week is a different claim from a trained one.
+   *
+   * Deliberately not "all admin grants": Ryan's call — a point the admin awards
+   * for something real (the ride home from the bike shop) is just a point, and
+   * marking it out everywhere made it read as counterfeit.
+   */
+  excusedPoints: number;
+  /** Points the admin awarded for something real (already in `points`). Not a
+   *  session, so they sit outside `bySport` — but they count like any other. */
+  awardedPoints: number;
   /** True if the admin waived this week for the athlete (an `excuse` grant). */
   excused: boolean;
 }
@@ -239,7 +248,8 @@ export function standingsForRange(
       goal: settings.weeklyGoal,
       stravaSessions: 0,
       unscoredSessions: 0,
-      grantedPoints: 0,
+      excusedPoints: 0,
+      awardedPoints: 0,
       excused: false,
     });
   }
@@ -257,8 +267,12 @@ export function standingsForRange(
     if (isGrant(a)) {
       const pts = a.points ?? 0;
       row.points += pts;
-      row.grantedPoints += pts;
-      if (isExcuse(a)) row.excused = true;
+      if (isExcuse(a)) {
+        row.excusedPoints += pts;
+        row.excused = true;
+      } else {
+        row.awardedPoints += pts;
+      }
       continue;
     }
     if (a.source === "strava") row.stravaSessions += 1;

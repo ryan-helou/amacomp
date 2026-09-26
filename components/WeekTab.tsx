@@ -166,24 +166,21 @@ export function WeekTab({
         <div className="mt-4">
           <PaceClock
             bySport={mine?.bySport}
-            granted={mine?.grantedPoints}
+            awarded={mine?.awardedPoints}
+            excused={mine?.excusedPoints}
             goal={goal}
             size={(mine?.points ?? 0) > 0 ? 196 : 148}
           />
         </div>
 
-        {(mine?.grantedPoints ?? 0) > 0 && (
+        {mine?.excused && (
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-2">
             <span
               aria-hidden
               className="inline-block h-3 w-3 rounded-[3px] ring-1 ring-line"
               style={{ backgroundImage: GRANT_HATCH }}
             />
-            {mine?.excused ? (
-              <>Week excused — topped up to <span className="font-semibold text-ink">{fmtPoints(goal)}</span></>
-            ) : (
-              <>Includes <span className="font-semibold text-ink">{fmtPoints(mine!.grantedPoints)}</span> awarded by admin</>
-            )}
+            Week excused — topped up to <span className="font-semibold text-ink">{fmtPoints(goal)}</span>
           </p>
         )}
 
@@ -309,8 +306,9 @@ export function WeekTab({
           {standings.map((row) => {
             const done = row.points >= row.goal;
             const excused = row.excused;
-            // Stack the bar: earned first, then the hatched granted tail.
-            const granted = row.grantedPoints;
+            // Stack the bar: everything earned first, then the hatched tail of
+            // an excused week.
+            const granted = row.excusedPoints;
             const earned = Math.max(row.points - granted, 0);
             const rowGoal = row.goal;
             const earnedShown = rowGoal > 0 ? Math.min(earned, rowGoal) : 0;
@@ -450,17 +448,15 @@ export function WeekTab({
 
                 {isOpen && (
                   <div className="border-t-2 border-line px-3 py-2.5">
-                    {(sessions.length > 0 || row.grantedPoints > 0) && (
+                    {(sessions.length > 0 || grants.length > 0) && (
                       <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[0.6875rem]">
                         {SPORT_ORDER.filter((s) => (row.bySport[s] ?? 0) > 0).map((s) => (
                           <span key={s} className={SPORT_UI[s].text}>
                             {SPORT_UI[s].label} {fmtPoints(row.bySport[s])}
                           </span>
                         ))}
-                        {row.grantedPoints > 0 && (
-                          <span className="text-ink-2">
-                            {row.excused ? "Excused" : "Awarded"} {fmtPoints(row.grantedPoints)}
-                          </span>
+                        {row.excusedPoints > 0 && (
+                          <span className="text-ink-2">Excused {fmtPoints(row.excusedPoints)}</span>
                         )}
                       </div>
                     )}
@@ -594,7 +590,7 @@ export function WeekTab({
   );
 }
 
-/** One admin-awarded points row inside a week breakdown. */
+/** One awarded-points or excuse row inside a week breakdown. */
 function GrantLine({
   grant,
   canManage,
@@ -608,14 +604,22 @@ function GrantLine({
 }) {
   return (
     <li className="flex items-center gap-2.5">
-      <span
-        aria-hidden
-        className="h-4 w-4 shrink-0 rounded-[4px] ring-1 ring-line"
-        style={{ backgroundImage: GRANT_HATCH }}
-      />
+      {/* Only an excused week is marked out. An awarded point reads like any
+          other line: what it was for, and what it was worth. */}
+      {isExcuse(grant) ? (
+        <span
+          aria-hidden
+          className="h-4 w-4 shrink-0 rounded-[4px] ring-1 ring-line"
+          style={{ backgroundImage: GRANT_HATCH }}
+        />
+      ) : (
+        <span aria-hidden className="h-4 w-4 shrink-0" />
+      )}
       <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-2">
-        {isExcuse(grant) ? "Excused this week" : "Awarded by admin"}
-        {grant.note && <span className="text-ink-3"> · {grant.note}</span>}
+        {isExcuse(grant) ? "Excused this week" : (grant.note ?? "Points awarded")}
+        {!isExcuse(grant) || !grant.note ? null : (
+          <span className="text-ink-3"> · {grant.note}</span>
+        )}
       </span>
       {canManage && (
         <button
