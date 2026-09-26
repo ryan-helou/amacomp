@@ -36,7 +36,7 @@ async function main() {
   const activities: Activity[] = actRows.map((r) => ({
     id: r.id, athleteId: r.athlete_id, sport: r.sport, km: r.km, occurredOn: r.d,
     note: r.note, source: r.source, points: r.points, elevationM: r.elev,
-    openWater: r.open_water ?? null, createdAt: r.created,
+    openWater: r.open_water ?? null, movingSeconds: null, createdAt: r.created,
   }));
 
   const { rows: sRows } = await pool.query("select data from settings where id = 1");

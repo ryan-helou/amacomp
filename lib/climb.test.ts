@@ -41,6 +41,7 @@ function act(
   seq += 1;
   return {
     id: `x${seq}`,
+    movingSeconds: null,
     athleteId: who.id,
     sport,
     km,

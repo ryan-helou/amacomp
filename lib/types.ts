@@ -161,6 +161,12 @@ export interface Activity {
    * which means a genuinely flat session. Always null for grants.
    */
   elevationM: number | null;
+  /**
+   * Moving seconds, from Strava — `null` when unknown, which is every
+   * hand-logged session: the log form asks for distance, not a stopwatch.
+   * Scores nothing; it only feeds the time records in the Hall of Fame.
+   */
+  movingSeconds: number | null;
   createdAt: string;
 }
 

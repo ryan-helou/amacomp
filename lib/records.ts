@@ -56,7 +56,7 @@ export interface HallRecord {
   /** Athlete id who holds it, or null if nobody's posted a mark yet. */
   holderId: string | null;
   value: number;
-  unit: "pts" | "km" | "days" | "sessions" | "sports" | "weeks";
+  unit: "pts" | "km" | "days" | "sessions" | "sports" | "weeks" | "time";
   /** When it was set — a day, or a week range. */
   detail: string;
   /** How to re-derive the sessions behind this mark. Absent while unclaimed. */
@@ -148,6 +148,13 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
   const dayKm = new Map<string, number>(); // `athleteId|day` → distance km
   const weekKm = new Map<string, number>(); // `athleteId|weekStart` → distance km
   const monthKm = new Map<string, number>(); // `athleteId|monthStart` → distance km
+  // Moving seconds. Strava only — a hand-logged session has no clock on it, so
+  // it contributes nothing here rather than counting as zero (see
+  // `Activity.movingSeconds`).
+  const daySecs = new Map<string, number>(); // `athleteId|day` → moving seconds
+  const weekSecs = new Map<string, number>(); // `athleteId|weekStart` → moving seconds
+  let longestSession = emptyPeak();
+  const longSessionBy = new Map<string, HallEntry>();
   const daySessions = new Map<string, number>(); // `athleteId|day` → session count
   const weekSessions = new Map<string, number>(); // `athleteId|weekStart` → session count
   const weekGym = new Map<string, number>(); // `athleteId|weekStart` → gym workout count
@@ -201,6 +208,19 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
       };
     }
 
+    const secs = a.movingSeconds ?? 0;
+    if (secs > 0) {
+      keepBest(longSessionBy, here(secs));
+      if (secs > longestSession.value) {
+        longestSession = {
+          holderId: a.athleteId,
+          value: secs,
+          detail: formatDay(a.occurredOn),
+          context: { kind: "activity", activityId: a.id },
+        };
+      }
+    }
+
     const dk = `${a.athleteId}|${a.occurredOn}`;
     dayPts.set(dk, (dayPts.get(dk) ?? 0) + p);
     daySessions.set(dk, (daySessions.get(dk) ?? 0) + 1);
@@ -208,6 +228,10 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     const wkk = `${a.athleteId}|${wk}`;
     weekPts.set(wkk, (weekPts.get(wkk) ?? 0) + p);
     weekSessions.set(wkk, (weekSessions.get(wkk) ?? 0) + 1);
+    if (secs > 0) {
+      daySecs.set(dk, (daySecs.get(dk) ?? 0) + secs);
+      weekSecs.set(wkk, (weekSecs.get(wkk) ?? 0) + secs);
+    }
     if (a.sport === "gym") weekGym.set(wkk, (weekGym.get(wkk) ?? 0) + 1);
     const mok = `${a.athleteId}|${monthStart(a.occurredOn)}`;
     monthPts.set(mok, (monthPts.get(mok) ?? 0) + p);
@@ -264,6 +288,25 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
         detail: formatRange([wk, weekEnd(wk)]),
         context: { kind: "week", weekStart: wk },
       };
+    }
+  }
+  let mostTimeWeek = emptyPeak();
+  for (const [k, v] of weekSecs) {
+    if (v > mostTimeWeek.value) {
+      const [holderId, wk] = k.split("|");
+      mostTimeWeek = {
+        holderId,
+        value: v,
+        detail: formatRange([wk, weekEnd(wk)]),
+        context: { kind: "week", weekStart: wk },
+      };
+    }
+  }
+  let mostTimeDay = emptyPeak();
+  for (const [k, v] of daySecs) {
+    if (v > mostTimeDay.value) {
+      const [holderId, day] = k.split("|");
+      mostTimeDay = { holderId, value: v, detail: formatDay(day), context: { kind: "day", day } };
     }
   }
   let busiestDay = emptyPeak();
@@ -470,6 +513,9 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     fullday: rankSets(daySports, d => formatDay(d), d => ({ kind: "day", day: d })),
     busiest: rank(weekSessions, wk => formatRange([wk, weekEnd(wk)]), wk => ({ kind: "week", weekStart: wk })),
     busiestday: rank(daySessions, d => formatDay(d), d => ({ kind: "day", day: d })),
+    timeweek: rank(weekSecs, wk => formatRange([wk, weekEnd(wk)]), wk => ({ kind: "week", weekStart: wk })),
+    timeday: rank(daySecs, d => formatDay(d), d => ({ kind: "day", day: d })),
+    timesession: rankDirect(longSessionBy),
     gymweek: rank(weekGym, wk => formatRange([wk, weekEnd(wk)]), wk => ({ kind: "week", weekStart: wk })),
     streak: rankDirect(streakBy),
     quotastreak: rankDirect(quotaStreakBy),
@@ -492,6 +538,9 @@ export function hallOfFame(activities: Activity[], settings: Settings): HallReco
     { key: "fullday", label: "Most disciplines in a day", group: "volume", glyph: "rings", unit: "sports", ...fullestDay , entries: E.fullday },
     { key: "busiest", label: "Busiest week", group: "volume", glyph: "trio", unit: "sessions", ...busiestWeek , entries: E.busiest },
     { key: "busiestday", label: "Busiest day", group: "volume", glyph: "rocket", unit: "sessions", ...busiestDay , entries: E.busiestday },
+    { key: "timeweek", label: "Most time in a week", group: "volume", glyph: "moon", unit: "time", ...mostTimeWeek , entries: E.timeweek },
+    { key: "timeday", label: "Most time in a day", group: "volume", glyph: "wave", unit: "time", ...mostTimeDay , entries: E.timeday },
+    { key: "timesession", label: "Longest session", group: "volume", glyph: "crown", unit: "time", ...longestSession , entries: E.timesession },
     { key: "gymweek", label: "Most gym workouts", group: "volume", glyph: "dumbbell", unit: "sessions", ...mostGymWeek , entries: E.gymweek },
     { key: "streak", label: "Longest streak", group: "consistency", glyph: "flame", unit: "days", ...longestStreak , entries: E.streak },
     { key: "quotastreak", label: "Longest quota streak", group: "consistency", glyph: "shield", unit: "weeks", ...quotaStreak , entries: E.quotastreak },

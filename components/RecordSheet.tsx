@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { activityPoints, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
+import { activityPoints, fmtDuration, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, isGrant, type AppState } from "@/lib/types";
 import { addDays, formatDay, monthEnd, monthStart } from "@/lib/dates";
@@ -93,7 +93,12 @@ export function RecordSheet({
       );
   }, [record, state.activities]);
 
-  const shown = record.unit === "km" ? fmtKm(record.value) : fmtPoints(record.value);
+  const shown =
+    record.unit === "km"
+      ? fmtKm(record.value)
+      : record.unit === "time"
+        ? fmtDuration(record.value)
+        : fmtPoints(record.value);
   const totalPts = contributing.reduce(
     (sum, a) => sum + activityPoints(a, state.settings, unscored),
     0,
@@ -119,7 +124,7 @@ export function RecordSheet({
             </div>
             <div className="shrink-0 text-right">
               <div className="stamp text-2xl text-gold">{shown}</div>
-              <div className="eyebrow text-ink-3">{record.unit}</div>
+              <div className="eyebrow text-ink-3">{record.unit === "time" ? "h:mm" : record.unit}</div>
             </div>
           </div>
 

@@ -305,6 +305,15 @@ export function totalPoints(activities: Activity[], settings: Settings): number 
   return activities.reduce((sum, a) => sum + activityPoints(a, settings, unscored), 0);
 }
 
+/**
+ * Moving time as h:mm — the way a training week is talked about ("six and a
+ * half hours"), and it column-aligns, which "3h 42m" does not.
+ */
+export function fmtDuration(seconds: number): string {
+  const mins = Math.round(Math.max(0, seconds) / 60);
+  return `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, "0")}`;
+}
+
 /** Trim float noise, keep one decimal, and never render "12.0". */
 export function fmtPoints(n: number): string {
   const rounded = Math.round(n * 10) / 10;

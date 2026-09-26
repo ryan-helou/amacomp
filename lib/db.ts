@@ -29,6 +29,8 @@ export interface NewActivity {
   points?: number | null;
   /** Metres of ascent, or null when unknown. See `Activity.elevationM`. */
   elevationM?: number | null;
+  /** Moving seconds from Strava, or null when unknown. See `Activity.movingSeconds`. */
+  movingSeconds?: number | null;
   /** Open water rather than a pool, for swims. Null when unknown. */
   openWater?: boolean | null;
 }
@@ -264,7 +266,7 @@ function mergeSettings(raw: unknown): Settings {
 
 const ACTIVITY_COLS = `id, athlete_id, sport, km::float8 AS km,
    to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, note, source, points::float8 AS points,
-   elevation_m::float8 AS elevation_m, open_water,
+   elevation_m::float8 AS elevation_m, open_water, moving_seconds,
    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at`;
 
 type ActivityRow = {
@@ -278,6 +280,7 @@ type ActivityRow = {
   points: number | null;
   elevation_m: number | null;
   open_water: boolean | null;
+  moving_seconds: number | null;
   created_at: string;
 };
 
@@ -292,6 +295,7 @@ function toActivity(r: ActivityRow): Activity {
     source: (r.source as ActivitySource) ?? "manual",
     points: r.points == null ? null : Number(r.points),
     elevationM: r.elevation_m == null ? null : Number(r.elevation_m),
+    movingSeconds: r.moving_seconds == null ? null : Number(r.moving_seconds),
     openWater: r.open_water ?? null,
     createdAt: r.created_at,
   };
@@ -463,6 +467,10 @@ class PgStore implements Store {
         // climb points retroactively on a number we made up.
         await this.pool.query(
           `ALTER TABLE activities ADD COLUMN IF NOT EXISTS elevation_m NUMERIC(10,1)`,
+        );
+        // Moving time, Strava only — see `Activity.movingSeconds`.
+        await this.pool.query(
+          `ALTER TABLE activities ADD COLUMN IF NOT EXISTS moving_seconds INTEGER`,
         );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS settings (
@@ -683,11 +691,12 @@ class PgStore implements Store {
   async createActivity(input: NewActivity, source: ActivitySource = "manual"): Promise<Activity> {
     await this.init();
     const r = await this.pool.query(
-      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points, elevation_m, open_water)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points, elevation_m, open_water, moving_seconds)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING ${ACTIVITY_COLS}`,
       [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note, source,
-       input.points ?? null, input.elevationM ?? null, input.openWater ?? null],
+       input.points ?? null, input.elevationM ?? null, input.openWater ?? null,
+       input.movingSeconds ?? null],
     );
     return toActivity(r.rows[0] as ActivityRow);
   }
@@ -1107,6 +1116,7 @@ class MemoryStore implements Store {
       source,
       points: input.points ?? null,
       elevationM: input.elevationM ?? null,
+      movingSeconds: input.movingSeconds ?? null,
       createdAt: new Date().toISOString(),
     };
     this.activities.push(created);
