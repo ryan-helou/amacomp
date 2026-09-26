@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { fmtKm, fmtPoints } from "@/lib/scoring";
+import { fmtDuration, fmtKm, fmtPoints } from "@/lib/scoring";
 import type { AppState } from "@/lib/types";
 import { hallOfFame, type HallGroup } from "@/lib/records";
 import { Glyph } from "./Glyph";
@@ -33,6 +33,11 @@ export function HallOfFame({ state }: { state: AppState }) {
   const shownRecords = useMemo(() => records.filter((r) => r.holderId), [records]);
   const unclaimed = useMemo(() => records.filter((r) => !r.holderId), [records]);
 
+  // h:mm carries its own colon, so the unit line says what the colon means.
+  const show = (unit: string, v: number) =>
+    unit === "km" ? fmtKm(v) : unit === "time" ? fmtDuration(v) : fmtPoints(v);
+  const unitLabel = (unit: string) => (unit === "time" ? "h:mm" : unit);
+
   const groups = useMemo(() => {
     const order: { id: HallGroup; label: string }[] = [
       { id: "points", label: "Points" },
@@ -59,7 +64,7 @@ export function HallOfFame({ state }: { state: AppState }) {
           <ul className="mt-2 divide-y divide-line overflow-hidden rounded-xl pane border border-line bg-tile">
             {g.records.map((r) => {
               const holder = r.holderId ? athleteById.get(r.holderId) : null;
-              const shown = r.unit === "km" ? fmtKm(r.value) : fmtPoints(r.value);
+              const shown = show(r.unit, r.value);
               const open = openRanking === r.key;
               return (
                 <li key={r.key}>
@@ -95,7 +100,7 @@ export function HallOfFame({ state }: { state: AppState }) {
                       {/* Small enough that "sessions" still fits the column — the
                           unit is a footnote to the number, not a second number. */}
                       <span className="eyebrow block text-[0.5rem] tracking-[0.08em] text-ink-3">
-                        {r.unit}
+                        {unitLabel(r.unit)}
                       </span>
                     </span>
                     {/* Same disclosure caret as the Week lanes, so the rows
@@ -120,7 +125,7 @@ export function HallOfFame({ state }: { state: AppState }) {
                     <ol className="space-y-1 border-t border-line bg-deck-2/40 px-3.5 py-2.5">
                       {r.entries.map((e, i) => {
                         const who = athleteById.get(e.athleteId);
-                        const v = r.unit === "km" ? fmtKm(e.value) : fmtPoints(e.value);
+                        const v = show(r.unit, e.value);
                         return (
                           <li key={e.athleteId} className="flex items-center gap-2.5 py-1">
                             <span className="w-4 shrink-0 font-mono text-xs text-ink-3">{i + 1}</span>
@@ -187,7 +192,7 @@ export function HallOfFame({ state }: { state: AppState }) {
                     ) : null}
                   </span>
                   <span className="flex-1 truncate text-[0.8125rem] text-ink-2">{r.label}</span>
-                  <span className="eyebrow shrink-0 text-ink-3">{r.unit}</span>
+                  <span className="eyebrow shrink-0 text-ink-3">{unitLabel(r.unit)}</span>
                 </li>
               ))}
             </ul>

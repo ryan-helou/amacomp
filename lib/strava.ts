@@ -274,9 +274,15 @@ export function toImport(
     typeof a.total_elevation_gain === "number" && Number.isFinite(a.total_elevation_gain)
       ? Math.max(0, Math.round(a.total_elevation_gain * 10) / 10)
       : null;
+  // Moving time rather than elapsed: a ride that sat at traffic lights for ten
+  // minutes wasn't a longer ride. Absent when Strava doesn't report it.
+  const movingSeconds =
+    typeof a.moving_time === "number" && Number.isFinite(a.moving_time) && a.moving_time > 0
+      ? Math.round(a.moving_time)
+      : null;
   return {
     input: {
-      athleteId, sport, km, occurredOn: day, note, elevationM,
+      athleteId, sport, km, occurredOn: day, note, elevationM, movingSeconds,
       openWater: isOpenWater(a, sport),
     },
     stravaId: a.id,

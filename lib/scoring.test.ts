@@ -1,4 +1,4 @@
-import { activityPoints, goalFor, ratesOn, unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
+import { activityPoints, fmtDuration, goalFor, ratesOn, unscoredGymIds, standingsForRange, totalPoints } from "./scoring";
 import { getStore } from "./db";
 import { ANNOUNCE_HOUR, announcementIsDue, rateAnnouncementFor } from "./announce";
 import { addDays, daysBetween, periodRange } from "./dates";
@@ -29,16 +29,16 @@ function check(label: string, actual: unknown, expected: unknown) {
 const S = DEFAULT_SETTINGS; // gym 30/workout, run 5/km
 
 function gym(id: string, athleteId: string, day: string, createdAt: string): Activity {
-  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", points: null, elevationM: null, openWater: null, createdAt };
+  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", points: null, elevationM: null, movingSeconds: null, openWater: null, createdAt };
 }
 function run(id: string, athleteId: string, day: string, km: number): Activity {
-  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", points: null, elevationM: null, openWater: null, createdAt: "2026-08-10T10:00:00Z" };
+  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", points: null, elevationM: null, openWater: null, createdAt: "2026-08-10T10:00:00Z" , movingSeconds: null};
 }
 function grant(id: string, athleteId: string, day: string, points: number): Activity {
-  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" };
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" , movingSeconds: null};
 }
 function excuse(id: string, athleteId: string, day: string, points: number): Activity {
-  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "excuse", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" };
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "excuse", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" , movingSeconds: null};
 }
 
 const ath = (id: string, name: string): Athlete => ({
@@ -47,7 +47,7 @@ const ath = (id: string, name: string): Athlete => ({
 
 /** A ride with a known ascent. `elevationM: null` elsewhere means "unknown". */
 function ride(id: string, athleteId: string, day: string, km: number, elevationM: number | null): Activity {
-  return { id, athleteId, sport: "bike", km, occurredOn: day, note: null, source: "strava", points: null, elevationM, openWater: null, createdAt: "2026-08-10T10:00:00Z" };
+  return { id, athleteId, sport: "bike", km, occurredOn: day, note: null, source: "strava", points: null, elevationM, openWater: null, createdAt: "2026-08-10T10:00:00Z" , movingSeconds: null};
 }
 
 console.log("\nclimb points");
@@ -221,7 +221,7 @@ console.log("\nrunning ascent counts as distance");
   const hilly = (day: string, km: number, m: number): Activity => ({
     id: "r", athleteId: "a", sport: "run", km, occurredOn: day, note: null,
     source: "strava", points: null, elevationM: m, openWater: null,
-    createdAt: "2026-09-01T10:00:00Z",
+    createdAt: "2026-09-01T10:00:00Z", movingSeconds: null,
   });
 
   // Ryan's own arithmetic: at 4 pts/km, a point per 25 m of ascent.
@@ -256,7 +256,7 @@ console.log("\nopen water swims");
   const swim = (day: string, km: number, open: boolean | null): Activity => ({
     id: "s", athleteId: "a", sport: "swim", km, occurredOn: day, note: null,
     source: "strava", points: null, elevationM: null, openWater: open,
-    createdAt: "2026-08-10T10:00:00Z",
+    createdAt: "2026-08-10T10:00:00Z", movingSeconds: null,
   });
 
   // The rule: open water is 20/km whatever the pool rate has done.
@@ -298,6 +298,36 @@ console.log("\nopen water swims");
   check("a later pool cut does not touch open water",
     activityPoints(swim("2026-10-02", 2, true), cut), 40);
   check("but the pool follows it", activityPoints(swim("2026-10-02", 2, false), cut), 10);
+}
+
+console.log("\ntime records");
+{
+  // Moving time comes from Strava only. A hand-logged session has no clock, and
+  // must not land at the bottom of the table as a zero — it isn't in the race.
+  const timed = (id: string, athleteId: string, day: string, km: number, secs: number | null) => ({
+    ...run(id, athleteId, day, km),
+    movingSeconds: secs,
+  });
+  const hall = hallOfFame(
+    [
+      timed("t1", "ryan", "2026-08-10", 12, 3_600),   // 1:00
+      timed("t2", "ryan", "2026-08-11", 8, 2_700),    // 0:45, same week → 1:45
+      timed("t3", "jona", "2026-08-10", 21, 5_400),   // 1:30, the longest session
+      timed("t4", "alberto", "2026-08-12", 5, null),  // hand-logged, no clock
+    ],
+    DEFAULT_SETTINGS,
+  );
+  const session = hall.find((r) => r.key === "timesession")!;
+  const week = hall.find((r) => r.key === "timeweek")!;
+  const day = hall.find((r) => r.key === "timeday")!;
+  check("the longest session is the longest one", [session.holderId, session.value], ["jona", 5400]);
+  check("a week adds its sessions up", [week.holderId, week.value], ["ryan", 6300]);
+  check("a day is the day, not the week", [day.holderId, day.value], ["jona", 5400]);
+  check("it is shown as a clock", fmtDuration(6300), "1:45");
+  check("and rounds to the minute", [fmtDuration(59), fmtDuration(3629)], ["0:01", "1:00"]);
+  // Alberto logged by hand, so he is absent rather than last on zero.
+  check("an untimed session doesn't enter the ranking",
+    session.entries.some((e) => e.athleteId === "alberto"), false);
 }
 
 console.log("\nhall of fame rankings");
@@ -630,7 +660,7 @@ function personalGoals() {
   const athletes: Athlete[] = [ath("jonah", "Jonah"), ath("jona", "Jona")];
   const jog = (athleteId: string, occurredOn: string, id: string): Activity => ({
     id, athleteId, sport: "run", km: 5, occurredOn, note: null, createdAt: `${occurredOn}T12:00:00Z`,
-    source: "manual", points: null, elevationM: null, openWater: null,
+    source: "manual", points: null, elevationM: null, movingSeconds: null, openWater: null,
   });
   // 60 points each (three 5 km runs at the dated 4/km): clears a 50 goal, short of 100.
   const acts: Activity[] = [];

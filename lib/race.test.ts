@@ -61,6 +61,7 @@ function run(who: Athlete, day: string, km: number): Activity {
   seq += 1;
   return {
     id: `x${seq}`,
+    movingSeconds: null,
     athleteId: who.id,
     sport: "run",
     km,
