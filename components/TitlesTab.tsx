@@ -10,7 +10,6 @@ import { seasonChampions } from "@/lib/season";
 import { teamTotals } from "@/lib/stats";
 import { AthleteName, useOpenProfile } from "./ProfileContext";
 import { Glyph } from "./Glyph";
-import { HallOfFame } from "./HallOfFame";
 import { Avatar } from "./Avatar";
 
 export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
@@ -45,18 +44,6 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
 
   return (
     <div className="space-y-8">
-      <section>
-        <div className="flex items-center gap-2">
-          <span className="text-gold" aria-hidden>
-            <Glyph name="medal" className="h-5 w-5" />
-          </span>
-          <h2 className="stamp text-xl text-gold">HALL OF FAME</h2>
-        </div>
-        <div className="mt-3">
-          <HallOfFame state={state} />
-        </div>
-      </section>
-
       <section>
         <h2 className="eyebrow text-ink-2">Together so far</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">

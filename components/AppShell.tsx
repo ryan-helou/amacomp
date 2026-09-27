@@ -11,8 +11,8 @@ import { LoginScreen } from "./LoginScreen";
 import { LogTab } from "./LogTab";
 import { WeekTab } from "./WeekTab";
 import { BoardTab } from "./BoardTab";
-import { RecordsTab } from "./RecordsTab";
-import { TitlesTab } from "./TitlesTab";
+import { RecordsAndFame } from "./RecordsAndFame";
+import { ClubTab } from "./ClubTab";
 import { ScoringSheet } from "./ScoringSheet";
 import { HouseRulesSheet } from "./HouseRulesSheet";
 import { Confetti } from "./Confetti";
@@ -22,7 +22,7 @@ import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
 import { ProfileProvider, AthleteName } from "./ProfileContext";
 
-type Tab = "log" | "week" | "board" | "titles" | "records";
+type Tab = "log" | "week" | "board" | "records" | "club";
 
 const MONTHS_LONG = [
   "January", "February", "March", "April", "May", "June",
@@ -37,14 +37,15 @@ function formatKickoff(key: DayKey): string {
 
 // Log sits dead-centre so it's under the thumb — it's the primary action. To its
 // left are the two "where do I stand right now" tabs, Week then Board; to its
-// right the two long-game ones, Records then Titles. Reading left to right the
-// nav goes from this week to all time.
+// right Records — the record book, the Hall of Fame and the titles, behind one
+// toggle — and then the Club, where the coins live. Reading left to right the
+// nav goes from this week to all time to the side game.
 const TABS: { id: Tab; label: string }[] = [
   { id: "week", label: "Week" },
   { id: "board", label: "Board" },
   { id: "log", label: "Log" },
   { id: "records", label: "Records" },
-  { id: "titles", label: "Titles" },
+  { id: "club", label: "Club" },
 ];
 
 export function AppShell({
@@ -369,8 +370,8 @@ export function AppShell({
         {tab === "log" && <LogTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "week" && <WeekTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
-        {tab === "titles" && <TitlesTab state={state} refDay={refDay} />}
-        {tab === "records" && <RecordsTab state={state} refDay={refDay} />}
+        {tab === "club" && <ClubTab state={state} refDay={refDay} />}
+        {tab === "records" && <RecordsAndFame state={state} refDay={refDay} />}
       </main>
 
       {/* The tab island.

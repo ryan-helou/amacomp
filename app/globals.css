@@ -482,6 +482,121 @@ input[type="number"] {
 
 /* Light through moving water. Three slabs drifting at different rates never
    line up the same way twice, which is what stops it reading as a loop. */
+/* Season closing cards (components/SeasonMoment.tsx). */
+@keyframes sm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sm-rise-up {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+
+/* The scoreboard reel rolling down to the number of days left. */
+@keyframes sm-reel {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(var(--reel-to));
+  }
+}
+
+/* Stadium floodlights leaning in and out. */
+@keyframes sm-beam-l {
+  0%,
+  100% {
+    transform: rotate(24deg);
+  }
+  50% {
+    transform: rotate(14deg);
+  }
+}
+
+@keyframes sm-beam-r {
+  0%,
+  100% {
+    transform: rotate(-24deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+
+@keyframes sm-shimmer {
+  from {
+    background-position: 160% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+@keyframes sm-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* A departures-board digit turning over. */
+@keyframes sm-flip {
+  from {
+    transform: rotateX(-88deg);
+    opacity: 0.2;
+  }
+}
+
+@keyframes sm-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+@keyframes sm-moonrise {
+  from {
+    transform: translateY(60px);
+    opacity: 0;
+  }
+}
+
+/* Embers off the horizon, and gold dust over the podium: both drift UP and fade. */
+@keyframes sm-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--dx, 0px), var(--dy, -60vh), 0);
+    opacity: 0;
+  }
+}
+
+@keyframes sm-foil {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
 @keyframes sk-caustic-a {
   0%,
   100% {
@@ -616,4 +731,19 @@ input[type="number"] {
   to {
     background-position: -80% 0;
   }
+}
+
+/* The Club's hero coin: a slow, heavy tilt rather than a spin — it should read
+   as a struck coin catching the light, not a loading spinner. Stilled for
+   anyone who asked for less motion. */
+@keyframes coin-tilt {
+  0%, 100% { transform: perspective(600px) rotateY(-14deg) rotateX(4deg); }
+  50% { transform: perspective(600px) rotateY(14deg) rotateX(-4deg); }
+}
+.coin-spin {
+  animation: coin-tilt 6s ease-in-out infinite;
+  filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--color-gold) 30%, transparent));
+}
+@media (prefers-reduced-motion: reduce) {
+  .coin-spin { animation: none; }
 }
