@@ -120,7 +120,7 @@ function ClubTeaser() {
             { what: "Win the week", coins: "50" },
             { what: "Win the month", coins: "100" },
             { what: "Win the season", coins: "250" },
-            { what: "Take a record", coins: "25" },
+            { what: "Speed or power record", coins: "25" },
           ].map((row) => (
             <li
               key={row.what}
