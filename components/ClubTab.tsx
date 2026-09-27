@@ -112,13 +112,15 @@ function ClubTeaser() {
       <section>
         <h3 className="eyebrow text-ink-3">How you&rsquo;ll earn them</h3>
         <ul className="mt-2 grid grid-cols-2 gap-2">
+          {/* Training does the work: a week win is worth about a third of a
+              decent week's points, so the bonuses can't carry anyone. */}
           {[
             { what: "Every point", coins: "1" },
-            { what: "Hit your quota", coins: "50" },
-            { what: "Win the week", coins: "250" },
-            { what: "Win the month", coins: "750" },
-            { what: "Win the season", coins: "2,000" },
-            { what: "Take a record", coins: "200" },
+            { what: "Hit your quota", coins: "10" },
+            { what: "Win the week", coins: "50" },
+            { what: "Win the month", coins: "100" },
+            { what: "Win the season", coins: "250" },
+            { what: "Take a record", coins: "25" },
           ].map((row) => (
             <li
               key={row.what}
