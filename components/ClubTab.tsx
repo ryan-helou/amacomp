@@ -116,7 +116,7 @@ function ClubTeaser() {
               decent week's points, so the bonuses can't carry anyone. */}
           {[
             { what: "Every point", coins: "1" },
-            { what: "Hit your quota", coins: "10" },
+            { what: "Hit your quota", coins: "25" },
             { what: "Win the week", coins: "50" },
             { what: "Win the month", coins: "100" },
             { what: "Win the season", coins: "250" },
