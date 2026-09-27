@@ -130,9 +130,9 @@ export function HouseRulesSheet({
               <Glyph name="flame" className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink">Last place cooks the meal</p>
+              <p className="text-sm font-semibold text-ink">Last place hosts the potluck</p>
               <p className="text-[0.8125rem] text-ink-2">
-                The whole crew chips in for it — everyone but the champ.
+                Everyone brings a dish — everyone but the champ, who eats free.
               </p>
             </div>
           </div>

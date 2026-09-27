@@ -245,7 +245,7 @@ export function SeasonKickoff({
               <span className="font-semibold" style={{ color: "#e2b53d" }}>
                 gold
               </span>{" "}
-              all next season. Last place cooks.
+              all next season. Last place hosts the potluck.
             </p>
             <button
               onClick={onDismiss}
