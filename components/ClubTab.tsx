@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { CLUB_LIVE, CLUB_ROOMS, type ClubRoom } from "@/lib/club";
+import { CLUB_LIVE, CLUB_ROOMS, canPreviewAvatar, type ClubRoom } from "@/lib/club";
+import { AvatarLocker } from "./AvatarLocker";
 import { Wallet } from "./Wallet";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
@@ -17,7 +18,16 @@ import type { DayKey } from "@/lib/dates";
 export function ClubTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const [room, setRoom] = useState<ClubRoom>("wallet");
 
-  if (!CLUB_LIVE) return <ClubTeaser />;
+  // The teaser is what the league sees. Ryan also gets the locker, so the
+  // figure can be judged in the real app rather than in a mock.
+  if (!CLUB_LIVE) {
+    return (
+      <div className="space-y-5">
+        {canPreviewAvatar(state.me?.name) && <AvatarLocker />}
+        <ClubTeaser />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
