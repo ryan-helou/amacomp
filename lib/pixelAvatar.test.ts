@@ -1,6 +1,6 @@
 import {
   AVATAR_ITEMS, AVATAR_ITEM_BY_ID, DEFAULT_LOADOUT, STARTER_ITEMS,
-  avatarSvg, rackFor, type Loadout,
+  avatarSvg, itemImage, itemSvg, rackFor, type Loadout,
 } from "./pixelAvatar";
 import sprites from "./avatar/sprites.json";
 
@@ -108,6 +108,71 @@ console.log("\nthe rack is shoppable");
   const slots = [...new Set(AVATAR_ITEMS.map((i) => i.slot))];
   check("no slot can leave you with nothing to wear",
     slots.every((s) => rackFor(s).some((i) => i.price === 0)), true);
+}
+
+console.log("\nthe shop has a photo of everything it sells");
+{
+  // A box with no picture is a box nobody buys.
+  const wearable = AVATAR_ITEMS.filter((i) => i.sprite);
+  const blank = wearable.filter((i) => itemSvg(i.id) === "").map((i) => i.id);
+  check("every item that draws has a product shot", blank, []);
+  check("and the empty slots have none", itemSvg("head.none"), "");
+
+  // The shot is the item's own colours, so two colours of one garment are two
+  // different photos on the shelf.
+  const shots = new Set(AVATAR_ITEMS.filter((i) => i.id.startsWith("torso.jersey.")).map((i) => itemSvg(i.id)));
+  check("each colour photographs differently", shots.size, 3);
+
+  // Cropped to what it fills: a watch shouldn't arrive as a mostly-empty box.
+  const watch = itemSvg("watch.on.black").match(/viewBox="([^"]+)"/)![1].split(" ").map(Number);
+  check("the shot is cropped to the item", watch[2] < 30 && watch[3] < 30, true);
+
+  // And it must be servable as an image, since that is how a shelf of forty
+  // boxes stays one node each.
+  check("it comes as an image source", itemImage("watch.on.black").startsWith("data:image/svg+xml"), true);
+  check("nothing has no image", itemImage("head.none"), "");
+}
+
+console.log("\nmerging rectangles mustn't change which pixels are covered");
+{
+  // Runs merge across AND down, and either direction can silently eat a row or
+  // cover one twice. Area alone is too blunt to catch it — the top row of a
+  // sheet may hold two pixels — so rebuild the covered CELLS from the rects and
+  // compare them with the sprite sheet itself, which the renderer never sees.
+  const RIM = "#4a5f7a"; // the cool edge sits on EMPTY cells, so it isn't sprite area
+  const sheets = (sprites as unknown as { g: Record<string, { res: number; x0: number; y0: number; rows: string[] }> }).g;
+
+  for (const id of ["torso.jersey.magenta", "watch.on.black", "feet.carbon.gold", "head.aero.gold"]) {
+    const item = AVATAR_ITEM_BY_ID.get(id)!;
+    const sheet = sheets[item.sprite!];
+    const res = sheet.res, ox = sheet.x0 / res, oy = sheet.y0 / res;
+
+    const want = new Set<string>();
+    sheet.rows.forEach((row, y) => {
+      [...row].forEach((c, x) => { if (c !== ".") want.add(`${x},${y}`); });
+    });
+
+    const got = new Set<string>();
+    for (const m of itemSvg(id).matchAll(
+      /<rect x="([\d.-]+)" y="([\d.-]+)" width="([\d.]+)" height="([\d.]+)"(?: fill="([^"]+)")?\/>/g,
+    )) {
+      const [, X, Y, W, H, fill] = m;
+      if (!fill || fill === RIM) continue; // outline and rim sit outside the sprite
+      const cx = Math.round((+X - ox) * res), cy = Math.round((+Y - oy) * res);
+      // The rects overlap by 2% so no seam shows; that fudge isn't a cell.
+      const cw = Math.round(+W * res - 0.02), ch = Math.round(+H * res - 0.02);
+      for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) got.add(`${cx + x},${cy + y}`);
+    }
+
+    const missing = [...want].filter((k) => !got.has(k));
+    const extra = [...got].filter((k) => !want.has(k));
+    check(`${item.label}: every sprite pixel is drawn`, missing.length, 0);
+    check(`${item.label}: and nothing is drawn that isn't there`, extra.length, 0);
+  }
+
+  // And the merge has to be doing its job, or the phone chokes on forty boxes.
+  const rects = (itemSvg("torso.jersey.magenta").match(/<rect /g) ?? []).length;
+  check("a jersey is a few hundred rects, not thousands", rects > 20 && rects < 700, true);
 }
 
 console.log(failures === 0 ? "\nAll avatar tests passed.\n" : `\n${failures} failing.\n`);

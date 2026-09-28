@@ -5,7 +5,9 @@ import {
   AVATAR_ITEM_BY_ID,
   DEFAULT_LOADOUT,
   STARTER_ITEMS,
+  itemImage,
   rackFor,
+  type AvatarItem,
   type Loadout,
   type Slot,
 } from "@/lib/pixelAvatar";
@@ -13,42 +15,6 @@ import { fmtCoins } from "@/lib/coins";
 import { PixelAvatar } from "./PixelAvatar";
 
 const SLOTS: Slot[] = ["head", "eyes", "torso", "legs", "feet", "socks", "watch"];
-
-/**
- * Chip labels. The garment is obvious from the row and the caption below it, so
- * a chip only has to say which one of them this is — which, now that colours are
- * separate items, is mostly the colour.
- */
-const SHORT: Record<string, string> = {
-  "head.none": "None", "head.helmet.magenta": "Helmet", "head.helmet.black": "Helmet",
-  "head.swimcap.cyan": "Swim", "head.swimcap.magenta": "Swim",
-  "head.runcap.mint": "Cap", "head.runcap.white": "Cap",
-  "head.aero.black": "Aero", "head.aero.gold": "Aero",
-  "eyes.none": "None", "eyes.shades.black": "Shades", "eyes.shades.gold": "Shades",
-  "eyes.goggles.cyan": "Goggles", "eyes.goggles.black": "Goggles",
-  "torso.bare": "Bare", "torso.tee.magenta": "Shirt", "torso.tee.mint": "Shirt",
-  "torso.tee.white": "Shirt", "torso.jersey.magenta": "Jersey",
-  "torso.jersey.black": "Jersey", "torso.jersey.gold": "Jersey",
-  "torso.trisuit.black": "Tri suit", "torso.trisuit.cyan": "Tri suit",
-  "legs.runshorts.black": "Shorts", "legs.runshorts.lime": "Shorts",
-  "legs.bibs.black": "Bibs", "legs.bibs.magenta": "Bibs",
-  "legs.jammers.black": "Jammers", "legs.jammers.cyan": "Jammers",
-  "feet.barefoot": "Bare", "feet.runshoes.white": "Run", "feet.runshoes.orange": "Run",
-  "feet.bikeshoes.white": "Bike", "feet.bikeshoes.black": "Bike",
-  "feet.carbon.gold": "Carbon", "feet.carbon.mint": "Carbon",
-  "socks.none": "None", "socks.short.white": "Short", "socks.short.black": "Short",
-  "socks.tall.white": "Tall", "socks.tall.magenta": "Tall",
-  "watch.none": "Off", "watch.on.black": "Watch", "watch.on.gold": "Watch",
-};
-
-/**
- * The colour a chip is, from the item's own id — the catalogue names coloured
- * items `<slot>.<garment>.<colour>`, so there's nothing to keep in sync.
- */
-function toneOf(itemId: string): string | null {
-  const tone = itemId.split(".")[2];
-  return tone ? tone[0].toUpperCase() + tone.slice(1) : null;
-}
 
 const KITS: { name: string; loadout: Loadout }[] = [
   {
@@ -88,6 +54,16 @@ const KITS: { name: string; loadout: Loadout }[] = [
     },
   },
 ];
+
+const SHELF: Record<Slot, string> = {
+  head: "Headwear",
+  eyes: "Eyewear",
+  torso: "Tops",
+  legs: "Bottoms",
+  feet: "Shoes",
+  socks: "Socks",
+  watch: "Watches",
+};
 
 const STORE_KEY = "amacomp.locker";
 
@@ -193,78 +169,29 @@ export function AvatarLocker() {
         </button>
       </div>
 
-      <div className="mt-2 divide-y divide-line">
+      <div className="mt-3 space-y-4">
         {SLOTS.map((slot) => {
-          // A visor IS the eyewear, so say so rather than leaving a row of
-          // buttons that quietly do nothing.
+          // A visor IS the eyewear, so say so rather than leaving a shelf of
+          // boxes that quietly do nothing.
           const hidden =
             slot === "eyes" && AVATAR_ITEM_BY_ID.get(loadout.head?.item ?? "")?.coversEyes;
-          const worn = loadout[slot];
-          const rack = rackFor(slot);
-          const item = AVATAR_ITEM_BY_ID.get(worn?.item ?? "");
-          const owned = item ? STARTER_ITEMS.has(item.id) || item.price === 0 : false;
           return (
-            <div
-              key={slot}
-              className={`grid grid-cols-[3.25rem_1fr] items-start gap-2 py-2 ${
-                hidden ? "opacity-40" : ""
-              }`}
-            >
-              <span className="eyebrow pt-1.5 text-ink-3">
-                {slot}
-                {hidden && <span className="mt-0.5 block normal-case">under the visor</span>}
-              </span>
-              <div className="min-w-0">
-                {/* One rack, one tap. The dot is the item's own colour, because a
-                    colour isn't something you apply to a garment here — the
-                    magenta jersey and the black one are two things to buy. */}
-                <div className="flex flex-wrap gap-1">
-                  {rack.map((o) => (
-                    <button
-                      key={o.id}
-                      onClick={() => wear({ ...loadout, [slot]: { item: o.id } })}
-                      aria-pressed={worn?.item === o.id}
-                      aria-label={`${o.label}, ${
-                        STARTER_ITEMS.has(o.id) || o.price === 0 ? "yours" : `${o.price} coins`
-                      }`}
-                      className={`flex items-center gap-1.5 rounded-lg border py-1.5 pl-1.5 pr-2 text-[0.6875rem] ${
-                        worn?.item === o.id
-                          ? "border-gold bg-gold/10 text-ink"
-                          : "border-line text-ink-2"
-                      }`}
-                    >
-                      {o.sprite && (
-                        <span
-                          aria-hidden
-                          className="h-3 w-3 shrink-0 rounded-sm border border-line"
-                          style={{ background: o.colour }}
-                        />
-                      )}
-                      <span className="text-left leading-tight">
-                        {SHORT[o.id] ?? o.label}
-                        {/* Two helmets in a row need to say which is which, and a
-                            black dot on a dark tile says nothing. */}
-                        {toneOf(o.id) && (
-                          <span className="block text-[0.5625rem] text-ink-3">{toneOf(o.id)}</span>
-                        )}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {item && (
-                  <p className="mt-1 font-mono text-[0.625rem] text-ink-3">
-                    {item.label}
-                    {" · "}
-                    {owned ? (
-                      <span className="text-ink-2">yours</span>
-                    ) : (
-                      <span className="text-gold">{fmtCoins(item.price)} coins</span>
-                    )}
-                  </p>
-                )}
+            <section key={slot} className={hidden ? "opacity-40" : ""}>
+              <h4 className="eyebrow flex items-baseline gap-2 px-1 text-ink-3">
+                {SHELF[slot]}
+                {hidden && <span className="normal-case text-ink-3">under the visor</span>}
+              </h4>
+              <div className="mt-1.5 grid grid-cols-3 gap-2">
+                {rackFor(slot).map((item) => (
+                  <ShopBox
+                    key={item.id}
+                    item={item}
+                    worn={loadout[slot]?.item === item.id}
+                    onPick={() => wear({ ...loadout, [slot]: { item: item.id } })}
+                  />
+                ))}
               </div>
-            </div>
+            </section>
           );
         })}
       </div>
@@ -280,5 +207,62 @@ export function AvatarLocker() {
         <span className="text-xs text-ink-3">yours · a new athlete&rsquo;s</span>
       </div>
     </section>
+  );
+}
+
+/**
+ * One box on the shelf: the thing itself, its name, its price.
+ *
+ * The art is an <img> of a generated SVG rather than an inline drawing. Forty
+ * inline figures is megabytes of markup and a phone that stutters; forty images
+ * is forty nodes, and the browser caches each one by its source.
+ */
+function ShopBox({
+  item,
+  worn,
+  onPick,
+}: {
+  item: AvatarItem;
+  worn: boolean;
+  onPick: () => void;
+}) {
+  const src = itemImage(item.id);
+  const free = STARTER_ITEMS.has(item.id) || item.price === 0;
+  return (
+    <button
+      onClick={onPick}
+      aria-pressed={worn}
+      className={`flex flex-col items-stretch overflow-hidden rounded-xl border text-left ${
+        worn ? "border-gold bg-gold/10" : "border-line bg-deck-2/40"
+      }`}
+    >
+      <span className="relative flex h-16 items-center justify-center bg-deck-2/60 p-1.5">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element -- a generated data: URI, not a file
+          <img src={src} alt="" className="pixel-avatar h-full w-full object-contain" />
+        ) : (
+          <span className="eyebrow text-ink-3">nothing</span>
+        )}
+        {worn && (
+          <span className="eyebrow absolute right-1 top-1 rounded bg-gold px-1 py-0.5 text-[0.5rem] text-on-gold">
+            worn
+          </span>
+        )}
+      </span>
+      <span className="flex min-h-[2.75rem] flex-col justify-between gap-0.5 px-2 py-1.5">
+        <span className="text-[0.6875rem] leading-tight text-ink">{item.label}</span>
+        <span className="flex items-center gap-1 font-mono text-[0.625rem]">
+          {free ? (
+            <span className="text-ink-3">yours</span>
+          ) : (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- one cached file, forty boxes */}
+              <img src="/tri-coin.png" alt="" aria-hidden className="h-3 w-3 object-contain" />
+              <span className="text-gold">{fmtCoins(item.price)}</span>
+            </>
+          )}
+        </span>
+      </span>
+    </button>
   );
 }

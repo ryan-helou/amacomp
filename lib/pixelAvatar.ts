@@ -158,6 +158,168 @@ function shift(hex: string, f: number): string {
     .padStart(6, "0")}`;
 }
 
+type Layer = {
+  grid: (string | null)[][]; res: number; x0: number; y0: number;
+  w: number; h: number; upper: boolean;
+};
+
+/** One sprite sheet turned into a lit grid of pixels. */
+function rasterise(
+  rows: string[], res: number, x0: number, y0: number,
+  colour: string, accent: string, mirror: boolean, upper: boolean,
+): Layer {
+    const w = rows[0].length, h = rows.length;
+  const grid: (string | null)[][] = Array.from({ length: h }, () => new Array(w).fill(null));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const ch = rows[y][x];
+      if (ch === ".") continue;
+      const sx = mirror ? w - 1 - x : x;
+      grid[y][sx] =
+        ch === "S" ? SKIN : ch === "D" ? SKIN_D : ch === "H" ? HAIR :
+        ch === "E" ? EYE : ch === "M" ? MOUTH : ch === "W" ? LIGHT :
+        ch === "A" ? accent : colour;
+    }
+  }
+  // Light from the upper left, proportional to this layer's density.
+  const span = Math.max(1, Math.round(3 * res));
+  for (let y = 0; y < h; y++) {
+    let x = 0;
+    while (x < w) {
+      const c = grid[y][x];
+      if (!c || c === EYE || c === MOUTH || c === LIGHT) { x++; continue; }
+      let end = x;
+      while (end + 1 < w && grid[y][end + 1] === c) end++;
+      const len = end - x + 1;
+      if (len >= span * 2 + 1) {
+        for (let k = 0; k < Math.max(1, Math.round(res)); k++) grid[y][x + k] = shift(c, 1.1);
+        for (let k = 0; k < span; k++) grid[y][end - k] = shift(c, 0.72 + 0.07 * k);
+      } else if (len >= Math.max(2, Math.round(1.5 * res))) {
+        grid[y][end] = shift(c, 0.8);
+      }
+      x = end + 1;
+    }
+  }
+  return { grid, res, x0: mirror ? DATA.W * res - (x0 + w) : x0, y0, w, h, upper };
+}
+
+/** A lit grid turned into SVG: outline first, then the colour runs. */
+function draw(L: Layer): string {
+  const at = (x: number, y: number) => (x < 0 || y < 0 || x >= L.w || y >= L.h ? null : L.grid[y][x]);
+  const u = 1 / L.res, ox = L.x0 / L.res, oy = L.y0 / L.res;
+
+  // Row runs first: a horizontal stretch of one colour is one run.
+  type Run = { x: number; len: number; colour: string | null };
+  const rows: Run[][] = [];
+  for (let y = 0; y < L.h; y++) {
+    const runs: Run[] = [];
+    let runStart = -1, runColour: string | null | undefined;
+    const flush = (x: number) => {
+      if (runStart >= 0) runs.push({ x: runStart, len: x - runStart, colour: runColour ?? null });
+      runStart = -1; runColour = undefined;
+    };
+    for (let x = 0; x <= L.w; x++) {
+      const c = x < L.w ? L.grid[y][x] : undefined;
+      // undefined = nothing here; null = outline; a string = that colour.
+      let paintAs: string | null | undefined;
+      if (c) paintAs = c;
+      else if (x < L.w && (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1))) {
+        paintAs = at(x + 1, y) && !at(x - 1, y) ? RIM : null;
+      }
+      if (paintAs !== runColour) {
+        flush(x);
+        if (paintAs !== undefined) { runStart = x; runColour = paintAs; }
+      }
+    }
+    flush(L.w);
+    rows.push(runs);
+  }
+
+  // Then down: a run repeated on the next row is the same rectangle, taller. A
+  // torso is one rect this way rather than fifty, which is the difference
+  // between a shop of forty boxes rendering and a phone giving up.
+  let edges = "", cells = "";
+  const open = new Map<string, { x: number; len: number; colour: string | null; y: number; h: number }>();
+  const shut = (key: string) => {
+    const r = open.get(key);
+    if (!r) return;
+    open.delete(key);
+    const X = (ox + r.x * u).toFixed(3), Y = (oy + r.y * u).toFixed(3);
+    const Wd = (r.len * u + u * 0.02).toFixed(3), Ht = (r.h * u + u * 0.02).toFixed(3);
+    const rect = `<rect x="${X}" y="${Y}" width="${Wd}" height="${Ht}"`;
+    if (r.colour) cells += `${rect} fill="${r.colour}"/>`;
+    else edges += `${rect}/>`;
+  };
+  for (let y = 0; y <= L.h; y++) {
+    const seen = new Set<string>();
+    for (const run of rows[y] ?? []) {
+      const key = `${run.x}:${run.len}:${run.colour}`;
+      seen.add(key);
+      const held = open.get(key);
+      if (held) held.h++;
+      else open.set(key, { ...run, y, h: 1 });
+    }
+    for (const key of [...open.keys()]) if (!seen.has(key)) shut(key);
+  }
+  for (const key of [...open.keys()]) shut(key);
+
+  return `<g fill="${OUTLINE}">${edges}</g>${cells}`;
+}
+
+/**
+ * One item on its own, drawn to its own bounds: the product photo for the shop.
+ *
+ * A shop box can't hold a whole figure — forty of those is megabytes of markup
+ * and a phone that stutters. This is the single layer, cropped to the pixels it
+ * actually fills, which is also what you want on a box: the thing itself, big.
+ */
+export function itemSvg(itemId: string): string {
+  const item = AVATAR_ITEM_BY_ID.get(itemId);
+  if (!item?.sprite) return "";
+  const sheet = DATA.g[item.sprite];
+  if (!sheet) return "";
+  const L = rasterise(sheet.rows, sheet.res, sheet.x0, sheet.y0, item.colour, item.accent, false, false);
+
+  // The drawn bounds, so a watch fills its box as well as a tri suit does.
+  let minX = L.w, maxX = -1, minY = L.h, maxY = -1;
+  for (let y = 0; y < L.h; y++) {
+    for (let x = 0; x < L.w; x++) {
+      if (!L.grid[y][x]) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < 0) return "";
+  const u = 1 / L.res, pad = 1.5;
+  const x = L.x0 / L.res + minX * u - pad;
+  const y = L.y0 / L.res + minY * u - pad;
+  const w = (maxX - minX + 1) * u + pad * 2;
+  const h = (maxY - minY + 1) * u + pad * 2;
+  return (
+    `<svg viewBox="${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}" ` +
+    `xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" role="img" ` +
+    `aria-label="${item.label}">${draw(L)}</svg>`
+  );
+}
+
+const IMAGES = new Map<string, string>();
+
+/**
+ * The same product photo as an image source, so a box costs one DOM node rather
+ * than a few hundred rects. Cached: the catalogue never changes at runtime, and
+ * a shelf of forty boxes should draw once.
+ */
+export function itemImage(itemId: string): string {
+  const cached = IMAGES.get(itemId);
+  if (cached !== undefined) return cached;
+  const svg = itemSvg(itemId);
+  const uri = svg ? `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` : "";
+  IMAGES.set(itemId, uri);
+  return uri;
+}
+
 /**
  * The figure as an SVG string.
  *
@@ -172,47 +334,15 @@ export function avatarSvg(
   const src = view === "back" ? DATA.back : DATA.base;
   const headItem = AVATAR_ITEM_BY_ID.get(loadout.head?.item ?? "");
 
-  type Layer = { grid: (string | null)[][]; res: number; x0: number; y0: number; w: number; h: number; upper: boolean };
   const layers: Layer[] = [];
 
   const paint = (
     rows: string[], res: number, x0: number, y0: number,
     colour: string, accent: string, mirror: boolean, upper: boolean,
   ) => {
-    const w = rows[0].length, h = rows.length;
-    const grid: (string | null)[][] = Array.from({ length: h }, () => new Array(w).fill(null));
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const ch = rows[y][x];
-        if (ch === ".") continue;
-        const sx = mirror ? w - 1 - x : x;
-        grid[y][sx] =
-          ch === "S" ? SKIN : ch === "D" ? SKIN_D : ch === "H" ? HAIR :
-          ch === "E" ? EYE : ch === "M" ? MOUTH : ch === "W" ? LIGHT :
-          ch === "A" ? accent : colour;
-      }
-    }
-    // Light from the upper left, proportional to this layer's density.
-    const span = Math.max(1, Math.round(3 * res));
-    for (let y = 0; y < h; y++) {
-      let x = 0;
-      while (x < w) {
-        const c = grid[y][x];
-        if (!c || c === EYE || c === MOUTH || c === LIGHT) { x++; continue; }
-        let end = x;
-        while (end + 1 < w && grid[y][end + 1] === c) end++;
-        const len = end - x + 1;
-        if (len >= span * 2 + 1) {
-          for (let k = 0; k < Math.max(1, Math.round(res)); k++) grid[y][x + k] = shift(c, 1.1);
-          for (let k = 0; k < span; k++) grid[y][end - k] = shift(c, 0.72 + 0.07 * k);
-        } else if (len >= Math.max(2, Math.round(1.5 * res))) {
-          grid[y][end] = shift(c, 0.8);
-        }
-        x = end + 1;
-      }
-    }
-    layers.push({ grid, res, x0: mirror ? W * res - (x0 + w) : x0, y0, w, h, upper });
+    layers.push(rasterise(rows, res, x0, y0, colour, accent, mirror, upper));
   };
+
 
   const SPLIT = 86; // the hips: above it breathes, below it stays planted
   paint(src.slice(0, SPLIT), 1, 0, 0, SKIN, SKIN_D, false, true);
@@ -231,36 +361,7 @@ export function avatarSvg(
 
   let upperOut = "", lowerOut = "";
   for (const L of layers) {
-    const at = (x: number, y: number) => (x < 0 || y < 0 || x >= L.w || y >= L.h ? null : L.grid[y][x]);
-    const u = 1 / L.res, ox = L.x0 / L.res, oy = L.y0 / L.res;
-    let edges = "", cells = "";
-    const emit = (x: number, y: number, len: number, colour: string | null) => {
-      const X = (ox + x * u).toFixed(3), Y = (oy + y * u).toFixed(3);
-      const Wd = (len * u + u * 0.02).toFixed(3), Ht = (u * 1.02).toFixed(3);
-      const r = `<rect x="${X}" y="${Y}" width="${Wd}" height="${Ht}"`;
-      if (colour) cells += `${r} fill="${colour}"/>`;
-      else edges += `${r}/>`;
-    };
-    // One rect per RUN of colour — a few hundred nodes instead of thousands.
-    for (let y = 0; y < L.h; y++) {
-      let runStart = -1, runColour: string | null = null;
-      const flush = (x: number) => {
-        if (runStart >= 0) emit(runStart, y, x - runStart, runColour);
-        runStart = -1; runColour = null;
-      };
-      for (let x = 0; x <= L.w; x++) {
-        const c = x < L.w ? L.grid[y][x] : undefined;
-        let paintAs: string | null = null;
-        if (c) paintAs = c;
-        else if (x < L.w && (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1))) {
-          paintAs = at(x + 1, y) && !at(x - 1, y) ? RIM : null;
-          if (paintAs === null) { flush(x); emit(x, y, 1, null); continue; }
-        }
-        if (paintAs !== runColour) { flush(x); if (paintAs) { runStart = x; runColour = paintAs; } }
-      }
-      flush(L.w);
-    }
-    const chunk = `<g fill="${OUTLINE}">${edges}</g>${cells}`;
+    const chunk = draw(L);
     if (L.upper) upperOut += chunk; else lowerOut += chunk;
   }
 
