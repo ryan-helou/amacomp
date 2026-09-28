@@ -25,146 +25,115 @@ export interface AvatarItem {
   id: string;
   slot: Slot;
   label: string;
-  /** Tri coins for one colourway. 0 means it comes with the figure. */
+  /** Tri coins. 0 means it comes with the figure. */
   price: number;
   tier: "common" | "rare" | "epic" | "legendary";
+  /** The colour it is. Not a setting — a magenta jersey IS a different item. */
+  colour: string;
+  /** Trim, where the sprite has any. */
+  accent: string;
   /** Key into the sprite data; absent for "wear nothing here". */
   sprite?: string;
   /** Some items look different from behind — only the aero helmet, so far. */
   spriteBack?: string;
   /** A visor is the eyewear: it hides whatever is in the eyes slot. */
   coversEyes?: boolean;
-  /** The colourways this item is sold in. Absent means the full rack. */
-  ways?: string[];
 }
 
-/**
- * A colour a thing is sold in. Colour and trim travel together: a jersey is
- * magenta with white trim, and that pairing is what you own.
- */
-export interface Colourway {
-  id: string;
-  label: string;
-  colour: string;
-  accent: string;
-  /** The dear ones. A premium colourway costs half again. */
-  premium?: boolean;
-}
-
-export const COLOURWAYS: Colourway[] = [
-  { id: "magenta", label: "Magenta", colour: "#d4147e", accent: "#f3f3f1" },
-  { id: "mint", label: "Mint", colour: "#16d39a", accent: "#20242b" },
-  { id: "lime", label: "Lime", colour: "#5f9a12", accent: "#f3f3f1" },
-  { id: "cyan", label: "Cyan", colour: "#00c6c8", accent: "#f3f3f1" },
-  { id: "white", label: "White", colour: "#f3f3f1", accent: "#20242b" },
-  { id: "orange", label: "Orange", colour: "#ff7a29", accent: "#20242b" },
-  { id: "black", label: "Black", colour: "#20242b", accent: "#f3f3f1", premium: true },
-  { id: "gold", label: "Gold", colour: "#c9a227", accent: "#20242b", premium: true },
-];
-
-export const COLOURWAY_BY_ID = new Map(COLOURWAYS.map((w) => [w.id, w]));
-
-/** Bare skin, an empty slot: one "colourway" that isn't a choice. */
-export const STOCK: Colourway = { id: "stock", label: "Stock", colour: "#dda077", accent: "#f3f3f1" };
-
-/**
- * What each athlete is wearing: for every slot, an item and the colourway of
- * that item they own. Never a free colour — you buy the magenta jersey, not a
- * jersey and then its colours.
- */
+/** What each athlete is wearing: one item per slot, and that's the whole of it. */
 export interface Loadout {
-  [slot: string]: { item: string; way: string };
+  [slot: string]: { item: string };
 }
 
+const SKIN_C = "#dda077", WHITE = "#f3f3f1", BLACK = "#20242b";
+const MAGENTA = "#d4147e", MINT = "#16d39a", CYAN = "#00c6c8";
+const GOLD = "#c9a227", ORANGE = "#ff7a29", LIME = "#5f9a12";
+
+/**
+ * The rack. Colour is not a dimension you buy on top of a garment: the magenta
+ * jersey and the black jersey are two items, priced on their own, and owning one
+ * says nothing about the other. Sprites are shared between them — the art is the
+ * garment, the item is the garment in a colour.
+ */
 export const AVATAR_ITEMS: AvatarItem[] = [
-  { id: "head.none", slot: "head", label: "Bare", price: 0, tier: "common" , ways: ["stock"] },
-  { id: "head.helmet", slot: "head", label: "Helmet", price: 400, tier: "rare", sprite: "helmet" },
-  { id: "head.swimcap", slot: "head", label: "Swim cap", price: 150, tier: "common", sprite: "swimcap" },
-  { id: "head.runcap", slot: "head", label: "Run cap", price: 200, tier: "common", sprite: "runcap" },
-  { id: "head.aero", slot: "head", label: "Aero helmet", price: 900, tier: "epic", sprite: "aero", spriteBack: "aero_back", coversEyes: true },
-  { id: "eyes.none", slot: "eyes", label: "None", price: 0, tier: "common" , ways: ["stock"] },
-  { id: "eyes.shades", slot: "eyes", label: "Shades", price: 400, tier: "rare", sprite: "shades" },
-  { id: "eyes.goggles", slot: "eyes", label: "Goggles", price: 150, tier: "common", sprite: "goggles" },
-  { id: "torso.bare", slot: "torso", label: "Bare", price: 0, tier: "common" , ways: ["stock"] },
-  { id: "torso.jersey", slot: "torso", label: "Cycling jersey", price: 500, tier: "rare", sprite: "jersey" },
-  { id: "torso.tee", slot: "torso", label: "Running shirt", price: 350, tier: "common", sprite: "tee" },
-  { id: "torso.trisuit", slot: "torso", label: "Tri suit", price: 900, tier: "epic", sprite: "trisuit" },
-  { id: "legs.bibs", slot: "legs", label: "Bib shorts", price: 500, tier: "rare", sprite: "bibs" },
-  { id: "legs.runshorts", slot: "legs", label: "Running shorts", price: 150, tier: "common", sprite: "runshorts" },
-  { id: "legs.jammers", slot: "legs", label: "Jammers", price: 200, tier: "common", sprite: "jammers" },
-  { id: "feet.barefoot", slot: "feet", label: "Barefoot", price: 0, tier: "common", sprite: "barefoot" , ways: ["stock"] },
-  { id: "feet.bikeshoes", slot: "feet", label: "Cycling shoes", price: 500, tier: "rare", sprite: "bikeshoes" },
-  { id: "feet.runshoes", slot: "feet", label: "Running shoes", price: 600, tier: "rare", sprite: "runshoes" },
-  { id: "feet.carbon", slot: "feet", label: "Carbon plate", price: 1500, tier: "legendary", sprite: "carbon" },
-  { id: "socks.none", slot: "socks", label: "None", price: 0, tier: "common" , ways: ["stock"] },
-  { id: "socks.short", slot: "socks", label: "Short socks", price: 100, tier: "common", sprite: "socks_short" },
-  { id: "socks.tall", slot: "socks", label: "Tall socks", price: 150, tier: "common", sprite: "socks_tall" },
-  { id: "watch.none", slot: "watch", label: "Off", price: 0, tier: "common" , ways: ["stock"] },
-  { id: "watch.on", slot: "watch", label: "GPS watch", price: 300, tier: "common", sprite: "watch" },
+  { id: "head.none", slot: "head", label: "Bare head", price: 0, tier: "common", colour: SKIN_C, accent: WHITE },
+  { id: "head.helmet.magenta", slot: "head", label: "Magenta helmet", price: 400, tier: "rare", colour: MAGENTA, accent: WHITE, sprite: "helmet" },
+  { id: "head.helmet.black", slot: "head", label: "Black helmet", price: 400, tier: "rare", colour: BLACK, accent: WHITE, sprite: "helmet" },
+  { id: "head.swimcap.cyan", slot: "head", label: "Cyan swim cap", price: 150, tier: "common", colour: CYAN, accent: WHITE, sprite: "swimcap" },
+  { id: "head.swimcap.magenta", slot: "head", label: "Magenta swim cap", price: 150, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "swimcap" },
+  { id: "head.runcap.mint", slot: "head", label: "Mint run cap", price: 200, tier: "common", colour: MINT, accent: WHITE, sprite: "runcap" },
+  { id: "head.runcap.white", slot: "head", label: "White run cap", price: 200, tier: "common", colour: WHITE, accent: BLACK, sprite: "runcap" },
+  { id: "head.aero.black", slot: "head", label: "Black aero helmet", price: 900, tier: "epic", colour: BLACK, accent: GOLD, sprite: "aero", spriteBack: "aero_back", coversEyes: true },
+  { id: "head.aero.gold", slot: "head", label: "Gold aero helmet", price: 1200, tier: "legendary", colour: GOLD, accent: BLACK, sprite: "aero", spriteBack: "aero_back", coversEyes: true },
+
+  { id: "eyes.none", slot: "eyes", label: "No eyewear", price: 0, tier: "common", colour: BLACK, accent: WHITE },
+  { id: "eyes.shades.black", slot: "eyes", label: "Black shades", price: 400, tier: "rare", colour: BLACK, accent: WHITE, sprite: "shades" },
+  { id: "eyes.shades.gold", slot: "eyes", label: "Gold shades", price: 500, tier: "epic", colour: GOLD, accent: BLACK, sprite: "shades" },
+  { id: "eyes.goggles.cyan", slot: "eyes", label: "Cyan goggles", price: 150, tier: "common", colour: CYAN, accent: "#9fdfe4", sprite: "goggles" },
+  { id: "eyes.goggles.black", slot: "eyes", label: "Black goggles", price: 150, tier: "common", colour: BLACK, accent: "#9fdfe4", sprite: "goggles" },
+
+  { id: "torso.bare", slot: "torso", label: "Bare chest", price: 0, tier: "common", colour: SKIN_C, accent: WHITE },
+  { id: "torso.tee.magenta", slot: "torso", label: "Magenta running shirt", price: 350, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "tee" },
+  { id: "torso.tee.mint", slot: "torso", label: "Mint running shirt", price: 350, tier: "common", colour: MINT, accent: WHITE, sprite: "tee" },
+  { id: "torso.tee.white", slot: "torso", label: "White running shirt", price: 350, tier: "common", colour: WHITE, accent: BLACK, sprite: "tee" },
+  { id: "torso.jersey.magenta", slot: "torso", label: "Magenta cycling jersey", price: 500, tier: "rare", colour: MAGENTA, accent: WHITE, sprite: "jersey" },
+  { id: "torso.jersey.black", slot: "torso", label: "Black cycling jersey", price: 500, tier: "rare", colour: BLACK, accent: WHITE, sprite: "jersey" },
+  { id: "torso.jersey.gold", slot: "torso", label: "Gold cycling jersey", price: 750, tier: "epic", colour: GOLD, accent: BLACK, sprite: "jersey" },
+  { id: "torso.trisuit.black", slot: "torso", label: "Black tri suit", price: 900, tier: "epic", colour: BLACK, accent: GOLD, sprite: "trisuit" },
+  { id: "torso.trisuit.cyan", slot: "torso", label: "Cyan tri suit", price: 900, tier: "epic", colour: CYAN, accent: WHITE, sprite: "trisuit" },
+
+  { id: "legs.runshorts.black", slot: "legs", label: "Black running shorts", price: 0, tier: "common", colour: BLACK, accent: WHITE, sprite: "runshorts" },
+  { id: "legs.runshorts.lime", slot: "legs", label: "Lime running shorts", price: 150, tier: "common", colour: LIME, accent: WHITE, sprite: "runshorts" },
+  { id: "legs.bibs.black", slot: "legs", label: "Black bib shorts", price: 500, tier: "rare", colour: BLACK, accent: WHITE, sprite: "bibs" },
+  { id: "legs.bibs.magenta", slot: "legs", label: "Magenta bib shorts", price: 500, tier: "rare", colour: MAGENTA, accent: WHITE, sprite: "bibs" },
+  { id: "legs.jammers.black", slot: "legs", label: "Black jammers", price: 200, tier: "common", colour: BLACK, accent: WHITE, sprite: "jammers" },
+  { id: "legs.jammers.cyan", slot: "legs", label: "Cyan jammers", price: 200, tier: "common", colour: CYAN, accent: WHITE, sprite: "jammers" },
+
+  { id: "feet.barefoot", slot: "feet", label: "Barefoot", price: 0, tier: "common", colour: SKIN_C, accent: WHITE, sprite: "barefoot" },
+  { id: "feet.runshoes.white", slot: "feet", label: "White running shoes", price: 600, tier: "rare", colour: WHITE, accent: MAGENTA, sprite: "runshoes" },
+  { id: "feet.runshoes.orange", slot: "feet", label: "Orange running shoes", price: 600, tier: "rare", colour: ORANGE, accent: WHITE, sprite: "runshoes" },
+  { id: "feet.bikeshoes.white", slot: "feet", label: "White cycling shoes", price: 500, tier: "rare", colour: WHITE, accent: MAGENTA, sprite: "bikeshoes" },
+  { id: "feet.bikeshoes.black", slot: "feet", label: "Black cycling shoes", price: 500, tier: "rare", colour: BLACK, accent: GOLD, sprite: "bikeshoes" },
+  { id: "feet.carbon.gold", slot: "feet", label: "Gold carbon plate", price: 1500, tier: "legendary", colour: GOLD, accent: BLACK, sprite: "carbon" },
+  { id: "feet.carbon.mint", slot: "feet", label: "Mint carbon plate", price: 1500, tier: "legendary", colour: MINT, accent: BLACK, sprite: "carbon" },
+
+  { id: "socks.none", slot: "socks", label: "No socks", price: 0, tier: "common", colour: WHITE, accent: BLACK },
+  { id: "socks.short.white", slot: "socks", label: "White short socks", price: 100, tier: "common", colour: WHITE, accent: BLACK, sprite: "socks_short" },
+  { id: "socks.short.black", slot: "socks", label: "Black short socks", price: 100, tier: "common", colour: BLACK, accent: WHITE, sprite: "socks_short" },
+  { id: "socks.tall.white", slot: "socks", label: "White tall socks", price: 150, tier: "common", colour: WHITE, accent: BLACK, sprite: "socks_tall" },
+  { id: "socks.tall.magenta", slot: "socks", label: "Magenta tall socks", price: 150, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "socks_tall" },
+
+  { id: "watch.none", slot: "watch", label: "No watch", price: 0, tier: "common", colour: BLACK, accent: MINT },
+  { id: "watch.on.black", slot: "watch", label: "Black GPS watch", price: 300, tier: "common", colour: BLACK, accent: MINT, sprite: "watch" },
+  { id: "watch.on.gold", slot: "watch", label: "Gold GPS watch", price: 450, tier: "rare", colour: GOLD, accent: BLACK, sprite: "watch" },
 ];
-
-/**
- * Does this item have a second colour? Derived from the sprite, not declared:
- * an "A" cell is the accent, so the locker offers an accent picker exactly
- * where one changes something and nowhere else.
- */
-export function usesAccent(itemId: string): boolean {
-  const item = AVATAR_ITEM_BY_ID.get(itemId);
-  if (!item?.sprite) return false;
-  const sheets = [item.sprite, item.spriteBack].filter(Boolean) as string[];
-  return sheets.some((name) => DATA.g[name]?.rows.some((r) => r.includes("A")));
-}
-
-/** The colourways an item is actually sold in. */
-export function waysFor(itemId: string): Colourway[] {
-  const item = AVATAR_ITEM_BY_ID.get(itemId);
-  if (!item) return [STOCK];
-  if (item.ways) return item.ways.map((id) => (id === "stock" ? STOCK : COLOURWAY_BY_ID.get(id)!));
-  return COLOURWAYS;
-}
-
-/**
- * The colours to draw a worn item in. An unknown colourway falls back to the
- * first one the item is sold in rather than inventing a colour, so a stale
- * loadout draws something real.
- */
-export function coloursOf(itemId: string, wayId: string): { colour: string; accent: string } {
-  const rack = waysFor(itemId);
-  const way = rack.find((w) => w.id === wayId) ?? rack[0];
-  return { colour: way.colour, accent: way.accent };
-}
-
-/**
- * What one colourway of an item costs. Every colour is its own purchase — buying
- * the magenta jersey doesn't unlock the black one, and the black one is dearer.
- */
-export function skuPrice(itemId: string, wayId: string): number {
-  const item = AVATAR_ITEM_BY_ID.get(itemId);
-  if (!item || item.price === 0) return 0;
-  const way = waysFor(itemId).find((w) => w.id === wayId);
-  return way?.premium ? item.price + Math.round(item.price / 2 / 50) * 50 : item.price;
-}
 
 export const AVATAR_ITEM_BY_ID = new Map(AVATAR_ITEMS.map((i) => [i.id, i]));
 
 /** What a new athlete turns up in, before they've bought anything. */
 export const DEFAULT_LOADOUT: Loadout = {
-  head: { item: "head.none", way: "stock" },
-  eyes: { item: "eyes.none", way: "stock" },
-  torso: { item: "torso.tee", way: "magenta" },
-  legs: { item: "legs.runshorts", way: "black" },
-  feet: { item: "feet.runshoes", way: "white" },
-  socks: { item: "socks.short", way: "white" },
-  watch: { item: "watch.none", way: "stock" },
+  head: { item: "head.none" },
+  eyes: { item: "eyes.none" },
+  torso: { item: "torso.tee.magenta" },
+  legs: { item: "legs.runshorts.black" },
+  feet: { item: "feet.runshoes.white" },
+  socks: { item: "socks.short.white" },
+  watch: { item: "watch.none" },
 };
 
 /**
- * The kit a new athlete is given. These SKUs are theirs without paying — every
- * other colourway of the same item still has to be bought.
+ * The kit a new athlete is given. These items are theirs; the same garment in
+ * another colour is a different item and still has to be bought.
  */
-export const STARTER_SKUS: Set<string> = new Set(
-  Object.values(DEFAULT_LOADOUT).map((w) => `${w.item}/${w.way}`),
+export const STARTER_ITEMS: Set<string> = new Set(
+  Object.values(DEFAULT_LOADOUT).map((w) => w.item),
 );
+
+/** Everything in a slot, cheapest first — the shape a shop shelf wants. */
+export function rackFor(slot: Slot): AvatarItem[] {
+  return AVATAR_ITEMS.filter((i) => i.slot === slot).sort((a, b) => a.price - b.price);
+}
+
 
 const SKIN = "#dda077", SKIN_D = "#b2764f", HAIR = "#33241a";
 const EYE = "#1b1410", MOUTH = "#b5705a", LIGHT = "#f3f3f1";
@@ -256,8 +225,7 @@ export function avatarSvg(
     if (slot === "eyes" && headItem?.coversEyes) continue;
     const sheet = g[(view === "back" && item.spriteBack) || item.sprite];
     if (!sheet) continue;
-    const { colour, accent } = coloursOf(item.id, worn.way);
-    paint(sheet.rows, sheet.res, sheet.x0, sheet.y0, colour, accent,
+    paint(sheet.rows, sheet.res, sheet.x0, sheet.y0, item.colour, item.accent,
       view === "back", UPPER.has(slot));
   }
 
