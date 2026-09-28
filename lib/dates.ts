@@ -15,26 +15,28 @@ export function toDayKey(d: Date): DayKey {
 }
 
 /**
- * The league's day rollover. A session finished before 3 AM belongs to the day —
- * and so the week — that is ending, not the one starting. It is the same hour
- * for everyone, so two people who rode together at 1 AM always score in the same
- * week. Fixed rather than per-athlete: a shared board only reads as fair if a
- * given moment means the same thing on everybody's screen.
+ * The league's day rollover, in hours after midnight.
  *
- * It only ever shifts a session BACKWARD. Nothing can be pushed into a later day.
+ * Midnight, Montreal time, for everyone — Ryan's call 2026-09-27, replacing a
+ * 3 AM grace window. A session finished at 1 AM Monday now counts for Monday,
+ * the way the calendar says. The rule is easier to hold in your head, and the
+ * two clocks below can no longer disagree.
+ *
+ * It only ever shifts a session BACKWARD. Nothing can be pushed into a later
+ * day, so raising this again stays safe.
  */
-export const RESET_HOUR = 3;
+export const RESET_HOUR = 0;
 
 /**
- * Two clocks, deliberately kept apart — this is the whole point of the module.
+ * Two clocks, kept as separate functions even though they now agree.
  *
- * `viewDayAt` is the real calendar day. The boards, the week ring and the feed's
- * "Today" follow it, so the new week opens for everyone at midnight, on time.
+ * `viewDayAt` is the calendar day the app SHOWS. `logDayAt` is the day a session
+ * finished *now* is filed under. At `RESET_HOUR = 0` they are the same answer:
+ * midnight ends the day for both the board and the scoring.
  *
- * `logDayAt` is the day a session finished *now* should be filed under, and it
- * stays on the old day until RESET_HOUR. So for the first three hours of Monday
- * the board already shows the new week while a 1 AM run still counts toward the
- * week that just ended — which is how a Sunday night is actually lived.
+ * They stay apart because the grace window is a setting, not a law — the whole
+ * app already asks the right one of the two, so putting the window back is a
+ * one-line change rather than an audit of every call site.
  *
  * Both take an explicit instant so the behaviour is testable without mocking the
  * clock; the zero-argument wrappers below are what the app calls.

@@ -64,10 +64,11 @@ console.log("\nactivityLocalDay — reset hour");
     activityLocalDay(ran("2026-08-24T02:59:00Z"), 3), "2026-08-23");
   check("11:00 PM Sun, reset 3 -> Sunday (evening is never shifted)",
     activityLocalDay(ran("2026-08-23T23:00:00Z"), 3), "2026-08-23");
-  // The default is the league rollover, not 0. A caller that forgets the
-  // argument must not quietly file a 1 AM session into the wrong week.
-  check("defaults to the league rollover, not to no shift",
-    activityLocalDay(ran("2026-08-24T01:30:00Z")), "2026-08-23");
+  // The default is the league rollover, whatever it is set to. It is midnight
+  // now, so a 1 AM Monday session is a Monday session — the same answer the log
+  // form gives, which is the property that actually matters.
+  check("defaults to the league rollover, which is midnight",
+    activityLocalDay(ran("2026-08-24T01:30:00Z")), "2026-08-24");
   check("the default IS RESET_HOUR",
     activityLocalDay(ran("2026-08-24T01:30:00Z")),
     activityLocalDay(ran("2026-08-24T01:30:00Z"), RESET_HOUR));
@@ -79,9 +80,9 @@ console.log("\nactivityLocalDay — week bucketing (the forfeit)");
     weekStart(activityLocalDay(ran("2026-08-24T01:30:00Z"), 3)!), "2026-08-17");
   check("1:30 AM Mon, reset 0 scores in the new week",
     weekStart(activityLocalDay(ran("2026-08-24T01:30:00Z"), 0)!), "2026-08-24");
-  // As shipped — no argument — a Sunday-night run stays in the week it closed.
-  check("1:30 AM Mon by default scores in the previous week",
-    weekStart(activityLocalDay(ran("2026-08-24T01:30:00Z"))!), "2026-08-17");
+  // As shipped — no argument — a 1 AM Monday run opens the new week.
+  check("1:30 AM Mon by default scores in the new week",
+    weekStart(activityLocalDay(ran("2026-08-24T01:30:00Z"))!), "2026-08-24");
 }
 
 console.log("\nan import agrees with the log form's own default day");
@@ -136,8 +137,8 @@ console.log("\ntoImport threads the reset hour through");
   check("km comes from metres", mapped?.input.km, 10);
   // importActivities calls toImport with no reset argument, so this is the path
   // that actually runs in production.
-  check("with no argument it still shifts (the shipped path)",
-    toImport("ath1", ran("2026-08-24T01:30:00Z"))?.input.occurredOn, "2026-08-23");
+  check("with no argument it uses the league rollover (the shipped path)",
+    toImport("ath1", ran("2026-08-24T01:30:00Z"))?.input.occurredOn, "2026-08-24");
 }
 
 console.log("\ntoImport carries the ascent");

@@ -20,7 +20,7 @@ export function LogTab({
   league: League;
   /** The real calendar day — the latest date a session may be filed under. */
   refDay: DayKey;
-  /** The day a session logged right now counts for. Before the 3 AM rollover
+  /** The day a session logged right now counts for. Inside a rollover window
    *  that is still yesterday, which is what a new log defaults to. */
   logDay: DayKey;
 }) {
@@ -133,10 +133,10 @@ export function LogTab({
     setConfirmDelete(null);
   }
 
-  // Between midnight and the rollover the board has already turned over but a
-  // session still counts for the day that ended, so the form's date looks
-  // "wrong" unless we say why. Only shown while the draft is on that default —
-  // once they move the date themselves the explanation no longer applies.
+  // The day now ends at midnight (RESET_HOUR = 0), so the form's default date
+  // and the board always agree. The explanation survives for the same reason the
+  // two clocks do: if a grace window ever comes back, the form says so again
+  // rather than silently filing a session into yesterday.
   const inGraceWindow = logDay !== refDay;
   const dateHint =
     inGraceWindow && draft.occurredOn === logDay

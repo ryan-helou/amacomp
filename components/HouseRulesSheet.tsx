@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SPORT_ORDER, fmtPoints, ratesOn } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { RESET_HOUR, type DayKey } from "@/lib/dates";
+import { type DayKey } from "@/lib/dates";
 import { SPORT_UNIT, elevationRateLabel, rateLabel, type Settings } from "@/lib/types";
 import { Glyph } from "./Glyph";
 
@@ -102,10 +102,10 @@ export function HouseRulesSheet({
         </div>
 
         <p className="mt-4 rounded-xl pane border border-line bg-tile px-4 py-3 text-[0.8125rem] text-ink-2">
-          Weeks run Monday to Sunday, and the day rolls over at{" "}
-          <span className="font-semibold text-ink">{RESET_HOUR} AM</span> — the same hour
-          for everyone. A Sunday night session that finishes at 1 AM still counts for
-          that week.
+          Weeks run Monday to Sunday, and the day ends at{" "}
+          <span className="font-semibold text-ink">midnight</span>, Montreal time, for
+          everyone. A Sunday session has to be finished by then to count for that week,
+          wherever in the world you are.
         </p>
 
         <div className="my-5 h-px bg-line" />
