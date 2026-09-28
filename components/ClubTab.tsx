@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { CLUB_LIVE, CLUB_ROOMS, type ClubRoom } from "@/lib/club";
+import { Wallet } from "./Wallet";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 
@@ -14,7 +15,7 @@ import type { DayKey } from "@/lib/dates";
  * while the real thing runs locally.
  */
 export function ClubTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
-  const [room, setRoom] = useState<ClubRoom>("shop");
+  const [room, setRoom] = useState<ClubRoom>("wallet");
 
   if (!CLUB_LIVE) return <ClubTeaser />;
 
@@ -40,12 +41,16 @@ export function ClubTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
         ))}
       </div>
 
-      {/* Each room lands here as it's built. */}
-      <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
-        {CLUB_ROOMS.find((r) => r.id === room)?.blurb}
-        <br />
-        <span className="text-ink-3">Being built — {state.athletes.length} members, {refDay}.</span>
-      </p>
+      {room === "wallet" ? (
+        <Wallet state={state} refDay={refDay} />
+      ) : (
+        /* Bets and challenges land here as they're built. */
+        <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
+          {CLUB_ROOMS.find((r) => r.id === room)?.blurb}
+          <br />
+          <span className="text-ink-3">Being built.</span>
+        </p>
+      )}
     </div>
   );
 }
@@ -97,7 +102,7 @@ function ClubTeaser() {
       <section>
         <h3 className="eyebrow text-ink-3">What you&rsquo;ll do with them</h3>
         <ul className="mt-2 divide-y divide-line overflow-hidden rounded-xl pane border border-line bg-tile">
-          {CLUB_ROOMS.map((r) => (
+          {CLUB_ROOMS.filter((r) => r.id !== "wallet").map((r) => (
             <li key={r.id} className="px-4 py-3">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-[0.9375rem] font-semibold text-ink">{r.label}</span>
