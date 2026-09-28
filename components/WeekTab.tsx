@@ -74,7 +74,7 @@ export function WeekTab({
   // Excused counts as through: they are not on the hook for the forfeit, and
   // leaving them in the denominator makes a week that everyone survived read as
   // "3/4 through" forever.
-  const met = standings.filter((s) => s.points >= s.goal || s.excused).length;
+  const met = standings.filter((s) => s.quotaPoints >= s.goal || s.excused).length;
   const champ = useReigningChampion();
   // Keyed to the week ON SCREEN, not to today — this tab pages back through
   // finished weeks, and an excuse belongs to the week it was granted for.
@@ -168,10 +168,35 @@ export function WeekTab({
             bySport={mine?.bySport}
             awarded={mine?.awardedPoints}
             excused={mine?.excusedPoints}
+            // The ring is the forfeit, so it tracks the quota total — which
+            // differs from the week's points only when a session landed in the
+            // small hours of a Monday.
+            quotaPoints={mine?.quotaPoints}
             goal={goal}
             size={(mine?.points ?? 0) > 0 ? 196 : 148}
           />
         </div>
+
+        {mine && Math.abs(mine.quotaPoints - mine.points) > 0.05 && (
+          <p className="mt-2 text-xs text-ink-2">
+            {mine.quotaPoints > mine.points ? (
+              <>
+                Includes{" "}
+                <span className="font-semibold text-ink">
+                  {fmtPoints(mine.quotaPoints - mine.points)} pts
+                </span>{" "}
+                from Monday morning — they score next week, but they count for this quota.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold text-ink">
+                  {fmtPoints(mine.points - mine.quotaPoints)} pts
+                </span>{" "}
+                of Monday morning scored here but counted toward last week&rsquo;s quota.
+              </>
+            )}
+          </p>
+        )}
 
         {mine?.excused && (
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-2">
@@ -205,16 +230,16 @@ export function WeekTab({
         )}
         {passed.length === 0 && (
           <p className="mt-3 text-center text-sm text-ink-2">
-            {mine && mine.points >= goal ? (
+            {mine && mine.quotaPoints >= goal ? (
               isCurrentWeek ? (
                 <>
                   You&apos;re through the quota with{" "}
-                  <span className="font-semibold text-ink">{fmtPoints(mine.points - goal)}</span> to spare.
+                  <span className="font-semibold text-ink">{fmtPoints(mine.quotaPoints - goal)}</span> to spare.
                 </>
               ) : (
                 <>
                   Cleared quota by{" "}
-                  <span className="font-semibold text-ink">{fmtPoints(mine.points - goal)} pts</span>.
+                  <span className="font-semibold text-ink">{fmtPoints(mine.quotaPoints - goal)} pts</span>.
                 </>
               )
             ) : isCurrentWeek ? (
@@ -223,10 +248,10 @@ export function WeekTab({
               </>
             ) : (
               <>
-                {mine && mine.points > 0 ? (
+                {mine && mine.quotaPoints > 0 ? (
                   <>
                     Finished{" "}
-                    <span className="font-semibold text-ink">{fmtPoints(goal - mine.points)} pts</span> short of quota.
+                    <span className="font-semibold text-ink">{fmtPoints(goal - mine.quotaPoints)} pts</span> short of quota.
                   </>
                 ) : (
                   <>No sessions logged this week.</>
@@ -245,10 +270,10 @@ export function WeekTab({
             Once quota is met the question changes: the line is behind you and
             the only number that matters is the one ahead of you on the board,
             so the same chips switch to what it takes to pass them. */}
-        {isCurrentWeek && mine && !mine.excused && mine.points < goal && (
-          <ToGo shortfall={goal - mine.points} settings={state.settings} day={logDay} />
+        {isCurrentWeek && mine && !mine.excused && mine.quotaPoints < goal && (
+          <ToGo shortfall={goal - mine.quotaPoints} settings={state.settings} day={logDay} />
         )}
-        {isCurrentWeek && mine && mine.points >= goal && h2h && !h2h.leading && (
+        {isCurrentWeek && mine && mine.quotaPoints >= goal && h2h && !h2h.leading && (
           <ToGo
             // A dead heat is not a pass, so ask for a tenth more than the gap —
             // the smallest amount the board can actually tell apart.
@@ -304,7 +329,7 @@ export function WeekTab({
 
         <ul className="mt-3 space-y-2">
           {standings.map((row) => {
-            const done = row.points >= row.goal;
+            const done = row.quotaPoints >= row.goal;
             const excused = row.excused;
             // Stack the bar: everything earned first, then the hatched tail of
             // an excused week.

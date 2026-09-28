@@ -288,8 +288,10 @@ export function lastWeekRecap(
     rangeLabel: formatRange(range),
     champion: standings[0],
     // Each row carries its own goal — Jonah's week is not everyone's week.
-    hit: standings.filter((s) => s.points >= s.goal),
-    missed: standings.filter((s) => s.points < s.goal && !s.excused),
+    // Quota totals, not points: a session from the small hours of Monday can
+    // still have saved this week (see `countsForLastWeeksQuota`).
+    hit: standings.filter((s) => s.quotaPoints >= s.goal),
+    missed: standings.filter((s) => s.quotaPoints < s.goal && !s.excused),
     excused: standings.filter((s) => s.excused),
   };
 }

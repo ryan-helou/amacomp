@@ -104,8 +104,11 @@ export function HouseRulesSheet({
         <p className="mt-4 rounded-xl pane border border-line bg-tile px-4 py-3 text-[0.8125rem] text-ink-2">
           Weeks run Monday to Sunday, and the day ends at{" "}
           <span className="font-semibold text-ink">midnight</span>, Montreal time, for
-          everyone. A Sunday session has to be finished by then to count for that week,
-          wherever in the world you are.
+          everyone. Who wins the week, the month and the season is settled at that
+          stroke. The quota is the one exception: a session finished by{" "}
+          <span className="font-semibold text-ink">3 AM Monday</span> still counts toward
+          the week that just ended, so a late Sunday night can still save you from the
+          forfeit. Its points score in the new week either way.
         </p>
 
         <div className="my-5 h-px bg-line" />

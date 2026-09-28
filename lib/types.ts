@@ -167,6 +167,14 @@ export interface Activity {
    * Scores nothing; it only feeds the time records in the Hall of Fame.
    */
   movingSeconds: number | null;
+  /**
+   * The hour of the day (0-23, league time) the session happened — from Strava's
+   * start time, or the clock when it was hand-logged. `null` when unknown.
+   *
+   * Only one rule reads it: a session in the small hours of a Monday still
+   * counts toward the quota of the week that ended (`QUOTA_GRACE_HOURS`).
+   */
+  localHour: number | null;
   createdAt: string;
 }
 

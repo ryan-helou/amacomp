@@ -110,6 +110,7 @@ export function PaceClock({
   bySport,
   awarded = 0,
   excused = 0,
+  quotaPoints,
   goal,
   size = 200,
   animate = true,
@@ -119,6 +120,12 @@ export function PaceClock({
   awarded?: number;
   /** A waived week's top-up — hatched, because it wasn't run. */
   excused?: number;
+  /**
+   * What the quota counts, when that differs from the lap's own total: a
+   * session from the small hours of Monday scores in the new week but saves the
+   * old week's quota. The ring is the forfeit, so "quota met" follows this.
+   */
+  quotaPoints?: number;
   goal: number;
   size?: number;
   animate?: boolean;
@@ -126,8 +133,9 @@ export function PaceClock({
   const hatch = `hatch-${useId().replace(/:/g, "")}`;
   const earned = SPORT_ORDER.reduce((sum, s) => sum + (bySport?.[s] ?? 0), 0);
   const points = earned + awarded + excused;
-  const done = goal > 0 && points >= goal;
-  const remaining = Math.max(goal - points, 0);
+  const forQuota = quotaPoints ?? points;
+  const done = goal > 0 && forQuota >= goal;
+  const remaining = Math.max(goal - forQuota, 0);
   const parts = goal > 0 && !done ? slices(bySport, awarded, excused, goal) : [];
   const filled = parts.reduce((sum, p) => sum + p.len, 0);
   const tip = parts[parts.length - 1]?.tip ?? "";
