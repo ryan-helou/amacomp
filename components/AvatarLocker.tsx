@@ -5,14 +5,16 @@ import {
   AVATAR_ITEMS,
   AVATAR_ITEM_BY_ID,
   DEFAULT_LOADOUT,
-  usesAccent,
+  STARTER_SKUS,
+  skuPrice,
+  waysFor,
   type Loadout,
   type Slot,
 } from "@/lib/pixelAvatar";
+import { fmtCoins } from "@/lib/coins";
 import { PixelAvatar } from "./PixelAvatar";
 
 const SLOTS: Slot[] = ["head", "eyes", "torso", "legs", "feet", "socks", "watch"];
-const PALETTE = ["#d4147e", "#16d39a", "#5f9a12", "#00c6c8", "#c9a227", "#f3f3f1", "#20242b", "#ff7a29"];
 
 /**
  * Chip labels, short enough that a slot's whole rack fits one line on a phone.
@@ -32,49 +34,49 @@ const KITS: { name: string; loadout: Loadout }[] = [
   {
     name: "Bike",
     loadout: {
-      head: { item: "head.helmet", colour: "#d4147e", accent: "#f3f3f1" },
-      eyes: { item: "eyes.shades", colour: "#20242b" },
-      torso: { item: "torso.jersey", colour: "#d4147e", accent: "#f3f3f1" },
-      legs: { item: "legs.bibs", colour: "#20242b" },
-      feet: { item: "feet.bikeshoes", colour: "#f3f3f1", accent: "#d4147e" },
-      socks: { item: "socks.tall", colour: "#f3f3f1" },
-      watch: { item: "watch.on", colour: "#20242b", accent: "#16d39a" },
+      head: { item: "head.helmet", way: "magenta" },
+      eyes: { item: "eyes.shades", way: "black" },
+      torso: { item: "torso.jersey", way: "magenta" },
+      legs: { item: "legs.bibs", way: "black" },
+      feet: { item: "feet.bikeshoes", way: "white" },
+      socks: { item: "socks.tall", way: "white" },
+      watch: { item: "watch.on", way: "black" },
     },
   },
   {
     name: "Run",
     loadout: {
-      head: { item: "head.runcap", colour: "#16d39a" },
-      eyes: { item: "eyes.shades", colour: "#20242b" },
-      torso: { item: "torso.tee", colour: "#16d39a", accent: "#f3f3f1" },
-      legs: { item: "legs.runshorts", colour: "#20242b" },
-      feet: { item: "feet.runshoes", colour: "#f3f3f1", accent: "#16d39a" },
-      socks: { item: "socks.short", colour: "#f3f3f1" },
-      watch: { item: "watch.on", colour: "#20242b", accent: "#16d39a" },
+      head: { item: "head.runcap", way: "mint" },
+      eyes: { item: "eyes.shades", way: "black" },
+      torso: { item: "torso.tee", way: "mint" },
+      legs: { item: "legs.runshorts", way: "black" },
+      feet: { item: "feet.runshoes", way: "white" },
+      socks: { item: "socks.short", way: "white" },
+      watch: { item: "watch.on", way: "black" },
     },
   },
   {
     name: "Swim",
     loadout: {
-      head: { item: "head.swimcap", colour: "#00c6c8" },
-      eyes: { item: "eyes.goggles", colour: "#20242b", accent: "#9fdfe4" },
-      torso: { item: "torso.bare", colour: "#00c6c8" },
-      legs: { item: "legs.jammers", colour: "#20242b" },
-      feet: { item: "feet.barefoot", colour: "#f3f3f1" },
-      socks: { item: "socks.none", colour: "#f3f3f1" },
-      watch: { item: "watch.on", colour: "#20242b", accent: "#00c6c8" },
+      head: { item: "head.swimcap", way: "cyan" },
+      eyes: { item: "eyes.goggles", way: "black" },
+      torso: { item: "torso.bare", way: "stock" },
+      legs: { item: "legs.jammers", way: "black" },
+      feet: { item: "feet.barefoot", way: "stock" },
+      socks: { item: "socks.none", way: "stock" },
+      watch: { item: "watch.on", way: "cyan" },
     },
   },
   {
     name: "Race",
     loadout: {
-      head: { item: "head.aero", colour: "#20242b", accent: "#c9a227" },
-      eyes: { item: "eyes.none", colour: "#20242b" },
-      torso: { item: "torso.trisuit", colour: "#20242b", accent: "#c9a227" },
-      legs: { item: "legs.bibs", colour: "#20242b" },
-      feet: { item: "feet.carbon", colour: "#c9a227", accent: "#20242b" },
-      socks: { item: "socks.short", colour: "#20242b" },
-      watch: { item: "watch.on", colour: "#20242b", accent: "#c9a227" },
+      head: { item: "head.aero", way: "black" },
+      eyes: { item: "eyes.none", way: "stock" },
+      torso: { item: "torso.trisuit", way: "black" },
+      legs: { item: "legs.bibs", way: "black" },
+      feet: { item: "feet.carbon", way: "gold" },
+      socks: { item: "socks.short", way: "black" },
+      watch: { item: "watch.on", way: "gold" },
     },
   },
 ];
@@ -90,8 +92,13 @@ const STORE_KEY = "amacomp.locker";
  * It is deliberately FLAT. An earlier version made you pick a slot, then an item,
  * then a colour — three taps to see one change, and only one slot's state visible
  * at a time, which is useless when the job is comparing gear. Here every slot's
- * rack and both its colours are on screen at once, so any change is one tap, and
- * front and back are both drawn so nothing has to be toggled to be checked.
+ * rack is on screen at once, so any change is one tap, and front and back are both
+ * drawn so nothing has to be toggled to be checked.
+ *
+ * The swatches are NOT a palette. Each one is its own thing to buy: the magenta
+ * jersey and the black jersey are two purchases, and owning one doesn't give you
+ * the other. That's why a swatch carries a price rather than recolouring what you
+ * already have.
  */
 export function AvatarLocker() {
   const [loadout, setLoadout] = useState<Loadout>(KITS[0].loadout);
@@ -117,22 +124,30 @@ export function AvatarLocker() {
     }
   }
 
-  const set = (slot: Slot, patch: Partial<Loadout[string]>) =>
-    wear({ ...loadout, [slot]: { ...loadout[slot], ...patch } });
+  /** Switching item keeps the colourway when that item is sold in it. */
+  function pickItem(slot: Slot, itemId: string) {
+    const rack = waysFor(itemId);
+    const keep = rack.find((w) => w.id === loadout[slot]?.way) ?? rack[0];
+    wear({ ...loadout, [slot]: { item: itemId, way: keep.id } });
+  }
 
   function surprise() {
     const next: Loadout = {};
     for (const slot of SLOTS) {
       const rack = AVATAR_ITEMS.filter((i) => i.slot === slot);
       const pick = rack[Math.floor(Math.random() * rack.length)];
-      next[slot] = {
-        item: pick.id,
-        colour: PALETTE[Math.floor(Math.random() * PALETTE.length)],
-        accent: PALETTE[Math.floor(Math.random() * PALETTE.length)],
-      };
+      const ways = waysFor(pick.id);
+      next[slot] = { item: pick.id, way: ways[Math.floor(Math.random() * ways.length)].id };
     }
     wear(next);
   }
+
+  // What this outfit would cost someone who only has the starter kit.
+  const bill = SLOTS.reduce((sum, slot) => {
+    const worn = loadout[slot];
+    if (!worn || STARTER_SKUS.has(`${worn.item}/${worn.way}`)) return sum;
+    return sum + skuPrice(worn.item, worn.way);
+  }, 0);
 
   return (
     <section className="rounded-2xl pane border border-gold/40 bg-tile px-3 py-4">
@@ -151,7 +166,11 @@ export function AvatarLocker() {
         ))}
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5 px-1">
+      <p className="mt-2 px-1 text-center font-mono text-[0.6875rem] text-ink-3">
+        this outfit costs <span className="text-gold">{fmtCoins(bill)}</span> beyond the starter kit
+      </p>
+
+      <div className="mt-2 flex flex-wrap gap-1.5 px-1">
         {KITS.map((k) => (
           <button
             key={k.name}
@@ -183,7 +202,11 @@ export function AvatarLocker() {
             slot === "eyes" && AVATAR_ITEM_BY_ID.get(loadout.head?.item ?? "")?.coversEyes;
           const worn = loadout[slot];
           const rack = AVATAR_ITEMS.filter((i) => i.slot === slot);
-          const accent = usesAccent(worn?.item ?? "");
+          const ways = waysFor(worn?.item ?? "");
+          const item = AVATAR_ITEM_BY_ID.get(worn?.item ?? "");
+          const way = ways.find((w) => w.id === worn?.way) ?? ways[0];
+          const price = skuPrice(worn?.item ?? "", worn?.way ?? "");
+          const owned = STARTER_SKUS.has(`${worn?.item}/${worn?.way}`) || price === 0;
           return (
             <div
               key={slot}
@@ -200,7 +223,7 @@ export function AvatarLocker() {
                   {rack.map((o) => (
                     <button
                       key={o.id}
-                      onClick={() => set(slot, { item: o.id })}
+                      onClick={() => pickItem(slot, o.id)}
                       aria-pressed={worn?.item === o.id}
                       className={`rounded-lg border px-2 py-1.5 text-[0.6875rem] ${
                         worn?.item === o.id
@@ -212,37 +235,40 @@ export function AvatarLocker() {
                     </button>
                   ))}
                 </div>
-                {/* Squares are the main colour; circles the trim, and the trim
-                    row appears only where the sprite actually has one. Two lines
-                    of eight, because sixteen swatches don't fit a phone. */}
-                <div className="mt-1.5 flex items-center gap-1">
-                  {PALETTE.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => set(slot, { colour: c })}
-                      aria-label={`${slot} colour ${c}`}
-                      className={`h-5 w-5 rounded-sm border-2 ${
-                        worn?.colour === c ? "border-ink" : "border-transparent"
-                      }`}
-                      style={{ background: c }}
-                    />
-                  ))}
-                </div>
-                {accent && (
-                  <div className="mt-1 flex items-center gap-1">
-                    {PALETTE.map((c) => (
+
+                {/* Each swatch is a separate purchase, not a recolour. Stock items
+                    (bare feet, an empty slot) have nothing to choose between. */}
+                {ways.length > 1 && (
+                  <div className="mt-1.5 flex items-center gap-1">
+                    {ways.map((w) => (
                       <button
-                        key={c}
-                        onClick={() => set(slot, { accent: c })}
-                        aria-label={`${slot} accent ${c}`}
-                        className={`h-5 w-5 rounded-full border-2 ${
-                          worn?.accent === c ? "border-ink" : "border-transparent"
+                        key={w.id}
+                        onClick={() => wear({ ...loadout, [slot]: { item: worn.item, way: w.id } })}
+                        aria-pressed={worn?.way === w.id}
+                        aria-label={`${w.label} ${item?.label ?? slot}, ${
+                          STARTER_SKUS.has(`${worn.item}/${w.id}`)
+                            ? "yours"
+                            : `${skuPrice(worn.item, w.id)} coins`
                         }`}
-                        style={{ background: c }}
+                        className={`h-5 w-5 rounded-sm border-2 ${
+                          worn?.way === w.id ? "border-ink" : "border-line"
+                        }`}
+                        style={{ background: w.colour }}
                       />
                     ))}
-                    <span className="eyebrow ml-1 text-ink-3">trim</span>
                   </div>
+                )}
+
+                {item && way && (
+                  <p className="mt-1 font-mono text-[0.625rem] text-ink-3">
+                    {ways.length > 1 ? `${way.label} · ${item.label}` : item.label}
+                    {" · "}
+                    {owned ? (
+                      <span className="text-ink-2">yours</span>
+                    ) : (
+                      <span className="text-gold">{fmtCoins(price)} coins</span>
+                    )}
+                  </p>
                 )}
               </div>
             </div>
