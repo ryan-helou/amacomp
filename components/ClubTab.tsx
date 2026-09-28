@@ -23,7 +23,7 @@ export function ClubTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
   if (!CLUB_LIVE) {
     return (
       <div className="space-y-5">
-        {canPreviewAvatar(state.me?.name) && <AvatarLocker />}
+        {canPreviewAvatar(state.me?.name) && <AvatarLocker state={state} refDay={refDay} />}
         <ClubTeaser />
       </div>
     );

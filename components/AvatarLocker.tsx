@@ -11,7 +11,9 @@ import {
   type Loadout,
   type Slot,
 } from "@/lib/pixelAvatar";
-import { fmtCoins } from "@/lib/coins";
+import { coinAccount, fmtCoins } from "@/lib/coins";
+import type { AppState } from "@/lib/types";
+import type { DayKey } from "@/lib/dates";
 import { PixelAvatar } from "./PixelAvatar";
 
 const SLOTS: Slot[] = ["head", "eyes", "torso", "legs", "feet", "socks", "watch"];
@@ -65,6 +67,17 @@ const SHELF: Record<Slot, string> = {
   watch: "Watches",
 };
 
+/**
+ * What a tier looks like. Common gear is quiet; the dear stuff earns its ring,
+ * which is how a shelf tells you what's worth saving for without a word.
+ */
+const TIER: Record<AvatarItem["tier"], { ring: string; tag: string | null; glow?: string }> = {
+  common: { ring: "border-line", tag: null },
+  rare: { ring: "border-[#3d7fd6]/60", tag: "rare", glow: "#3d7fd6" },
+  epic: { ring: "border-[#9a5cf0]/60", tag: "epic", glow: "#9a5cf0" },
+  legendary: { ring: "border-gold/70", tag: "legendary", glow: "var(--color-gold)" },
+};
+
 const STORE_KEY = "amacomp.locker";
 
 /**
@@ -84,7 +97,7 @@ const STORE_KEY = "amacomp.locker";
  * the other. That's why a swatch carries a price rather than recolouring what you
  * already have.
  */
-export function AvatarLocker() {
+export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const [loadout, setLoadout] = useState<Loadout>(KITS[0].loadout);
 
   // The last outfit comes back on reload — this thing gets opened a hundred times
@@ -117,6 +130,11 @@ export function AvatarLocker() {
     wear(next);
   }
 
+  // What he could actually spend. A shop with a made-up balance is a mock.
+  const balance = coinAccount(
+    state.me?.id ?? "", state.athletes, state.activities, state.settings, refDay,
+  ).balance;
+
   // What this outfit would cost someone who only has the starter kit.
   const bill = SLOTS.reduce((sum, slot) => {
     const worn = loadout[slot];
@@ -125,68 +143,124 @@ export function AvatarLocker() {
   }, 0);
 
   return (
-    <section className="rounded-2xl pane border border-gold/40 bg-tile px-3 py-4">
-      <div className="flex items-baseline justify-between gap-3 px-1">
-        <h3 className="stamp text-lg text-gold">LOCKER</h3>
-        <span className="eyebrow text-ink-3">Yours only · not saved yet</span>
-      </div>
+    <section className="overflow-hidden rounded-2xl pane border border-gold/40 bg-tile">
+      {/* The stage: a lit floor, him on it, and what he'd cost to dress. */}
+      <div
+        className="relative px-3 pb-3 pt-4"
+        style={{
+          background:
+            "radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--color-gold) 14%, transparent) 0%, transparent 65%)",
+        }}
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="stamp text-lg text-gold">LOCKER</h3>
+          <span className="eyebrow text-ink-3">{state.me?.name} · not saved yet</span>
+        </div>
 
-      {/* Front and back together: turning him around shouldn't cost a tap. */}
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {(["front", "back"] as const).map((view) => (
-          <div key={view} className="rounded-xl border border-line bg-deck-2/40 px-2 pb-1 pt-2">
-            <PixelAvatar loadout={loadout} view={view} className="mx-auto w-full max-w-[9rem]" />
-            <span className="eyebrow mt-1 block text-center text-ink-3">{view}</span>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {(["front", "back"] as const).map((view) => (
+            <div
+              key={view}
+              className="relative overflow-hidden rounded-xl border border-line/70"
+              style={{
+                background:
+                  "linear-gradient(180deg, color-mix(in srgb, var(--color-deck-2) 70%, transparent) 0%, var(--color-deck-2) 100%)",
+              }}
+            >
+              {/* A pool of light under the figure, so he stands on something. */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-4 bottom-2 h-3 rounded-[50%]"
+                style={{ background: "radial-gradient(50% 100% at 50% 50%, rgba(0,0,0,0.55), transparent 70%)" }}
+              />
+              <PixelAvatar
+                loadout={loadout}
+                view={view}
+                className="relative mx-auto w-full max-w-[9.5rem] px-2 pt-2"
+              />
+              <span className="eyebrow relative block pb-1.5 text-center text-[0.5625rem] text-ink-3">
+                {view}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* The receipt: what he has, what the outfit runs to. */}
+        <div className="mt-3 flex items-stretch gap-2">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-line bg-deck-2/50 px-3 py-2">
+            {/* eslint-disable-next-line @next/next/no-img-element -- one cached file */}
+            <img src="/tri-coin.png" alt="" aria-hidden className="h-5 w-5 object-contain" />
+            <span className="min-w-0">
+              <span className="eyebrow block text-[0.5625rem] text-ink-3">balance</span>
+              <span className="stamp block text-base leading-none tabular-nums text-gold">
+                {fmtCoins(balance)}
+              </span>
+            </span>
           </div>
-        ))}
-      </div>
-
-      <p className="mt-2 px-1 text-center font-mono text-[0.6875rem] text-ink-3">
-        this outfit costs <span className="text-gold">{fmtCoins(bill)}</span> beyond the starter kit
-      </p>
-
-      <div className="mt-2 flex flex-wrap gap-1.5 px-1">
-        {KITS.map((k) => (
-          <button
-            key={k.name}
-            onClick={() => wear(k.loadout)}
-            className="eyebrow rounded-full border border-line px-3 py-1.5 text-ink-2"
+          <div
+            className={`flex flex-1 flex-col justify-center rounded-xl border px-3 py-2 ${
+              bill > balance ? "border-line bg-deck-2/50" : "border-gold/40 bg-gold/10"
+            }`}
           >
-            {k.name}
+            <span className="eyebrow text-[0.5625rem] text-ink-3">this outfit</span>
+            <span
+              className={`stamp text-base leading-none tabular-nums ${
+                bill > balance ? "text-ink-2" : "text-gold"
+              }`}
+            >
+              {fmtCoins(bill)}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {KITS.map((k) => (
+            <button
+              key={k.name}
+              onClick={() => wear(k.loadout)}
+              className="eyebrow rounded-full border border-line bg-deck-2/40 px-3 py-1.5 text-ink-2"
+            >
+              {k.name}
+            </button>
+          ))}
+          <button
+            onClick={surprise}
+            className="eyebrow rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
+          >
+            Random
           </button>
-        ))}
-        <button
-          onClick={surprise}
-          className="eyebrow rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
-        >
-          Random
-        </button>
-        <button
-          onClick={() => wear(DEFAULT_LOADOUT)}
-          className="eyebrow rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
-        >
-          Reset
-        </button>
+          <button
+            onClick={() => wear(DEFAULT_LOADOUT)}
+            className="eyebrow rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
-      <div className="mt-3 space-y-4">
+      <div className="space-y-5 border-t border-line px-3 py-4">
         {SLOTS.map((slot) => {
           // A visor IS the eyewear, so say so rather than leaving a shelf of
           // boxes that quietly do nothing.
           const hidden =
             slot === "eyes" && AVATAR_ITEM_BY_ID.get(loadout.head?.item ?? "")?.coversEyes;
+          const rack = rackFor(slot);
           return (
             <section key={slot} className={hidden ? "opacity-40" : ""}>
-              <h4 className="eyebrow flex items-baseline gap-2 px-1 text-ink-3">
-                {SHELF[slot]}
-                {hidden && <span className="normal-case text-ink-3">under the visor</span>}
+              <h4 className="flex items-center gap-2">
+                <span className="eyebrow shrink-0 text-ink-2">{SHELF[slot]}</span>
+                <span aria-hidden className="h-px flex-1 bg-line" />
+                <span className="shrink-0 font-mono text-[0.625rem] text-ink-3">
+                  {hidden ? "under the visor" : `${rack.length} items`}
+                </span>
               </h4>
-              <div className="mt-1.5 grid grid-cols-3 gap-2">
-                {rackFor(slot).map((item) => (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {rack.map((item) => (
                   <ShopBox
                     key={item.id}
                     item={item}
                     worn={loadout[slot]?.item === item.id}
+                    affordable={item.price <= balance}
                     onPick={() => wear({ ...loadout, [slot]: { item: item.id } })}
                   />
                 ))}
@@ -196,15 +270,15 @@ export function AvatarLocker() {
         })}
       </div>
 
-      <div className="mt-1 flex items-center gap-3 border-t border-line px-1 pt-3">
+      <div className="flex items-center gap-3 border-t border-line bg-deck-2/30 px-4 py-3">
         <span className="eyebrow text-ink-3">On the board</span>
-        <span className="h-9 w-9 overflow-hidden rounded-full border border-line bg-deck-2/40">
+        <span className="h-9 w-9 overflow-hidden rounded-full border border-gold/50 bg-deck-2">
           <PixelAvatar loadout={loadout} bust className="h-full w-full" />
         </span>
-        <span className="h-9 w-9 overflow-hidden rounded-full border border-line bg-deck-2/40">
+        <span className="h-9 w-9 overflow-hidden rounded-full border border-line bg-deck-2">
           <PixelAvatar loadout={DEFAULT_LOADOUT} bust className="h-full w-full" />
         </span>
-        <span className="text-xs text-ink-3">yours · a new athlete&rsquo;s</span>
+        <span className="font-mono text-[0.625rem] text-ink-3">yours · a new athlete&rsquo;s</span>
       </div>
     </section>
   );
@@ -220,45 +294,70 @@ export function AvatarLocker() {
 function ShopBox({
   item,
   worn,
+  affordable,
   onPick,
 }: {
   item: AvatarItem;
   worn: boolean;
+  affordable: boolean;
   onPick: () => void;
 }) {
   const src = itemImage(item.id);
   const free = STARTER_ITEMS.has(item.id) || item.price === 0;
+  const tier = TIER[item.tier];
   return (
     <button
       onClick={onPick}
       aria-pressed={worn}
-      className={`flex flex-col items-stretch overflow-hidden rounded-xl border text-left ${
-        worn ? "border-gold bg-gold/10" : "border-line bg-deck-2/40"
+      className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-colors ${
+        worn ? "border-gold bg-gold/10" : `${tier.ring} bg-deck-2/40`
       }`}
     >
-      <span className="relative flex h-16 items-center justify-center bg-deck-2/60 p-1.5">
+      <span
+        className="relative flex h-[4.5rem] items-center justify-center p-2"
+        style={{
+          background: tier.glow
+            ? `radial-gradient(75% 65% at 50% 55%, color-mix(in srgb, ${tier.glow} 22%, transparent) 0%, transparent 70%)`
+            : undefined,
+        }}
+      >
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element -- a generated data: URI, not a file
           <img src={src} alt="" className="pixel-avatar h-full w-full object-contain" />
         ) : (
-          <span className="eyebrow text-ink-3">nothing</span>
+          <span className="eyebrow flex h-full w-full items-center justify-center rounded-lg border border-dashed border-line text-[0.5625rem] text-ink-3">
+            nothing
+          </span>
         )}
         {worn && (
-          <span className="eyebrow absolute right-1 top-1 rounded bg-gold px-1 py-0.5 text-[0.5rem] text-on-gold">
+          <span className="eyebrow absolute right-1 top-1 rounded bg-gold px-1.5 py-0.5 text-[0.5rem] text-on-gold">
             worn
           </span>
         )}
       </span>
-      <span className="flex min-h-[2.75rem] flex-col justify-between gap-0.5 px-2 py-1.5">
-        <span className="text-[0.6875rem] leading-tight text-ink">{item.label}</span>
-        <span className="flex items-center gap-1 font-mono text-[0.625rem]">
+      <span className="flex min-h-[3.25rem] flex-1 flex-col gap-0.5 border-t border-line/60 px-2 py-1.5">
+        {/* The tier gets its own line: "legendary" beside a price doesn't fit a
+            third of a phone, and a truncated tier is worse than none. */}
+        {tier.tag && (
+          <span className="eyebrow text-[0.4375rem]" style={{ color: tier.glow }}>
+            {tier.tag}
+          </span>
+        )}
+        <span className="text-[0.6875rem] leading-[1.15] text-ink">{item.label}</span>
+        <span className="mt-auto flex items-center gap-1 pt-0.5 font-mono text-[0.625rem]">
           {free ? (
             <span className="text-ink-3">yours</span>
           ) : (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element -- one cached file, forty boxes */}
-              <img src="/tri-coin.png" alt="" aria-hidden className="h-3 w-3 object-contain" />
-              <span className="text-gold">{fmtCoins(item.price)}</span>
+              <img
+                src="/tri-coin.png"
+                alt=""
+                aria-hidden
+                className={`h-3 w-3 object-contain ${affordable ? "" : "opacity-40"}`}
+              />
+              {/* Out of reach is worth saying quietly, not hiding. */}
+              <span className={affordable ? "text-gold" : "text-ink-3"}>{fmtCoins(item.price)}</span>
             </>
           )}
         </span>
