@@ -68,6 +68,18 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "watch.on", slot: "watch", label: "GPS watch", price: 300, tier: "common", sprite: "watch" },
 ];
 
+/**
+ * Does this item have a second colour? Derived from the sprite, not declared:
+ * an "A" cell is the accent, so the locker offers an accent picker exactly
+ * where one changes something and nowhere else.
+ */
+export function usesAccent(itemId: string): boolean {
+  const item = AVATAR_ITEM_BY_ID.get(itemId);
+  if (!item?.sprite) return false;
+  const sheets = [item.sprite, item.spriteBack].filter(Boolean) as string[];
+  return sheets.some((name) => DATA.g[name]?.rows.some((r) => r.includes("A")));
+}
+
 export const AVATAR_ITEM_BY_ID = new Map(AVATAR_ITEMS.map((i) => [i.id, i]));
 
 /** What a new athlete turns up in, before they've bought anything. */
