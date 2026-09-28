@@ -55,7 +55,7 @@ export function ActivityForm({
   onCancel?: () => void;
   maxDate: DayKey;
   /** Optional note under the date, explaining a default the athlete didn't pick —
-   *  currently the pre-3 AM rollover, where "today" files as yesterday. */
+   *  no window today (the day ends at midnight), but the plumbing stays. */
   dateHint?: string | null;
 }) {
   const unit = SPORT_UNIT[draft.sport];

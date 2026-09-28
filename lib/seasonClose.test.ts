@@ -42,7 +42,7 @@ console.log("\nthe last day says when it actually closes");
   const table = [row("p", "Philippe", 900, 1), row("r", "Ryan", 860, 2)];
   const m = Object.fromEntries(seasonClosingMessages(table, 0, "Season 1").map((x) => [x.athleteId, x]));
   check("title", m.p.title, "Last day of Season 1");
-  check("the 3 AM rollover is spelled out", m.r.body, "You're 2nd, 40 pts off Philippe. It closes tonight — anything before 3 AM still counts.");
+  check("the midnight deadline is spelled out", m.r.body, "You're 2nd, 40 pts off Philippe. It closes tonight at midnight.");
 }
 
 console.log("\na shared lead is not a lead");

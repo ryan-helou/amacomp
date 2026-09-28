@@ -1,6 +1,5 @@
 import type { Standing } from "./scoring";
 import { fmtPoints } from "./scoring";
-import { RESET_HOUR } from "./dates";
 
 /**
  * The run-in to the end of a season, as push notifications.
@@ -57,12 +56,9 @@ export function seasonClosingMessages(
   const second = scored.find((s) => s.rank > 1);
 
   const title = phase === "final" ? `Last day of ${seasonLabel}` : `${seasonLabel} ends Sunday`;
-  // The rollover is the detail people get wrong on the last night: a run that
-  // finishes at 1 AM Monday still counts for Sunday, and so for this season.
+  // The last night is the one people get wrong, so say the deadline out loud.
   const clock =
-    phase === "final"
-      ? ` It closes tonight — anything before ${RESET_HOUR} AM still counts.`
-      : ` ${days(daysLeft)} left.`;
+    phase === "final" ? " It closes tonight at midnight." : ` ${days(daysLeft)} left.`;
 
   return standings.map((s) => {
     let body: string;

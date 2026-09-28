@@ -1,9 +1,9 @@
 import { LEAGUE_TZ, RESET_HOUR, dayKeyInZone, logDayAt, viewDayAt, weekStart } from "./dates";
 
 /**
- * The two clocks. The board turns over at midnight so the new week opens on
- * time; the scoring day doesn't turn over until RESET_HOUR, so a session
- * finished at 1 AM Monday still counts for the week that just ended.
+ * The two clocks. Both turn over at midnight, Montreal time (RESET_HOUR = 0),
+ * so the board and the scoring day always name the same day: a session finished
+ * at 1 AM Monday is a Monday session, in the new week.
  *
  * Getting this wrong costs someone a real forfeit — a Sunday-night ride filed
  * into the wrong week can be the difference between hitting quota and owing the
@@ -36,76 +36,52 @@ const MON = "2026-08-31";
 const OLD_WEEK = "2026-08-24";
 const NEW_WEEK = "2026-08-31";
 
-console.log("\nthe rollover is 3 AM");
+console.log("\nthe day ends at midnight");
 {
-  check("RESET_HOUR is 3", RESET_HOUR, 3);
+  check("RESET_HOUR is 0", RESET_HOUR, 0);
 }
 
 console.log("\nSunday night — nothing has turned over yet");
 {
   check("11:30 PM Sun shows Sunday", viewDayAt(at(2026, 8, 30, 23, 30)), SUN);
   check("11:30 PM Sun counts for Sunday", logDayAt(at(2026, 8, 30, 23, 30)), SUN);
+  check("and scores in the week that is ending",
+    weekStart(logDayAt(at(2026, 8, 30, 23, 30))), OLD_WEEK);
 }
 
-console.log("\nMidnight to 3 AM Monday — the two clocks disagree, on purpose");
+console.log("\nMidnight Monday — both clocks turn over together");
 {
-  // This is the whole feature: the board has flipped, the points have not.
-  check("00:30 Mon SHOWS Monday", viewDayAt(at(2026, 8, 31, 0, 30)), MON);
-  check("00:30 Mon COUNTS for Sunday", logDayAt(at(2026, 8, 31, 0, 30)), SUN);
-  check("00:30 Mon shows the NEW week",
-    weekStart(viewDayAt(at(2026, 8, 31, 0, 30))), NEW_WEEK);
-  check("00:30 Mon scores in the OLD week",
-    weekStart(logDayAt(at(2026, 8, 31, 0, 30))), OLD_WEEK);
-
-  check("00:00 Mon exactly — board flips on the stroke",
-    viewDayAt(at(2026, 8, 31, 0, 0)), MON);
-  check("00:00 Mon exactly — still scores as Sunday",
-    logDayAt(at(2026, 8, 31, 0, 0)), SUN);
-
-  check("2:59 AM Mon still counts for Sunday", logDayAt(at(2026, 8, 31, 2, 59)), SUN);
-}
-
-console.log("\n3 AM Monday onward — the clocks agree again");
-{
-  check("3:00 AM Mon counts for Monday (rollover is inclusive)",
-    logDayAt(at(2026, 8, 31, 3, 0)), MON);
-  check("3:00 AM Mon scores in the new week",
-    weekStart(logDayAt(at(2026, 8, 31, 3, 0))), NEW_WEEK);
-  check("noon Mon shows Monday", viewDayAt(at(2026, 8, 31, 12, 0)), MON);
+  // The 3 AM grace is gone: a 1 AM Monday run is a Monday run, in the new week.
+  check("00:00 Mon exactly shows Monday", viewDayAt(at(2026, 8, 31, 0, 0)), MON);
+  check("00:00 Mon exactly counts for Monday", logDayAt(at(2026, 8, 31, 0, 0)), MON);
+  check("00:30 Mon counts for Monday", logDayAt(at(2026, 8, 31, 0, 30)), MON);
+  check("1 AM Mon scores in the NEW week",
+    weekStart(logDayAt(at(2026, 8, 31, 1, 0))), NEW_WEEK);
+  check("2:59 AM Mon no longer counts for Sunday",
+    logDayAt(at(2026, 8, 31, 2, 59)), MON);
   check("noon Mon counts for Monday", logDayAt(at(2026, 8, 31, 12, 0)), MON);
-}
-
-console.log("\nThe grace applies every night, not just at the week boundary");
-{
-  // Wed 2026-09-02 at 1 AM belongs to Tuesday — same week either way, so it
-  // moves no points; it keeps the feed's day labels matching how it was lived.
-  check("1 AM Wed shows Wednesday", viewDayAt(at(2026, 9, 2, 1, 0)), "2026-09-02");
-  check("1 AM Wed counts for Tuesday", logDayAt(at(2026, 9, 2, 1, 0)), "2026-09-01");
-  check("mid-week grace moves no week",
-    weekStart(logDayAt(at(2026, 9, 2, 1, 0))), weekStart(viewDayAt(at(2026, 9, 2, 1, 0))));
 }
 
 console.log("\nInvariants across a full day");
 {
-  // The shift only ever pulls a session BACKWARD, and only before the rollover.
+  // The two clocks agree at every hour, and a session is never pushed forward.
   let bad = 0;
   for (let h = 0; h < 24; h++) {
     const ms = at(2026, 8, 31, h, 0);
     const view = viewDayAt(ms);
     const log = logDayAt(ms);
     if (log > view) bad++; // never pushed into a later day
-    const shouldDiffer = h < RESET_HOUR;
-    if (shouldDiffer !== (log !== view)) bad++;
-    if (shouldDiffer && log !== SUN) bad++;
+    if (log !== view) bad++; // and at a midnight rollover, never pulled back either
   }
-  check("log day is never later than the view day, and differs only before 3 AM", bad, 0);
+  check("the board and the scoring day agree at every hour", bad, 0);
 }
 
 console.log("\nA month boundary is just another midnight");
 {
-  // 1 Sep 2026 at 1 AM belongs to 31 Aug — the month board must not claim it.
+  // 1 Sep 2026 at 1 AM is September for both clocks now.
   check("1 AM on the 1st shows September", viewDayAt(at(2026, 9, 1, 1, 0)), "2026-09-01");
-  check("1 AM on the 1st counts for August", logDayAt(at(2026, 9, 1, 1, 0)), "2026-08-31");
+  check("1 AM on the 1st counts for September", logDayAt(at(2026, 9, 1, 1, 0)), "2026-09-01");
+  check("11:59 PM on 31 Aug is still August", logDayAt(at(2026, 8, 31, 23, 59)), "2026-08-31");
 }
 
 console.log("\nthe server's day is the league's, not the container's");

@@ -12,7 +12,7 @@ import { ratesOn } from "./scoring";
  */
 
 /** The hour a change is announced on the day it starts. Sessions logged before
- *  the 3 AM rollover still count for yesterday at yesterday's rates, so telling
+ *  a rollover window still count for yesterday at yesterday's rates, so telling
  *  someone at 1 AM that the rates have moved would be telling them a lie about
  *  the run they are logging. 6 AM is comfortably clear of that. */
 export const ANNOUNCE_HOUR = 6;

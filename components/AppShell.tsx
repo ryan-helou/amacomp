@@ -57,7 +57,7 @@ export function AppShell({
   /** The real calendar day on the server — what the app shows. */
   serverToday: DayKey;
   /** The day a session logged right now counts for; differs from `serverToday`
-   *  only between midnight and the 3 AM rollover. Rendered server-side too, so
+   *  only while a rollover grace window is set, which it isn't today. Rendered server-side too, so
    *  the log form doesn't flash the wrong date during that window. */
   serverLogDay: DayKey;
 }) {
@@ -72,12 +72,10 @@ export function AppShell({
   // resumed rather than loaded, so waking up re-reads both the date and the board.
   //
   // TWO days, not one. `refDay` is the real calendar day and drives everything
-  // the athlete looks at, so the new week opens at midnight for everyone.
-  // `logDay` is the day a session logged right now counts for, and holds on the
-  // old day until the 3 AM rollover — see RESET_HOUR in lib/dates. They differ
-  // for three hours a night, and that gap is the whole feature: on Monday at
-  // 1 AM the board has already turned over while the run you just did still
-  // scores in the week that ended.
+  // the athlete looks at. `logDay` is the day a session logged right now counts
+  // for. The rollover is midnight (RESET_HOUR = 0 in lib/dates), so today they
+  // are always the same answer — they stay separate because a grace window is a
+  // setting, and putting one back shouldn't mean auditing every screen.
   const [refDay, setRefDay] = useState<DayKey>(serverToday);
   const [logDay, setLogDay] = useState<DayKey>(serverLogDay);
   useEffect(() => {
@@ -168,7 +166,7 @@ export function AppShell({
   // The scoring-change card. Same shape as the kickoff above: derived from
   // settings rather than hard-coded, gated on the athlete's own clock, and
   // marked seen up front so a reload can't replay it. It waits until 6 AM on the
-  // day a change starts — before the 3 AM rollover a session is still being
+  // day a change starts — inside a rollover window a session is still being
   // logged into yesterday at yesterday's rates, and announcing the new ones then
   // would be telling the athlete something untrue about the run in front of them.
   const [pointsChange, setPointsChange] = useState<RateAnnouncement | null>(null);
