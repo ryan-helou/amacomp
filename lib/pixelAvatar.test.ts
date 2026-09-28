@@ -1,4 +1,4 @@
-import { AVATAR_ITEMS, AVATAR_ITEM_BY_ID, DEFAULT_LOADOUT, avatarSvg, type Loadout } from "./pixelAvatar";
+import { AVATAR_ITEMS, AVATAR_ITEM_BY_ID, DEFAULT_LOADOUT, avatarSvg, usesAccent, type Loadout } from "./pixelAvatar";
 import sprites from "./avatar/sprites.json";
 
 /**
@@ -64,6 +64,26 @@ console.log("\nwhat you wear changes what is drawn");
   // And only the aero has a second drawing; everything else mirrors.
   const back = avatarSvg(aeroAlone, { view: "back" });
   check("the back view is its own drawing", back !== avatarSvg(aeroAlone), true);
+}
+
+console.log("\nthe accent picker is offered only where it does something");
+{
+  // The locker shows a second colour per item, and it must not lie: offering an
+  // accent on an item with no accent cell is a control that does nothing.
+  check("a jersey has trim", usesAccent("torso.jersey"), true);
+  check("bib shorts do not", usesAccent("legs.bibs"), false);
+  check("nothing worn has no accent", usesAccent("head.none"), false);
+
+  // And where it says there is one, changing it has to change the drawing.
+  const accented = AVATAR_ITEMS.filter((i) => usesAccent(i.id));
+  check("several items carry one", accented.length > 0, true);
+  let honest = 0;
+  for (const item of accented) {
+    const base: Loadout = { ...DEFAULT_LOADOUT, [item.slot]: { item: item.id, colour: "#123456", accent: "#abcdef" } };
+    const other: Loadout = { ...DEFAULT_LOADOUT, [item.slot]: { item: item.id, colour: "#123456", accent: "#fedcba" } };
+    if (avatarSvg(base) !== avatarSvg(other)) honest++;
+  }
+  check("and every one of them redraws when it changes", honest, accented.length);
 }
 
 console.log(failures === 0 ? "\nAll avatar tests passed.\n" : `\n${failures} failing.\n`);
