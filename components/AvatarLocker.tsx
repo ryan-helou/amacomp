@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from "react";
 import {
-  AVATAR_ITEMS,
   AVATAR_ITEM_BY_ID,
   DEFAULT_LOADOUT,
-  STARTER_SKUS,
-  skuPrice,
-  waysFor,
+  STARTER_ITEMS,
+  rackFor,
   type Loadout,
   type Slot,
 } from "@/lib/pixelAvatar";
@@ -17,66 +15,76 @@ import { PixelAvatar } from "./PixelAvatar";
 const SLOTS: Slot[] = ["head", "eyes", "torso", "legs", "feet", "socks", "watch"];
 
 /**
- * Chip labels, short enough that a slot's whole rack fits one line on a phone.
- * The catalogue keeps the real names — those are what the shop will sell.
+ * Chip labels. The garment is obvious from the row and the caption below it, so
+ * a chip only has to say which one of them this is — which, now that colours are
+ * separate items, is mostly the colour.
  */
 const SHORT: Record<string, string> = {
-  "head.none": "None", "head.helmet": "Helmet", "head.swimcap": "Swim", "head.runcap": "Cap",
-  "head.aero": "Aero", "eyes.none": "None", "eyes.shades": "Shades", "eyes.goggles": "Goggles",
-  "torso.bare": "Bare", "torso.jersey": "Jersey", "torso.tee": "Shirt", "torso.trisuit": "Tri suit",
-  "legs.bibs": "Bibs", "legs.runshorts": "Shorts", "legs.jammers": "Jammers",
-  "feet.barefoot": "Bare", "feet.bikeshoes": "Bike", "feet.runshoes": "Run", "feet.carbon": "Carbon",
-  "socks.none": "None", "socks.short": "Short", "socks.tall": "Tall",
-  "watch.none": "Off", "watch.on": "Watch",
+  "head.none": "None", "head.helmet.magenta": "Helmet", "head.helmet.black": "Helmet",
+  "head.swimcap.cyan": "Swim", "head.swimcap.magenta": "Swim",
+  "head.runcap.mint": "Cap", "head.runcap.white": "Cap",
+  "head.aero.black": "Aero", "head.aero.gold": "Aero",
+  "eyes.none": "None", "eyes.shades.black": "Shades", "eyes.shades.gold": "Shades",
+  "eyes.goggles.cyan": "Goggles", "eyes.goggles.black": "Goggles",
+  "torso.bare": "Bare", "torso.tee.magenta": "Shirt", "torso.tee.mint": "Shirt",
+  "torso.tee.white": "Shirt", "torso.jersey.magenta": "Jersey",
+  "torso.jersey.black": "Jersey", "torso.jersey.gold": "Jersey",
+  "torso.trisuit.black": "Tri suit", "torso.trisuit.cyan": "Tri suit",
+  "legs.runshorts.black": "Shorts", "legs.runshorts.lime": "Shorts",
+  "legs.bibs.black": "Bibs", "legs.bibs.magenta": "Bibs",
+  "legs.jammers.black": "Jammers", "legs.jammers.cyan": "Jammers",
+  "feet.barefoot": "Bare", "feet.runshoes.white": "Run", "feet.runshoes.orange": "Run",
+  "feet.bikeshoes.white": "Bike", "feet.bikeshoes.black": "Bike",
+  "feet.carbon.gold": "Carbon", "feet.carbon.mint": "Carbon",
+  "socks.none": "None", "socks.short.white": "Short", "socks.short.black": "Short",
+  "socks.tall.white": "Tall", "socks.tall.magenta": "Tall",
+  "watch.none": "Off", "watch.on.black": "Watch", "watch.on.gold": "Watch",
 };
+
+/**
+ * The colour a chip is, from the item's own id — the catalogue names coloured
+ * items `<slot>.<garment>.<colour>`, so there's nothing to keep in sync.
+ */
+function toneOf(itemId: string): string | null {
+  const tone = itemId.split(".")[2];
+  return tone ? tone[0].toUpperCase() + tone.slice(1) : null;
+}
 
 const KITS: { name: string; loadout: Loadout }[] = [
   {
     name: "Bike",
     loadout: {
-      head: { item: "head.helmet", way: "magenta" },
-      eyes: { item: "eyes.shades", way: "black" },
-      torso: { item: "torso.jersey", way: "magenta" },
-      legs: { item: "legs.bibs", way: "black" },
-      feet: { item: "feet.bikeshoes", way: "white" },
-      socks: { item: "socks.tall", way: "white" },
-      watch: { item: "watch.on", way: "black" },
+      head: { item: "head.helmet.magenta" }, eyes: { item: "eyes.shades.black" },
+      torso: { item: "torso.jersey.magenta" }, legs: { item: "legs.bibs.black" },
+      feet: { item: "feet.bikeshoes.white" }, socks: { item: "socks.tall.white" },
+      watch: { item: "watch.on.black" },
     },
   },
   {
     name: "Run",
     loadout: {
-      head: { item: "head.runcap", way: "mint" },
-      eyes: { item: "eyes.shades", way: "black" },
-      torso: { item: "torso.tee", way: "mint" },
-      legs: { item: "legs.runshorts", way: "black" },
-      feet: { item: "feet.runshoes", way: "white" },
-      socks: { item: "socks.short", way: "white" },
-      watch: { item: "watch.on", way: "black" },
+      head: { item: "head.runcap.mint" }, eyes: { item: "eyes.shades.black" },
+      torso: { item: "torso.tee.mint" }, legs: { item: "legs.runshorts.black" },
+      feet: { item: "feet.runshoes.white" }, socks: { item: "socks.short.white" },
+      watch: { item: "watch.on.black" },
     },
   },
   {
     name: "Swim",
     loadout: {
-      head: { item: "head.swimcap", way: "cyan" },
-      eyes: { item: "eyes.goggles", way: "black" },
-      torso: { item: "torso.bare", way: "stock" },
-      legs: { item: "legs.jammers", way: "black" },
-      feet: { item: "feet.barefoot", way: "stock" },
-      socks: { item: "socks.none", way: "stock" },
-      watch: { item: "watch.on", way: "cyan" },
+      head: { item: "head.swimcap.cyan" }, eyes: { item: "eyes.goggles.black" },
+      torso: { item: "torso.bare" }, legs: { item: "legs.jammers.black" },
+      feet: { item: "feet.barefoot" }, socks: { item: "socks.none" },
+      watch: { item: "watch.on.black" },
     },
   },
   {
     name: "Race",
     loadout: {
-      head: { item: "head.aero", way: "black" },
-      eyes: { item: "eyes.none", way: "stock" },
-      torso: { item: "torso.trisuit", way: "black" },
-      legs: { item: "legs.bibs", way: "black" },
-      feet: { item: "feet.carbon", way: "gold" },
-      socks: { item: "socks.short", way: "black" },
-      watch: { item: "watch.on", way: "gold" },
+      head: { item: "head.aero.black" }, eyes: { item: "eyes.none" },
+      torso: { item: "torso.trisuit.black" }, legs: { item: "legs.bibs.black" },
+      feet: { item: "feet.carbon.gold" }, socks: { item: "socks.short.black" },
+      watch: { item: "watch.on.gold" },
     },
   },
 ];
@@ -124,20 +132,11 @@ export function AvatarLocker() {
     }
   }
 
-  /** Switching item keeps the colourway when that item is sold in it. */
-  function pickItem(slot: Slot, itemId: string) {
-    const rack = waysFor(itemId);
-    const keep = rack.find((w) => w.id === loadout[slot]?.way) ?? rack[0];
-    wear({ ...loadout, [slot]: { item: itemId, way: keep.id } });
-  }
-
   function surprise() {
     const next: Loadout = {};
     for (const slot of SLOTS) {
-      const rack = AVATAR_ITEMS.filter((i) => i.slot === slot);
-      const pick = rack[Math.floor(Math.random() * rack.length)];
-      const ways = waysFor(pick.id);
-      next[slot] = { item: pick.id, way: ways[Math.floor(Math.random() * ways.length)].id };
+      const rack = rackFor(slot);
+      next[slot] = { item: rack[Math.floor(Math.random() * rack.length)].id };
     }
     wear(next);
   }
@@ -145,8 +144,8 @@ export function AvatarLocker() {
   // What this outfit would cost someone who only has the starter kit.
   const bill = SLOTS.reduce((sum, slot) => {
     const worn = loadout[slot];
-    if (!worn || STARTER_SKUS.has(`${worn.item}/${worn.way}`)) return sum;
-    return sum + skuPrice(worn.item, worn.way);
+    if (!worn || STARTER_ITEMS.has(worn.item)) return sum;
+    return sum + (AVATAR_ITEM_BY_ID.get(worn.item)?.price ?? 0);
   }, 0);
 
   return (
@@ -201,12 +200,9 @@ export function AvatarLocker() {
           const hidden =
             slot === "eyes" && AVATAR_ITEM_BY_ID.get(loadout.head?.item ?? "")?.coversEyes;
           const worn = loadout[slot];
-          const rack = AVATAR_ITEMS.filter((i) => i.slot === slot);
-          const ways = waysFor(worn?.item ?? "");
+          const rack = rackFor(slot);
           const item = AVATAR_ITEM_BY_ID.get(worn?.item ?? "");
-          const way = ways.find((w) => w.id === worn?.way) ?? ways[0];
-          const price = skuPrice(worn?.item ?? "", worn?.way ?? "");
-          const owned = STARTER_SKUS.has(`${worn?.item}/${worn?.way}`) || price === 0;
+          const owned = item ? STARTER_ITEMS.has(item.id) || item.price === 0 : false;
           return (
             <div
               key={slot}
@@ -219,54 +215,51 @@ export function AvatarLocker() {
                 {hidden && <span className="mt-0.5 block normal-case">under the visor</span>}
               </span>
               <div className="min-w-0">
+                {/* One rack, one tap. The dot is the item's own colour, because a
+                    colour isn't something you apply to a garment here — the
+                    magenta jersey and the black one are two things to buy. */}
                 <div className="flex flex-wrap gap-1">
                   {rack.map((o) => (
                     <button
                       key={o.id}
-                      onClick={() => pickItem(slot, o.id)}
+                      onClick={() => wear({ ...loadout, [slot]: { item: o.id } })}
                       aria-pressed={worn?.item === o.id}
-                      className={`rounded-lg border px-2 py-1.5 text-[0.6875rem] ${
+                      aria-label={`${o.label}, ${
+                        STARTER_ITEMS.has(o.id) || o.price === 0 ? "yours" : `${o.price} coins`
+                      }`}
+                      className={`flex items-center gap-1.5 rounded-lg border py-1.5 pl-1.5 pr-2 text-[0.6875rem] ${
                         worn?.item === o.id
                           ? "border-gold bg-gold/10 text-ink"
                           : "border-line text-ink-2"
                       }`}
                     >
-                      {SHORT[o.id] ?? o.label}
+                      {o.sprite && (
+                        <span
+                          aria-hidden
+                          className="h-3 w-3 shrink-0 rounded-sm border border-line"
+                          style={{ background: o.colour }}
+                        />
+                      )}
+                      <span className="text-left leading-tight">
+                        {SHORT[o.id] ?? o.label}
+                        {/* Two helmets in a row need to say which is which, and a
+                            black dot on a dark tile says nothing. */}
+                        {toneOf(o.id) && (
+                          <span className="block text-[0.5625rem] text-ink-3">{toneOf(o.id)}</span>
+                        )}
+                      </span>
                     </button>
                   ))}
                 </div>
 
-                {/* Each swatch is a separate purchase, not a recolour. Stock items
-                    (bare feet, an empty slot) have nothing to choose between. */}
-                {ways.length > 1 && (
-                  <div className="mt-1.5 flex items-center gap-1">
-                    {ways.map((w) => (
-                      <button
-                        key={w.id}
-                        onClick={() => wear({ ...loadout, [slot]: { item: worn.item, way: w.id } })}
-                        aria-pressed={worn?.way === w.id}
-                        aria-label={`${w.label} ${item?.label ?? slot}, ${
-                          STARTER_SKUS.has(`${worn.item}/${w.id}`)
-                            ? "yours"
-                            : `${skuPrice(worn.item, w.id)} coins`
-                        }`}
-                        className={`h-5 w-5 rounded-sm border-2 ${
-                          worn?.way === w.id ? "border-ink" : "border-line"
-                        }`}
-                        style={{ background: w.colour }}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {item && way && (
+                {item && (
                   <p className="mt-1 font-mono text-[0.625rem] text-ink-3">
-                    {ways.length > 1 ? `${way.label} · ${item.label}` : item.label}
+                    {item.label}
                     {" · "}
                     {owned ? (
                       <span className="text-ink-2">yours</span>
                     ) : (
-                      <span className="text-gold">{fmtCoins(price)} coins</span>
+                      <span className="text-gold">{fmtCoins(item.price)} coins</span>
                     )}
                   </p>
                 )}
