@@ -1,7 +1,29 @@
 import type { Activity, Athlete, Settings, Sport } from "./types";
 import { SPORTS, SPORT_UNIT, isGrant, isExcuse } from "./types";
-import { inRange, type DayKey, type Period, periodRange } from "./dates";
+import {
+  QUOTA_GRACE_HOURS,
+  addDays,
+  inRange,
+  weekEnd,
+  weekStart,
+  type DayKey,
+  type Period,
+  periodRange,
+} from "./dates";
 import { MAX_SCORING_GYM_PER_DAY } from "./validate";
+
+/**
+ * Whether a session, though filed on its own day, still counts toward the QUOTA
+ * of the week before it: the small hours of a Monday, inside the grace window.
+ *
+ * The points themselves are untouched — they score on the day the session
+ * happened, in the week that day belongs to, and so decide the new week's
+ * winner. Only the forfeit reaches back (see `QUOTA_GRACE_HOURS`).
+ */
+export function countsForLastWeeksQuota(a: Activity): boolean {
+  if (a.localHour === null || a.localHour >= QUOTA_GRACE_HOURS) return false;
+  return weekStart(a.occurredOn) === a.occurredOn; // a Monday
+}
 
 /**
  * One athlete's weekly goal on a given day.
@@ -193,6 +215,13 @@ export interface Standing {
   goalProgress: number;
   /** The athlete's own weekly goal over this range (see `goalFor`). */
   goal: number;
+  /**
+   * Points as the QUOTA counts them, which on a week range is not always
+   * `points`: a session in the small hours of Monday scores in the new week but
+   * rescues the old week's quota (`countsForLastWeeksQuota`). Equal to `points`
+   * on any other range.
+   */
+  quotaPoints: number;
   /** Sessions that came in from Strava rather than being typed by hand. */
   stravaSessions: number;
   /** Gym workouts in this window that were past the daily cap and scored nothing. */
@@ -246,6 +275,7 @@ export function standingsForRange(
       rank: 0,
       goalProgress: 0,
       goal: settings.weeklyGoal,
+      quotaPoints: 0,
       stravaSessions: 0,
       unscoredSessions: 0,
       excusedPoints: 0,
@@ -292,6 +322,26 @@ export function standingsForRange(
     row.kmBySport[a.sport] += a.km;
   }
 
+  // The quota total. On a week, a session from the small hours of THIS Monday
+  // belongs to the week before, and one from the small hours of NEXT Monday
+  // belongs here — the points stay where they scored either way.
+  const isWeek = weekStart(range[0]) === range[0] && weekEnd(range[0]) === range[1];
+  for (const row of rows.values()) row.quotaPoints = row.points;
+  if (isWeek) {
+    const nextMonday = addDays(range[1], 1);
+    for (const a of activities) {
+      if (isGrant(a) || unscored.has(a.id)) continue;
+      if (!countsForLastWeeksQuota(a)) continue;
+      const row = rows.get(a.athleteId);
+      if (!row) continue;
+      const pts = activityPoints(a, settings);
+      // Monday of this week: scored here, but its quota belongs to last week.
+      if (a.occurredOn === range[0]) row.quotaPoints -= pts;
+      // Monday of next week: scored there, but it can still save this quota.
+      if (a.occurredOn === nextMonday) row.quotaPoints += pts;
+    }
+  }
+
   const list = [...rows.values()].sort(
     (x, y) => y.points - x.points || x.athlete.name.localeCompare(y.athlete.name),
   );
@@ -308,7 +358,8 @@ export function standingsForRange(
     }
     row.rank = rank;
     row.goal = goalFor(row.athlete.name, settings, range[0]);
-    row.goalProgress = row.goal > 0 ? row.points / row.goal : 0;
+    // The ring tracks the quota, because the quota is what the ring is for.
+    row.goalProgress = row.goal > 0 ? row.quotaPoints / row.goal : 0;
   }
 
   return list;

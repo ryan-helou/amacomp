@@ -76,6 +76,28 @@ export function logToday(): DayKey {
  */
 export const LEAGUE_TZ = "America/Toronto";
 
+/**
+ * How late into Monday morning a session can finish and still count toward the
+ * QUOTA of the week that just ended — Ryan's rule, 2026-09-27.
+ *
+ * Deliberately separate from `RESET_HOUR`, which is 0. The day itself ends at
+ * midnight, so a 1 AM Monday session scores its points in the new week and has
+ * no bearing on who won the old one. The forfeit is the one thing it can still
+ * reach back and save: nobody owes a marathon over a session they finished an
+ * hour after the deadline.
+ */
+export const QUOTA_GRACE_HOURS = 3;
+
+/** The hour (0-23) it is right now in the league's city. */
+export function leagueHourNow(ms: number = Date.now()): number {
+  const hour = new Intl.DateTimeFormat("en-GB", {
+    timeZone: LEAGUE_TZ,
+    hour: "2-digit",
+    hour12: false,
+  }).format(new Date(ms));
+  return Number(hour) % 24;
+}
+
 /** The calendar day at `ms` in a named zone, whatever the host's own clock says. */
 export function dayKeyInZone(ms: number, timeZone: string): DayKey {
   const parts = new Intl.DateTimeFormat("en-CA", {

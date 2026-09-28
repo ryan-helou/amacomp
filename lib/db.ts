@@ -13,6 +13,7 @@ import {
   type StepDay,
   type StepsLink,
 } from "./types";
+import { leagueHourNow } from "./dates";
 
 /**
  * Storage. Railway Postgres when DATABASE_URL is set, otherwise an in-memory
@@ -31,6 +32,8 @@ export interface NewActivity {
   elevationM?: number | null;
   /** Moving seconds from Strava, or null when unknown. See `Activity.movingSeconds`. */
   movingSeconds?: number | null;
+  /** Hour of day 0-23 in league time, for the quota grace. See `Activity.localHour`. */
+  localHour?: number | null;
   /** Open water rather than a pool, for swims. Null when unknown. */
   openWater?: boolean | null;
 }
@@ -266,7 +269,7 @@ function mergeSettings(raw: unknown): Settings {
 
 const ACTIVITY_COLS = `id, athlete_id, sport, km::float8 AS km,
    to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, note, source, points::float8 AS points,
-   elevation_m::float8 AS elevation_m, open_water, moving_seconds,
+   elevation_m::float8 AS elevation_m, open_water, moving_seconds, local_hour,
    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at`;
 
 type ActivityRow = {
@@ -281,6 +284,7 @@ type ActivityRow = {
   elevation_m: number | null;
   open_water: boolean | null;
   moving_seconds: number | null;
+  local_hour: number | null;
   created_at: string;
 };
 
@@ -296,6 +300,7 @@ function toActivity(r: ActivityRow): Activity {
     points: r.points == null ? null : Number(r.points),
     elevationM: r.elevation_m == null ? null : Number(r.elevation_m),
     movingSeconds: r.moving_seconds == null ? null : Number(r.moving_seconds),
+    localHour: r.local_hour == null ? null : Number(r.local_hour),
     openWater: r.open_water ?? null,
     createdAt: r.created_at,
   };
@@ -472,6 +477,15 @@ class PgStore implements Store {
         await this.pool.query(
           `ALTER TABLE activities ADD COLUMN IF NOT EXISTS moving_seconds INTEGER`,
         );
+        // The hour of day a session happened, for the quota grace — see
+        // `Activity.localHour`. Everything logged before this column existed is
+        // stamped midday: the true hour isn't recorded, and the created_at hour
+        // is only the hour someone opened the app. Midday is the one value that
+        // cannot reach back and change a week that has already been settled.
+        await this.pool.query(
+          `ALTER TABLE activities ADD COLUMN IF NOT EXISTS local_hour SMALLINT`,
+        );
+        await this.pool.query(`UPDATE activities SET local_hour = 12 WHERE local_hour IS NULL`);
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS settings (
             id INT PRIMARY KEY,
@@ -691,12 +705,12 @@ class PgStore implements Store {
   async createActivity(input: NewActivity, source: ActivitySource = "manual"): Promise<Activity> {
     await this.init();
     const r = await this.pool.query(
-      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points, elevation_m, open_water, moving_seconds)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points, elevation_m, open_water, moving_seconds, local_hour)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING ${ACTIVITY_COLS}`,
       [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note, source,
        input.points ?? null, input.elevationM ?? null, input.openWater ?? null,
-       input.movingSeconds ?? null],
+       input.movingSeconds ?? null, input.localHour ?? leagueHourNow()],
     );
     return toActivity(r.rows[0] as ActivityRow);
   }
@@ -1117,6 +1131,7 @@ class MemoryStore implements Store {
       points: input.points ?? null,
       elevationM: input.elevationM ?? null,
       movingSeconds: input.movingSeconds ?? null,
+      localHour: input.localHour ?? leagueHourNow(),
       createdAt: new Date().toISOString(),
     };
     this.activities.push(created);

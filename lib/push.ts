@@ -190,8 +190,8 @@ export async function notifyQuotaHits(
   // still news (see `goalFor`).
   const goal = after.goal;
   if (goal <= 0) return;
-  if (after.points < goal) return; // still below quota
-  if (before.points >= goal) return; // was already through
+  if (after.quotaPoints < goal) return; // still below quota
+  if (before.quotaPoints >= goal) return; // was already through
 
   // Once per athlete per week. The scoring re-derivation makes this idempotent
   // even without the marker, but the marker protects against races and against

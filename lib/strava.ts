@@ -280,9 +280,13 @@ export function toImport(
     typeof a.moving_time === "number" && Number.isFinite(a.moving_time) && a.moving_time > 0
       ? Math.round(a.moving_time)
       : null;
+  // The hour it started, in the athlete's own zone — Strava tags start_date_local
+  // with a "Z" it doesn't mean, so read the characters rather than parsing it.
+  const hourMatch = /^\d{4}-\d{2}-\d{2}T(\d{2}):/.exec(a.start_date_local || "");
+  const localHour = hourMatch ? Number(hourMatch[1]) % 24 : null;
   return {
     input: {
-      athleteId, sport, km, occurredOn: day, note, elevationM, movingSeconds,
+      athleteId, sport, km, occurredOn: day, note, elevationM, movingSeconds, localHour,
       openWater: isOpenWater(a, sport),
     },
     stravaId: a.id,

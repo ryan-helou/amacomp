@@ -29,16 +29,16 @@ function check(label: string, actual: unknown, expected: unknown) {
 const S = DEFAULT_SETTINGS; // gym 30/workout, run 5/km
 
 function gym(id: string, athleteId: string, day: string, createdAt: string): Activity {
-  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", points: null, elevationM: null, movingSeconds: null, openWater: null, createdAt };
+  return { id, athleteId, sport: "gym", km: 1, occurredOn: day, note: null, source: "manual", points: null, elevationM: null, movingSeconds: null, localHour: 12, openWater: null, createdAt };
 }
 function run(id: string, athleteId: string, day: string, km: number): Activity {
-  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", points: null, elevationM: null, openWater: null, createdAt: "2026-08-10T10:00:00Z" , movingSeconds: null};
+  return { id, athleteId, sport: "run", km, occurredOn: day, note: null, source: "strava", points: null, elevationM: null, openWater: null, createdAt: "2026-08-10T10:00:00Z" , movingSeconds: null, localHour: 12 };
 }
 function grant(id: string, athleteId: string, day: string, points: number): Activity {
-  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" , movingSeconds: null};
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "admin", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" , movingSeconds: null, localHour: 12 };
 }
 function excuse(id: string, athleteId: string, day: string, points: number): Activity {
-  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "excuse", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" , movingSeconds: null};
+  return { id, athleteId, sport: "run", km: 0, occurredOn: day, note: null, source: "excuse", points, elevationM: null, openWater: null, createdAt: "2026-08-11T10:00:00Z" , movingSeconds: null, localHour: 12 };
 }
 
 const ath = (id: string, name: string): Athlete => ({
@@ -47,7 +47,7 @@ const ath = (id: string, name: string): Athlete => ({
 
 /** A ride with a known ascent. `elevationM: null` elsewhere means "unknown". */
 function ride(id: string, athleteId: string, day: string, km: number, elevationM: number | null): Activity {
-  return { id, athleteId, sport: "bike", km, occurredOn: day, note: null, source: "strava", points: null, elevationM, openWater: null, createdAt: "2026-08-10T10:00:00Z" , movingSeconds: null};
+  return { id, athleteId, sport: "bike", km, occurredOn: day, note: null, source: "strava", points: null, elevationM, openWater: null, createdAt: "2026-08-10T10:00:00Z" , movingSeconds: null, localHour: 12 };
 }
 
 console.log("\nclimb points");
@@ -221,7 +221,7 @@ console.log("\nrunning ascent counts as distance");
   const hilly = (day: string, km: number, m: number): Activity => ({
     id: "r", athleteId: "a", sport: "run", km, occurredOn: day, note: null,
     source: "strava", points: null, elevationM: m, openWater: null,
-    createdAt: "2026-09-01T10:00:00Z", movingSeconds: null,
+    createdAt: "2026-09-01T10:00:00Z", movingSeconds: null, localHour: 12,
   });
 
   // Ryan's own arithmetic: at 4 pts/km, a point per 25 m of ascent.
@@ -256,7 +256,7 @@ console.log("\nopen water swims");
   const swim = (day: string, km: number, open: boolean | null): Activity => ({
     id: "s", athleteId: "a", sport: "swim", km, occurredOn: day, note: null,
     source: "strava", points: null, elevationM: null, openWater: open,
-    createdAt: "2026-08-10T10:00:00Z", movingSeconds: null,
+    createdAt: "2026-08-10T10:00:00Z", movingSeconds: null, localHour: 12,
   });
 
   // The rule: open water is 20/km whatever the pool rate has done.
@@ -298,6 +298,45 @@ console.log("\nopen water swims");
   check("a later pool cut does not touch open water",
     activityPoints(swim("2026-10-02", 2, true), cut), 40);
   check("but the pool follows it", activityPoints(swim("2026-10-02", 2, false), cut), 10);
+}
+
+console.log("\nthe quota grace: 3 AM Monday");
+{
+  const athletes = [ath("a", "Ann"), ath("b", "Bo")];
+  const late = (id: string, who: string, day: string, km: number, hour: number): Activity => ({
+    ...run(id, who, day, km),
+    localHour: hour,
+  });
+  // Ann rides 20 km at 1 AM on Monday 31 Aug. Bo rides the same at 9 AM.
+  const acts = [
+    run("sun", "a", "2026-08-30", 10),        // 50 pts, Sunday
+    late("mon1", "a", "2026-08-31", 20, 1),   // 1 AM Monday
+    late("mon9", "b", "2026-08-31", 20, 9),   // 9 AM Monday
+  ];
+  const lastWeek = standingsForRange(athletes, acts, S, ["2026-08-24", "2026-08-30"]);
+  const thisWeek = standingsForRange(athletes, acts, S, ["2026-08-31", "2026-09-06"]);
+  const annLast = lastWeek.find((r) => r.athlete.id === "a")!;
+  const annThis = thisWeek.find((r) => r.athlete.id === "a")!;
+  const boThis = thisWeek.find((r) => r.athlete.id === "b")!;
+
+  // Points: the 1 AM ride scores on Monday, in the new week. That is what
+  // decides who won each week, and the grace must not touch it.
+  check("last week's points are Sunday's alone", annLast.points, 50);
+  // 20 km at the dated 4/km from 31 Aug.
+  check("the 1 AM ride scores in the new week", annThis.points, 80);
+  // Quota: it reaches back one week, and only one.
+  check("but it rescues last week's quota", annLast.quotaPoints, 130);
+  check("and does not count toward the new week's quota", annThis.quotaPoints, 0);
+  check("a 9 AM Monday ride is an ordinary Monday ride",
+    [boThis.points, boThis.quotaPoints], [80, 80]);
+  // The ring follows the quota, since the ring is the forfeit.
+  check("the ring reads the quota", annLast.goalProgress, 1.3);
+  check("a month is not a week, so nothing shifts",
+    standingsForRange(athletes, acts, S, ["2026-08-01", "2026-08-31"])
+      .find((r) => r.athlete.id === "a")!.quotaPoints, 130);
+  check("an unknown hour never gets the grace",
+    standingsForRange(athletes, [run("x", "a", "2026-08-31", 20)], S, ["2026-08-24", "2026-08-30"])
+      .find((r) => r.athlete.id === "a")!.quotaPoints, 0);
 }
 
 console.log("\ntime records");
@@ -665,7 +704,7 @@ function personalGoals() {
   const athletes: Athlete[] = [ath("jonah", "Jonah"), ath("jona", "Jona")];
   const jog = (athleteId: string, occurredOn: string, id: string): Activity => ({
     id, athleteId, sport: "run", km: 5, occurredOn, note: null, createdAt: `${occurredOn}T12:00:00Z`,
-    source: "manual", points: null, elevationM: null, movingSeconds: null, openWater: null,
+    source: "manual", points: null, elevationM: null, movingSeconds: null, localHour: 12, openWater: null,
   });
   // 60 points each (three 5 km runs at the dated 4/km): clears a 50 goal, short of 100.
   const acts: Activity[] = [];
