@@ -1,4 +1,7 @@
-import { AVATAR_ITEMS, AVATAR_ITEM_BY_ID, DEFAULT_LOADOUT, avatarSvg, usesAccent, type Loadout } from "./pixelAvatar";
+import {
+  AVATAR_ITEMS, AVATAR_ITEM_BY_ID, COLOURWAYS, DEFAULT_LOADOUT, STARTER_SKUS,
+  avatarSvg, coloursOf, skuPrice, usesAccent, waysFor, type Loadout,
+} from "./pixelAvatar";
 import sprites from "./avatar/sprites.json";
 
 /**
@@ -48,17 +51,17 @@ console.log("\nthe figure renders");
 
 console.log("\nwhat you wear changes what is drawn");
 {
-  const bare: Loadout = { ...DEFAULT_LOADOUT, head: { item: "head.none", colour: "#d4147e" } };
-  const lid: Loadout = { ...DEFAULT_LOADOUT, head: { item: "head.helmet", colour: "#d4147e" } };
+  const bare: Loadout = { ...DEFAULT_LOADOUT, head: { item: "head.none", way: "stock" } };
+  const lid: Loadout = { ...DEFAULT_LOADOUT, head: { item: "head.helmet", way: "magenta" } };
   check("a helmet adds pixels", avatarSvg(lid).length > avatarSvg(bare).length, true);
 
   // The aero helmet brings its own visor, so shades under it must not draw.
   const aeroAndShades: Loadout = {
     ...DEFAULT_LOADOUT,
-    head: { item: "head.aero", colour: "#20242b", accent: "#c9a227" },
-    eyes: { item: "eyes.shades", colour: "#20242b" },
+    head: { item: "head.aero", way: "black" },
+    eyes: { item: "eyes.shades", way: "black" },
   };
-  const aeroAlone: Loadout = { ...aeroAndShades, eyes: { item: "eyes.none", colour: "#20242b" } };
+  const aeroAlone: Loadout = { ...aeroAndShades, eyes: { item: "eyes.none", way: "stock" } };
   check("a visor hides the shades under it", avatarSvg(aeroAndShades) === avatarSvg(aeroAlone), true);
 
   // And only the aero has a second drawing; everything else mirrors.
@@ -74,16 +77,48 @@ console.log("\nthe accent picker is offered only where it does something");
   check("bib shorts do not", usesAccent("legs.bibs"), false);
   check("nothing worn has no accent", usesAccent("head.none"), false);
 
-  // And where it says there is one, changing it has to change the drawing.
+  // Trim is part of the colourway, so the two colourways that differ only in
+  // trim have to draw differently — otherwise the trim is decoration on paper.
   const accented = AVATAR_ITEMS.filter((i) => usesAccent(i.id));
   check("several items carry one", accented.length > 0, true);
   let honest = 0;
   for (const item of accented) {
-    const base: Loadout = { ...DEFAULT_LOADOUT, [item.slot]: { item: item.id, colour: "#123456", accent: "#abcdef" } };
-    const other: Loadout = { ...DEFAULT_LOADOUT, [item.slot]: { item: item.id, colour: "#123456", accent: "#fedcba" } };
+    // Mint and lime share no colour but differ in trim too; compare a pair that
+    // differs ONLY in trim by drawing the same colour with each one's accent.
+    const base: Loadout = { ...DEFAULT_LOADOUT, [item.slot]: { item: item.id, way: "white" } };
+    const other: Loadout = { ...DEFAULT_LOADOUT, [item.slot]: { item: item.id, way: "black" } };
     if (avatarSvg(base) !== avatarSvg(other)) honest++;
   }
   check("and every one of them redraws when it changes", honest, accented.length);
+}
+
+console.log("\ncolour is what you buy, not a free choice on top");
+{
+  // Ryan's rule: one jersey, one colour. Owning the magenta one must not hand
+  // over the black one, so every colourway has to be its own priced SKU.
+  const jersey = AVATAR_ITEM_BY_ID.get("torso.jersey")!;
+  check("a jersey is sold in the full rack", waysFor("torso.jersey").length, COLOURWAYS.length);
+  check("each colourway costs the item's price", skuPrice("torso.jersey", "magenta"), jersey.price);
+  check("and a premium colour costs half again", skuPrice("torso.jersey", "black"), 750);
+  check("the starter kit is free", skuPrice("torso.tee", "magenta") > 0
+    && STARTER_SKUS.has("torso.tee/magenta"), true);
+  check("but its other colours are not", STARTER_SKUS.has("torso.tee/gold"), false);
+
+  // Two colourways of the same item must be two different drawings, or the
+  // second purchase buys nothing.
+  const ways = waysFor("torso.jersey");
+  const drawings = new Set(
+    ways.map((w) => avatarSvg({ ...DEFAULT_LOADOUT, torso: { item: "torso.jersey", way: w.id } })),
+  );
+  check("every colourway is a different jersey", drawings.size, ways.length);
+
+  // Nothing-items aren't a colour choice at all.
+  check("bare feet come one way", waysFor("feet.barefoot").map((w) => w.id), ["stock"]);
+  check("and cost nothing", skuPrice("feet.barefoot", "stock"), 0);
+
+  // A loadout naming a colourway the item isn't sold in must still draw.
+  check("an unknown colourway falls back to a real one",
+    coloursOf("torso.jersey", "chartreuse"), coloursOf("torso.jersey", ways[0].id));
 }
 
 console.log(failures === 0 ? "\nAll avatar tests passed.\n" : `\n${failures} failing.\n`);
