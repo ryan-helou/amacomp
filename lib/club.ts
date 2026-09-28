@@ -21,10 +21,15 @@ export const CLUB_LIVE =
 /** What a coin is called, singular and plural, in one place. */
 export const COIN = { one: "tri coin", many: "tri coins", short: "TC" } as const;
 
-/** The three rooms of the Club. */
-export type ClubRoom = "shop" | "bets" | "challenges";
+/** The rooms of the Club. The wallet is first because it's the one you check. */
+export type ClubRoom = "wallet" | "shop" | "bets" | "bounties";
 
 export const CLUB_ROOMS: { id: ClubRoom; label: string; blurb: string }[] = [
+  {
+    id: "wallet",
+    label: "Wallet",
+    blurb: "What you've earned, and where every coin came from.",
+  },
   {
     id: "shop",
     label: "Shop",
@@ -36,8 +41,8 @@ export const CLUB_ROOMS: { id: ClubRoom; label: string; blurb: string }[] = [
     blurb: "Stake coins head to head. Both sides have to accept, and the app settles it.",
   },
   {
-    id: "challenges",
-    label: "Challenges",
-    blurb: "Bounties Ryan posts. First to do the thing takes the coins.",
+    id: "bounties",
+    label: "Bounties",
+    blurb: "Tasks Ryan posts with coins attached. First to do it takes them.",
   },
 ];
