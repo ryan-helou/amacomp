@@ -18,6 +18,17 @@ export const CLUB_LIVE =
   // "0" forces the teaser, which is how the deployed view is checked locally.
   CLUB_FLAG === "1" ? true : CLUB_FLAG === "0" ? false : process.env.NODE_ENV === "development";
 
+/**
+ * Who can see the avatar preview.
+ *
+ * Ryan only, while the figure is still being drawn — everyone else gets the
+ * Club teaser, the same as before. Matched on the exact name for the same
+ * reason the trips are (lib/away.ts): Jona and Jonah are two different people.
+ */
+export function canPreviewAvatar(name: string | null | undefined): boolean {
+  return name === "Ryan";
+}
+
 /** What a coin is called, singular and plural, in one place. */
 export const COIN = { one: "tri coin", many: "tri coins", short: "TC" } as const;
 

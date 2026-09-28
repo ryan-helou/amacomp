@@ -747,3 +747,10 @@ input[type="number"] {
 @media (prefers-reduced-motion: reduce) {
   .coin-spin { animation: none; }
 }
+
+/* The avatar breathes: the chest group drifts a single sprite unit and back.
+   A transform on one group, never a re-render — see lib/pixelAvatar.ts. */
+@keyframes avatar-breath { 0%, 49% { transform: translateY(0); } 50%, 100% { transform: translateY(1px); } }
+.pixel-avatar svg { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.pixel-avatar .avatar-breath { animation: avatar-breath 3s steps(1) infinite; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .pixel-avatar .avatar-breath { animation: none; } }
