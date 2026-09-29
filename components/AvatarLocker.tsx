@@ -19,7 +19,7 @@ import { PixelAvatar } from "./PixelAvatar";
 // You first, then what you put on, then what flies behind you.
 const SLOTS: Slot[] = [
   "skin", "hair", "face",
-  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "banner",
+  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "prize", "banner",
 ];
 
 const KITS: { name: string; loadout: Loadout }[] = [
@@ -74,6 +74,7 @@ const SHELF: Record<Slot, string> = {
   skin: "Skin",
   hair: "Hair",
   face: "Face",
+  prize: "Prizes",
   banner: "Banners",
   head: "Headwear",
   eyes: "Eyewear",
@@ -196,7 +197,7 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
   // take-off strip lists.
   const worn = SLOTS.flatMap((slot) => {
     const item = AVATAR_ITEM_BY_ID.get(loadout[slot]?.item ?? "");
-    if (!item || item.price === 0) return [];
+    if (!item || (item.price === 0 && !item.earned)) return [];
     return [{ slot, item }];
   });
 
@@ -302,8 +303,9 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
               <button
                 key={slot}
                 onClick={() => {
-                  const free = rackFor(slot).find((i) => i.price === 0);
-                  if (free) wear({ ...loadout, [slot]: { item: free.id } });
+                  const bare = rackFor(slot).find((i) => i.price === 0 && !i.earned && !i.sprite)
+                    ?? rackFor(slot).find((i) => i.price === 0 && !i.earned);
+                  if (bare) wear({ ...loadout, [slot]: { item: bare.id } });
                 }}
                 aria-label={`Take off ${item.label}`}
                 className="flex items-center gap-1.5 rounded-lg border border-line bg-deck-2/40 px-2 py-1 text-left"
@@ -536,7 +538,9 @@ const ShopBox = memo(function ShopBox({
         )}
         <span className="text-[0.6875rem] leading-[1.15] text-ink">{item.label}</span>
         <span className="mt-auto flex items-center gap-1 pt-0.5 font-mono text-[0.625rem]">
-          {free ? (
+          {item.earned ? (
+            <span className="text-gold">{item.earned}</span>
+          ) : free ? (
             <span className="text-ink-3">yours</span>
           ) : (
             <>
