@@ -133,23 +133,6 @@ def build(P):
         [c.disc(40+dx, HC-HRY*0.62+dy, 4.6, 4.2, "K")
          for dx, dy in ((-11, 3.0), (-6, -1.2), (0, -3.0), (6, -1.2), (11, 3.0), (-13, 7.5), (13, 7.5))],
         c.rect(40-HRX+1.4, HC-HRY*0.52, 40+HRX-1.4, HC-HRY*0.34, "K")))
-    def hair_long(c):
-        """Cut the face out of a mass of hair, rather than leaning two slabs
-        against the head. The slabs met the fringe at a right angle and the
-        whole thing read as a bucket."""
-        HEM = HC + HRY*1.34
-        c.disc(40, HC-0.5, HRX+1.6, HRY+0.8, "K")
-        for k in range(161):                     # widening as it falls
-            t = k/160
-            y = HC - 0.5 + t*(HEM - HC + 0.5)
-            hw = HRX + 1.6 + 3.4*t*t
-            c.rect(40-hw, y, 40+hw, y+0.4, "K")
-        for sx in (-1, 1):                       # a rounded hem, not a cut edge
-            c.disc(40 + sx*(HRX+2.6), HEM-1.4, 2.4, 2.2, "K")
-        c.disc(40, HC+1.0, HRX-1.3, HRY-0.9, ".", y0=HC-HRY*0.34)
-        c.rect(40-HRX*0.56, HC+HRY*0.86, 40+HRX*0.56, HEM+3, ".")
-
-    item("hair_long", 3, hair_long)
     item("hair_bun", 3, lambda c: (
         c.disc(40, HC-1, HRX, HRY, "K", y1=HC-HRY*0.45),
         c.rect(40-HRX+2, HC-HRY*0.5, 40+HRX-2, HC-HRY*0.35, "K"),
@@ -161,18 +144,6 @@ def build(P):
         c.disc(40, HC, HRX, HRY, "K"),
         [c.disc(40+dx, HC-HRY*0.62+dy, 4.6, 4.2, "K")
          for dx, dy in ((-11, 3.0), (-6, -1.2), (0, -3.0), (6, -1.2), (11, 3.0), (-13, 7.5), (13, 7.5))]))
-    def hair_long_back(c):
-        HEM = HC + HRY*1.34
-        c.disc(40, HC-0.5, HRX+1.6, HRY+0.8, "K")
-        for k in range(161):
-            t = k/160
-            y = HC - 0.5 + t*(HEM - HC + 0.5)
-            hw = HRX + 1.6 + 3.4*t*t
-            c.rect(40-hw, y, 40+hw, y+0.4, "K")
-        for sx in (-1, 1):
-            c.disc(40 + sx*(HRX+2.6), HEM-1.4, 2.4, 2.2, "K")
-
-    item("hair_long_back", 3, hair_long_back)
     item("hair_bun_back", 3, lambda c: (
         c.disc(40, HC, HRX, HRY, "K"), c.disc(40, HC-HRY*1.06, 5.4, 4.8, "K")))
 

@@ -91,8 +91,6 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "hair.buzz.brown", slot: "hair", label: "Brown buzz cut", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "hair_buzz", spriteBack: "hair_buzz_back" },
   { id: "hair.curly.black", slot: "hair", label: "Black curls", price: 0, tier: "common", colour: "#17120e", accent: WHITE, sprite: "hair_curly", spriteBack: "hair_curly_back" },
   { id: "hair.curly.brown", slot: "hair", label: "Brown curls", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "hair_curly", spriteBack: "hair_curly_back" },
-  { id: "hair.long.brown", slot: "hair", label: "Long brown", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "hair_long", spriteBack: "hair_long_back" },
-  { id: "hair.long.blonde", slot: "hair", label: "Long blonde", price: 0, tier: "common", colour: "#c8943f", accent: WHITE, sprite: "hair_long", spriteBack: "hair_long_back" },
   { id: "hair.bun.black", slot: "hair", label: "Top knot", price: 0, tier: "common", colour: "#17120e", accent: WHITE, sprite: "hair_bun", spriteBack: "hair_bun_back" },
   { id: "hair.bald", slot: "hair", label: "Shaved", price: 0, tier: "common", colour: "#33241a", accent: WHITE },
 
