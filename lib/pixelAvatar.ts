@@ -21,7 +21,7 @@ import sprites from "./avatar/sprites.json";
 
 export type Slot =
   | "banner" | "skin" | "hair" | "face"
-  | "head" | "eyes" | "torso" | "hands" | "legs" | "feet" | "socks" | "watch";
+  | "head" | "eyes" | "torso" | "prize" | "hands" | "legs" | "feet" | "socks" | "watch";
 
 export interface AvatarItem {
   id: string;
@@ -40,6 +40,11 @@ export interface AvatarItem {
   spriteBack?: string;
   /** Nothing to draw from behind: a shaved head is just a head. */
   hideBack?: boolean;
+  /**
+   * Won, not sold. The text is the thing you have to do to get it — a shelf of
+   * these is worth more to a league than another colour of shorts.
+   */
+  earned?: string;
   /** A visor is the eyewear: it hides whatever is in the eyes slot. */
   coversEyes?: boolean;
   /**
@@ -185,6 +190,11 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "hands.armwarmers.black", slot: "hands", label: "Black arm warmers", price: 350, tier: "common", colour: BLACK, accent: MINT, sprite: "armwarmers" },
   { id: "hands.armwarmers.mint", slot: "hands", label: "Mint arm warmers", price: 350, tier: "common", colour: MINT, accent: BLACK, sprite: "armwarmers" },
 
+  { id: "prize.none", slot: "prize", label: "No prize", price: 0, tier: "common", colour: GOLD, accent: WHITE },
+  { id: "prize.medal", slot: "prize", label: "Week winner's medal", price: 0, tier: "epic", colour: GOLD, accent: "#b23a48", sprite: "medal", hideBack: true, earned: "win a week" },
+  { id: "prize.sash", slot: "prize", label: "Month winner's sash", price: 0, tier: "epic", colour: GOLD, accent: WHITE, sprite: "sash", earned: "win a month" },
+  { id: "prize.laurel", slot: "prize", label: "Champion's laurel", price: 0, tier: "legendary", colour: "#3f8f34", accent: GOLD, sprite: "laurel", earned: "win the season" },
+
   { id: "watch.none", slot: "watch", label: "No watch", price: 0, tier: "common", colour: BLACK, accent: MINT },
   { id: "watch.on.black", slot: "watch", label: "Black GPS watch", price: 300, tier: "common", colour: BLACK, accent: MINT, sprite: "watch" },
   { id: "watch.on.gold", slot: "watch", label: "Gold GPS watch", price: 450, tier: "rare", colour: GOLD, accent: BLACK, sprite: "watch" },
@@ -240,6 +250,7 @@ export const AVATAR_ITEM_BY_ID = new Map(AVATAR_ITEMS.map((i) => [i.id, i]));
 /** What a new athlete turns up in, before they've bought anything. */
 export const DEFAULT_LOADOUT: Loadout = {
   skin: { item: "skin.fair" },
+  prize: { item: "prize.none" },
   hair: { item: "hair.short.brown" },
   face: { item: "face.clean" },
   head: { item: "head.none" },
@@ -273,9 +284,9 @@ const RIM = "#4a5f7a"; // the cool edge on the lit side
 
 // Legs first, eyewear last: the order things are put on.
 // The banner is not in here: it is drawn before the body, above.
-const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "hands", "watch", "hair", "face", "head", "eyes"];
+const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "prize", "hands", "watch", "hair", "face", "head", "eyes"];
 // Worn on the chest, so these ride with the breath.
-const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "hands", "watch", "hair", "face"]);
+const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "prize", "hands", "watch", "hair", "face"]);
 
 /** Wardrobe sheets live in `g`; flags in `flags`, keyed "flag.<id>". */
 function sheetFor(name: string): Sheet | undefined {
@@ -542,7 +553,7 @@ export function avatarSvg(
    * drawing — every rectangle it emits is one the full figure emits too, which
    * is what the test checks.
    */
-  const IN_BUST: Set<Slot> = new Set(["banner", "torso", "head", "eyes", "hair", "face"]);
+  const IN_BUST: Set<Slot> = new Set(["banner", "torso", "prize", "head", "eyes", "hair", "face"]);
   const wanted = (slot: Slot) => crop !== "bust" || IN_BUST.has(slot);
 
   const body = bodyChunks(view, src, crop === "bust", tone.colour, tone.accent);
