@@ -23,13 +23,20 @@ function check(label: string, actual: unknown, expected: unknown) {
   }
 }
 
-const data = sprites as unknown as { g: Record<string, unknown> };
+const data = sprites as unknown as {
+  g: Record<string, unknown>;
+  flags: Record<string, { label: string; pal: string[]; sheet: { rows: string[] } }>;
+};
+
+/** Where the generator put a sheet — wardrobe in `g`, flags under `flags`. */
+const sheetExists = (name: string) =>
+  name.startsWith("flag.") ? !!data.flags[name.slice(5)] : !!data.g[name];
 
 console.log("\nevery item the shop sells can be drawn");
 {
-  const missing = AVATAR_ITEMS.filter((i) => i.sprite && !data.g[i.sprite]).map((i) => i.id);
+  const missing = AVATAR_ITEMS.filter((i) => i.sprite && !sheetExists(i.sprite)).map((i) => i.id);
   check("no item points at a sprite that isn't there", missing, []);
-  const missingBack = AVATAR_ITEMS.filter((i) => i.spriteBack && !data.g[i.spriteBack]).map((i) => i.id);
+  const missingBack = AVATAR_ITEMS.filter((i) => i.spriteBack && !sheetExists(i.spriteBack)).map((i) => i.id);
   check("and the same for the back views", missingBack, []);
   check("ids are unique", AVATAR_ITEM_BY_ID.size, AVATAR_ITEMS.length);
   // A priced item that nobody can wear is a bug in the catalogue.
@@ -173,6 +180,26 @@ console.log("\nmerging rectangles mustn't change which pixels are covered");
   // And the merge has to be doing its job, or the phone chokes on forty boxes.
   const rects = (itemSvg("torso.jersey.magenta").match(/<rect /g) ?? []).length;
   check("a jersey is a few hundred rects, not thousands", rects > 20 && rects < 700, true);
+}
+
+console.log("\na flag is not the wearer's to recolour");
+{
+  const banners = AVATAR_ITEMS.filter((i) => i.slot === "banner" && i.sprite);
+  check("every country made it into the shop", banners.length, Object.keys(data.flags).length);
+  check("each one carries its own palette", banners.every((b) => (b.palette?.length ?? 0) >= 2), true);
+
+  // The palette is the point: Canada drawn in the default colour would be a
+  // pink rectangle. Every colour the flag declares must appear in its drawing.
+  const canada = AVATAR_ITEM_BY_ID.get("banner.ca")!;
+  const svg = itemSvg("banner.ca");
+  for (const colour of canada.palette!) {
+    check(`Canada is drawn in ${colour}`, svg.includes(colour), true);
+  }
+  check("and not in the wearer's default", svg.includes("#d4147e"), false);
+
+  // Two countries must not come out as the same picture.
+  const drawn = new Set(banners.map((b) => itemSvg(b.id)));
+  check("no two flags are the same drawing", drawn.size, banners.length);
 }
 
 console.log(failures === 0 ? "\nAll avatar tests passed.\n" : `\n${failures} failing.\n`);
