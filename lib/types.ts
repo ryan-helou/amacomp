@@ -371,6 +371,8 @@ export interface AppState {
   steps: StepDay[];
   /** The signed-in athlete's own step connection. */
   stepsLink: StepsLink;
+  /** Whether this request may see unfinished work (the avatar shop). */
+  previewAvatar: boolean;
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {

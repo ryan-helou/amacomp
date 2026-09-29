@@ -1,12 +1,21 @@
 "use client";
 
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { CLUB_LIVE, CLUB_ROOMS, canPreviewAvatar, type ClubRoom } from "@/lib/club";
-import { AvatarLocker } from "./AvatarLocker";
 import { Wallet } from "./Wallet";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
+
+/**
+ * The shop is unfinished work, so it ships as its own chunk that nobody else's
+ * phone ever downloads — the catalogue and its prices aren't in the bundle the
+ * league gets, only in one fetched after the server has said yes.
+ */
+const AvatarLocker = dynamic(() => import("./AvatarLocker").then((m) => m.AvatarLocker), {
+  ssr: false,
+});
 
 /**
  * The Club: tri coins, the shop, bets and challenges.
@@ -23,7 +32,7 @@ export function ClubTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
   if (!CLUB_LIVE) {
     return (
       <div className="space-y-5">
-        {canPreviewAvatar(state.me?.name) && <AvatarLocker state={state} refDay={refDay} />}
+        {canPreviewAvatar(state.previewAvatar) && <AvatarLocker state={state} refDay={refDay} />}
         <ClubTeaser />
       </div>
     );

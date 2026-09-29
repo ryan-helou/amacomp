@@ -21,12 +21,29 @@ export const CLUB_LIVE =
 /**
  * Who can see the avatar preview.
  *
- * Ryan only, while the figure is still being drawn — everyone else gets the
- * Club teaser, the same as before. Matched on the exact name for the same
- * reason the trips are (lib/away.ts): Jona and Jonah are two different people.
+ * It used to be `name === "Ryan"`, which was no lock at all: signing in is a
+ * name and nothing else (lib/session.ts says so in as many words), so anyone
+ * who typed Ryan's name saw the shop. Now the server decides, from a key only
+ * Ryan has, and hands the client a plain yes or no — the client can't grant
+ * itself anything it wasn't given.
  */
-export function canPreviewAvatar(name: string | null | undefined): boolean {
-  return name === "Ryan";
+export function canPreviewAvatar(granted: boolean | undefined): boolean {
+  return granted === true;
+}
+
+/**
+ * Does this key open the preview?
+ *
+ * Compared in constant time, and a short or missing key on the server opens
+ * nothing — otherwise forgetting to set the variable would leave the door wide
+ * open with an empty key, which is the worst kind of default.
+ */
+export function keyAccepted(given: string | null | undefined, expected: string | undefined): boolean {
+  if (!expected || expected.length < 16) return false;
+  if (!given || given.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
 }
 
 /** What a coin is called, singular and plural, in one place. */
