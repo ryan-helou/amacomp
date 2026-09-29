@@ -284,7 +284,7 @@ const RIM = "#4a5f7a"; // the cool edge on the lit side
 
 // Legs first, eyewear last: the order things are put on.
 // The banner is not in here: it is drawn before the body, above.
-const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "prize", "hands", "watch", "hair", "face", "head", "eyes"];
+const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "hands", "watch", "hair", "face", "head", "prize", "eyes"];
 // Worn on the chest, so these ride with the breath.
 const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "prize", "hands", "watch", "hair", "face"]);
 
