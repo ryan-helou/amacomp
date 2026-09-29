@@ -19,32 +19,16 @@ export const CLUB_LIVE =
   CLUB_FLAG === "1" ? true : CLUB_FLAG === "0" ? false : process.env.NODE_ENV === "development";
 
 /**
- * Who can see the avatar preview.
+ * Whether the avatar shop exists at all.
  *
- * It used to be `name === "Ryan"`, which was no lock at all: signing in is a
- * name and nothing else (lib/session.ts says so in as many words), so anyone
- * who typed Ryan's name saw the shop. Now the server decides, from a key only
- * Ryan has, and hands the client a plain yes or no — the client can't grant
- * itself anything it wasn't given.
+ * It doesn't ship. Ryan's call, 2026-09-28: unfinished work stays on the
+ * laptop, so this is decided when the bundle is BUILT, not when a request
+ * arrives — `npm run dev` has it, the deployed app has no path to it and none
+ * of its code. An earlier version gated it on the signed-in name, which was no
+ * gate at all: signing in here is a name and nothing else (lib/session.ts), so
+ * anyone who typed "Ryan" was Ryan.
  */
-export function canPreviewAvatar(granted: boolean | undefined): boolean {
-  return granted === true;
-}
-
-/**
- * Does this key open the preview?
- *
- * Compared in constant time, and a short or missing key on the server opens
- * nothing — otherwise forgetting to set the variable would leave the door wide
- * open with an empty key, which is the worst kind of default.
- */
-export function keyAccepted(given: string | null | undefined, expected: string | undefined): boolean {
-  if (!expected || expected.length < 16) return false;
-  if (!given || given.length !== expected.length) return false;
-  let diff = 0;
-  for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
-  return diff === 0;
-}
+export const SHOW_AVATAR_SHOP = process.env.NODE_ENV === "development";
 
 /** What a coin is called, singular and plural, in one place. */
 export const COIN = { one: "tri coin", many: "tri coins", short: "TC" } as const;
