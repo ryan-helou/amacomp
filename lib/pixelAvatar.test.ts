@@ -2,6 +2,7 @@ import {
   AVATAR_ITEMS, AVATAR_ITEM_BY_ID, DEFAULT_LOADOUT, STARTER_ITEMS,
   avatarSvg, itemImage, itemSvg, rackFor, type Loadout,
 } from "./pixelAvatar";
+import { COUNTRY_FLAGS, FLAG_BY_ID } from "./flags";
 import sprites from "./avatar/sprites.json";
 
 /**
@@ -23,14 +24,8 @@ function check(label: string, actual: unknown, expected: unknown) {
   }
 }
 
-const data = sprites as unknown as {
-  g: Record<string, unknown>;
-  flags: Record<string, { label: string; pal: string[]; sheet: { rows: string[] } }>;
-};
-
-/** Where the generator put a sheet — wardrobe in `g`, flags under `flags`. */
-const sheetExists = (name: string) =>
-  name.startsWith("flag.") ? !!data.flags[name.slice(5)] : !!data.g[name];
+const data = sprites as unknown as { g: Record<string, unknown> };
+const sheetExists = (name: string) => !!data.g[name];
 
 console.log("\nevery item the shop sells can be drawn");
 {
@@ -39,8 +34,9 @@ console.log("\nevery item the shop sells can be drawn");
   const missingBack = AVATAR_ITEMS.filter((i) => i.spriteBack && !sheetExists(i.spriteBack)).map((i) => i.id);
   check("and the same for the back views", missingBack, []);
   check("ids are unique", AVATAR_ITEM_BY_ID.size, AVATAR_ITEMS.length);
-  // A priced item that nobody can wear is a bug in the catalogue.
-  const paidWithoutArt = AVATAR_ITEMS.filter((i) => i.price > 0 && !i.sprite).map((i) => i.id);
+  // A priced item that nobody can see is a bug in the catalogue. Art is a
+  // sprite for anything worn, or a flag for anything flown.
+  const paidWithoutArt = AVATAR_ITEMS.filter((i) => i.price > 0 && !i.sprite && !i.flag).map((i) => i.id);
   check("nothing is sold without art", paidWithoutArt, []);
 }
 
@@ -192,24 +188,31 @@ console.log("\nmerging rectangles mustn't change which pixels are covered");
   check("a jersey is a few hundred rects, not thousands", rects > 20 && rects < 700, true);
 }
 
-console.log("\na flag is not the wearer's to recolour");
+console.log("\nflags are tags, not cloth hung behind him");
 {
-  const banners = AVATAR_ITEMS.filter((i) => i.slot === "banner" && i.sprite);
-  check("every country made it into the shop", banners.length, Object.keys(data.flags).length);
-  check("each one carries its own palette", banners.every((b) => (b.palette?.length ?? 0) >= 2), true);
+  // Ryan's call: the hanging banners are gone, and a flag is the small tag the
+  // Board already flies for an away week. So a flag item names a country and
+  // carries NO sprite — if one ever grew art again, it would be drawn on the
+  // figure and we'd be back where we started.
+  const flags = AVATAR_ITEMS.filter((i) => i.slot === "flag" && i.id !== "flag.none");
+  check("every country made it onto the shelf", flags.length, COUNTRY_FLAGS.length);
+  check("none of them has a sprite", flags.filter((f) => f.sprite).length, 0);
+  check("each names a flag that exists", flags.every((f) => FLAG_BY_ID.has(f.flag ?? "")), true);
 
-  // The palette is the point: Canada drawn in the default colour would be a
-  // pink rectangle. Every colour the flag declares must appear in its drawing.
-  const canada = AVATAR_ITEM_BY_ID.get("banner.ca")!;
-  const svg = itemSvg("banner.ca");
-  for (const colour of canada.palette!) {
-    check(`Canada is drawn in ${colour}`, svg.includes(colour), true);
+  // The ones Ryan asked for by name.
+  for (const id of ["it", "lb", "ca", "qc", "jp", "jo"]) {
+    check(`${id} is in the catalogue`, FLAG_BY_ID.has(id), true);
   }
-  check("and not in the wearer's default", svg.includes("#d4147e"), false);
 
-  // Two countries must not come out as the same picture.
-  const drawn = new Set(banners.map((b) => itemSvg(b.id)));
-  check("no two flags are the same drawing", drawn.size, banners.length);
+  // A flag is not drawn on the body — wearing one must not change the figure.
+  const bare = avatarSvg({ ...DEFAULT_LOADOUT, flag: { item: "flag.none" } });
+  const flown = avatarSvg({ ...DEFAULT_LOADOUT, flag: { item: "flag.ca" } });
+  check("flying one leaves the figure alone", bare, flown);
+
+  // Two countries must not be the same tag.
+  const drawn = new Set(COUNTRY_FLAGS.map((f) => JSON.stringify([f.bands, f.rows, f.weights, f.emblem])));
+  check("no two flags are drawn the same", drawn.size, COUNTRY_FLAGS.length);
+  check("every band is a colour", COUNTRY_FLAGS.every((f) => f.bands.every((b) => /^#[0-9A-Fa-f]{6}$/.test(b))), true);
 }
 
 console.log("\na figure wearing one of everything");
