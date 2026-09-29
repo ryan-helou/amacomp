@@ -21,7 +21,7 @@ import { COUNTRY_FLAGS } from "./flags";
  */
 
 export type Slot =
-  | "flag" | "skin" | "hair" | "face"
+  | "flag" | "lane" | "skin" | "hair" | "face"
   | "head" | "eyes" | "torso" | "prize" | "hands" | "legs" | "feet" | "socks" | "watch";
 
 export interface AvatarItem {
@@ -206,9 +206,27 @@ export const FLAG_ITEMS: AvatarItem[] = COUNTRY_FLAGS.map((f) => ({
   flag: f.id,
 }));
 
+/**
+ * Lanes: the wash behind your row on the Week tab, which until now only ever
+ * appeared when you were away somewhere. Ryan saw Alberto's Peru and amaGoh's
+ * Italy and said sell those too.
+ */
+export const LANE_ITEMS: AvatarItem[] = COUNTRY_FLAGS.map((f) => ({
+  id: `lane.${f.id}`,
+  slot: "lane" as const,
+  label: `${f.label} lane`,
+  price: f.id === "ama" ? 1200 : 400,
+  tier: f.id === "ama" ? "legendary" : "rare",
+  colour: f.bands[0],
+  accent: f.bands[1] ?? f.bands[0],
+  flag: f.id,
+}));
+
 AVATAR_ITEMS.push(
   { id: "flag.none", slot: "flag", label: "No flag", price: 0, tier: "common", colour: "#20242b", accent: "#f3f3f1" },
   ...FLAG_ITEMS,
+  { id: "lane.none", slot: "lane", label: "Plain lane", price: 0, tier: "common", colour: "#20242b", accent: "#f3f3f1" },
+  ...LANE_ITEMS,
 );
 
 export const AVATAR_ITEM_BY_ID = new Map(AVATAR_ITEMS.map((i) => [i.id, i]));
@@ -216,6 +234,7 @@ export const AVATAR_ITEM_BY_ID = new Map(AVATAR_ITEMS.map((i) => [i.id, i]));
 /** What a new athlete turns up in, before they've bought anything. */
 export const DEFAULT_LOADOUT: Loadout = {
   flag: { item: "flag.none" },
+  lane: { item: "lane.none" },
   skin: { item: "skin.fair" },
   prize: { item: "prize.none" },
   hair: { item: "hair.short.brown" },

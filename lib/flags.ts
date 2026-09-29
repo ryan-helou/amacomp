@@ -1,3 +1,5 @@
+import type { Flag as AwayFlag } from "./away";
+
 /**
  * The flags you can fly beside your name.
  *
@@ -33,6 +35,13 @@ export interface CountryFlag {
   /** Relative band widths — Canada is 1:2:1, not thirds. */
   weights?: number[];
   emblem?: { kind: Emblem; colour: string };
+  /**
+   * Colours for the LANE wash, when the tag's own field won't do. Britain and
+   * Australia are both a solid navy field with the design carried by the
+   * emblem, so their lanes washed identically — you'd be paying twice for one
+   * look. Britain's lane takes the union's three colours instead.
+   */
+  lane?: [string, string, string];
 }
 
 /**
@@ -60,7 +69,7 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
   { id: "ar", label: "Argentina", bands: ["#74ACDF", "#FFFFFF", "#74ACDF"], rows: true, emblem: { kind: "disc", colour: "#F6B40E" } },
   { id: "mx", label: "Mexico", bands: ["#006847", "#FFFFFF", "#CE1126"] },
   { id: "ma", label: "Morocco", bands: ["#C1272D", "#C1272D", "#C1272D"], emblem: { kind: "star", colour: "#006233" } },
-  { id: "gb", label: "Britain", bands: ["#012169", "#012169", "#012169"], emblem: { kind: "union", colour: "#C8102E" } },
+  { id: "gb", label: "Britain", bands: ["#012169", "#012169", "#012169"], lane: ["#012169", "#FFFFFF", "#C8102E"], emblem: { kind: "union", colour: "#C8102E" } },
   { id: "au", label: "Australia", bands: ["#012169", "#012169", "#012169"], emblem: { kind: "unionCanton", colour: "#FFFFFF" } },
   { id: "ke", label: "Kenya", bands: ["#1A1A1A", "#BB0000", "#006600"], rows: true },
   { id: "jm", label: "Jamaica", bands: ["#1A1A1A", "#1A1A1A", "#1A1A1A"], emblem: { kind: "saltire", colour: "#FED100" } },
@@ -69,3 +78,21 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
 ];
 
 export const FLAG_BY_ID = new Map(COUNTRY_FLAGS.map((f) => [f.id, f]));
+
+/**
+ * The same country in the shape lib/away.ts speaks, so a bought lane is washed
+ * by exactly the code that already washes an away week's row — `flagWash` and
+ * `flagInk`. Two ways of drawing the same flag would drift within a month.
+ *
+ * Only `sun` and `leaf` get bespoke washes there; every other flag becomes the
+ * three-band sweep, which is what Italy and Peru already look like on the Week
+ * tab today.
+ */
+export function laneFlag(id: string): AwayFlag | null {
+  const f = FLAG_BY_ID.get(id);
+  if (!f) return null;
+  const [from, mid, to] = f.lane ?? [f.bands[0], f.bands[1] ?? f.bands[0], f.bands[2] ?? f.bands[0]];
+  if (id === "jp") return { label: f.label, from: "#BC002D", mid: "#FFFFFF", to: "#BC002D", emblem: "sun" };
+  if (id === "ca") return { label: f.label, from: "#D52B1E", mid: "#FFFFFF", to: "#D52B1E", emblem: "leaf" };
+  return { label: f.label, from, mid, to };
+}
