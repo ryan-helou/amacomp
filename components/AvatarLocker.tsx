@@ -22,54 +22,6 @@ const SLOTS: Slot[] = [
   "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "prize", "banner",
 ];
 
-const KITS: { name: string; loadout: Loadout }[] = [
-  {
-    name: "Bike",
-    loadout: {
-      head: { item: "head.helmet.magenta" }, eyes: { item: "eyes.shades.black" },
-      torso: { item: "torso.jersey.magenta" }, legs: { item: "legs.bibs.black" },
-      feet: { item: "feet.bikeshoes.white" }, socks: { item: "socks.tall.white" },
-      watch: { item: "watch.on.black" },
-    },
-  },
-  {
-    name: "Run",
-    loadout: {
-      head: { item: "head.runcap.mint" }, eyes: { item: "eyes.shades.black" },
-      torso: { item: "torso.tee.mint" }, legs: { item: "legs.runshorts.black" },
-      feet: { item: "feet.runshoes.white" }, socks: { item: "socks.short.white" },
-      watch: { item: "watch.on.black" },
-    },
-  },
-  {
-    name: "Swim",
-    loadout: {
-      head: { item: "head.swimcap.cyan" }, eyes: { item: "eyes.goggles.black" },
-      torso: { item: "torso.wetsuit.black" }, legs: { item: "legs.jammers.black" },
-      feet: { item: "feet.barefoot" }, socks: { item: "socks.none" },
-      watch: { item: "watch.on.black" }, hands: { item: "hands.none" },
-    },
-  },
-  {
-    name: "Winter",
-    loadout: {
-      head: { item: "head.beanie.black" }, eyes: { item: "eyes.none" },
-      torso: { item: "torso.jacket.orange" }, legs: { item: "legs.tights.black" },
-      feet: { item: "feet.trail.black" }, socks: { item: "socks.tall.white" },
-      watch: { item: "watch.on.black" }, hands: { item: "hands.gloves.black" },
-    },
-  },
-  {
-    name: "Race",
-    loadout: {
-      head: { item: "head.aero.black" }, eyes: { item: "eyes.none" },
-      torso: { item: "torso.trisuit.black" }, legs: { item: "legs.bibs.black" },
-      feet: { item: "feet.carbon.gold" }, socks: { item: "socks.short.black" },
-      watch: { item: "watch.on.gold" },
-    },
-  },
-];
-
 const SHELF: Record<Slot, string> = {
   skin: "Skin",
   hair: "Hair",
@@ -118,16 +70,11 @@ const STORE_KEY = "amacomp.locker";
  */
 export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKey }) {
   /**
-   * The outfit and how it got here, in one piece of state.
-   *
-   * One object rather than two, so the callbacks the boxes get can be created
-   * once and never change — 124 boxes re-rendering for a change that touches
-   * one of them cost 563ms on a throttled phone.
+   * What he's wearing. In a piece of state of its own so the callbacks the
+   * boxes get can be created once and never change — 150 boxes re-rendering
+   * for a change that touches one of them cost 563ms on a throttled phone.
    */
-  const [{ loadout, past }, setFit] = useState<{ loadout: Loadout; past: Loadout[] }>({
-    loadout: KITS[0].loadout,
-    past: [],
-  });
+  const [loadout, setFit] = useState<Loadout>(DEFAULT_LOADOUT);
   const [query, setQuery] = useState("");
   // Headwear, not Skin: you open the shop to dress, and your face is already
   // sorted. The You shelves are a tap away on the same row.
@@ -139,7 +86,7 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
     try {
       const raw = localStorage.getItem(STORE_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot, restoring the last outfit
-      if (raw) setFit({ loadout: JSON.parse(raw) as Loadout, past: [] });
+      if (raw) setFit(JSON.parse(raw) as Loadout);
     } catch {
       /* private window, blocked storage: the default kit is fine */
     }
@@ -154,34 +101,11 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
     }
   }, [loadout]);
 
-  const wear = useCallback((next: Loadout) => {
-    setFit((f) => ({ loadout: next, past: [f.loadout, ...f.past].slice(0, 20) }));
-  }, []);
+  const wear = useCallback((next: Loadout) => setFit(next), []);
 
   const pick = useCallback((slot: Slot, itemId: string) => {
-    setFit((f) => ({
-      loadout: { ...f.loadout, [slot]: { item: itemId } },
-      past: [f.loadout, ...f.past].slice(0, 20),
-    }));
+    setFit((f) => ({ ...f, [slot]: { item: itemId } }));
   }, []);
-
-  const undo = useCallback(() => {
-    setFit((f) => (f.past.length ? { loadout: f.past[0], past: f.past.slice(1) } : f));
-  }, []);
-
-  const YOU: Slot[] = ["skin", "hair", "face"];
-
-  function surprise() {
-    setFit((f) => {
-      const next: Loadout = { ...f.loadout };
-      for (const slot of SLOTS) {
-        if (YOU.includes(slot)) continue;
-        const rack = rackFor(slot);
-        next[slot] = { item: rack[Math.floor(Math.random() * rack.length)].id };
-      }
-      return { loadout: next, past: [f.loadout, ...f.past].slice(0, 20) };
-    });
-  }
 
   // What he has. Not what he can spend — nothing is spendable yet — but a
   // real number, because a shop with a made-up balance is a mock.
@@ -273,42 +197,11 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
         <p className="mt-1 text-center font-mono text-[0.5625rem] text-ink-3">
           everything unlocked · nothing is charged yet
         </p>
-
-        <div className="mt-2 flex flex-wrap justify-center gap-1.5">
-          {KITS.map((k) => (
-            <button
-              key={k.name}
-              onClick={() => wear({ ...loadout, ...k.loadout })}
-              className="eyebrow rounded-full border border-line bg-deck-2/40 px-2.5 py-1 text-[0.5625rem] text-ink-2"
-            >
-              {k.name}
-            </button>
-          ))}
-          <button
-            onClick={surprise}
-            className="eyebrow rounded-full border border-dashed border-line px-2.5 py-1 text-[0.5625rem] text-ink-3"
-          >
-            Random
-          </button>
-          <button
-            onClick={() => wear({ ...DEFAULT_LOADOUT, ...Object.fromEntries(YOU.map((s2) => [s2, loadout[s2]])) })}
-            className="eyebrow rounded-full border border-dashed border-line px-2.5 py-1 text-[0.5625rem] text-ink-3"
-          >
-            Reset
-          </button>
-          <button
-            onClick={undo}
-            disabled={past.length === 0}
-            className="eyebrow rounded-full border border-dashed border-line px-2.5 py-1 text-[0.5625rem] text-ink-3 disabled:opacity-30"
-          >
-            Undo
-          </button>
-        </div>
       </div>
 
-      {/* Pinned while you browse: what you're wearing, and where to jump to.
-          Ninety-odd items is a long scroll, and a shop you have to scroll back
-          up in to see what you've done is a shop you stop using. */}
+      {/* Pinned while you browse: what you're wearing, a search, and a tab per
+          shelf. It stays put so you can see what you've done without scrolling
+          back up. */}
       <div
         id="locker-bar"
         className="sticky z-20 border-y border-line bg-tile/95 px-2 py-2 backdrop-blur"
