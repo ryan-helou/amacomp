@@ -129,7 +129,6 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
     past: [],
   });
   const [query, setQuery] = useState("");
-  const [affordableOnly, setAffordableOnly] = useState(false);
 
   // The last outfit comes back on reload — this thing gets opened a hundred times
   // in a row while the art is being judged. Per-browser only, and never required.
@@ -181,7 +180,8 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
     });
   }
 
-  // What he could actually spend. A shop with a made-up balance is a mock.
+  // What he has. Not what he can spend — nothing is spendable yet — but a
+  // real number, because a shop with a made-up balance is a mock.
   const balance = coinAccount(
     state.me?.id ?? "", state.athletes, state.activities, state.settings, refDay,
   ).balance;
@@ -203,13 +203,11 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
 
   const needle = query.trim().toLowerCase();
 
-  /** What a shelf shows after the search box and the "can afford" switch. */
+  /** What a shelf shows after the search box. */
   function shown(slot: Slot): AvatarItem[] {
     return rackFor(slot).filter((item) => {
       if (loadout[slot]?.item === item.id) return true; // never hide what you're wearing
-      if (needle && !item.label.toLowerCase().includes(needle)) return false;
-      if (affordableOnly && item.price > balance && !STARTER_ITEMS.has(item.id)) return false;
-      return true;
+      return !needle || item.label.toLowerCase().includes(needle);
     });
   }
 
@@ -292,21 +290,19 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
               </span>
             </span>
           </div>
-          <div
-            className={`flex flex-1 flex-col justify-center rounded-xl border px-3 py-2 ${
-              bill > balance ? "border-line bg-deck-2/50" : "border-gold/40 bg-gold/10"
-            }`}
-          >
+          <div className="flex flex-1 flex-col justify-center rounded-xl border border-gold/40 bg-gold/10 px-3 py-2">
             <span className="eyebrow text-[0.5625rem] text-ink-3">this outfit</span>
-            <span
-              className={`stamp text-base leading-none tabular-nums ${
-                bill > balance ? "text-ink-2" : "text-gold"
-              }`}
-            >
+            <span className="stamp text-base leading-none tabular-nums text-gold">
               {fmtCoins(bill)}
             </span>
           </div>
         </div>
+
+        {/* Nothing is bought yet, so nothing is locked. The prices are what
+            these will cost once coins can be spent. */}
+        <p className="mt-2 text-center font-mono text-[0.625rem] text-ink-3">
+          everything unlocked · prices are what they&rsquo;ll cost, nothing is charged yet
+        </p>
 
         {/* What you've actually put on, and one tap to take it off again.
             Without this, removing a hat means scrolling back to Headwear and
@@ -382,15 +378,6 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
             aria-label="Search the shop"
             className="min-w-0 flex-1 rounded-lg border border-line bg-deck-2/60 px-2.5 py-1.5 text-[0.8125rem] text-ink placeholder:text-ink-3"
           />
-          <button
-            onClick={() => setAffordableOnly((v) => !v)}
-            aria-pressed={affordableOnly}
-            className={`eyebrow shrink-0 rounded-lg border px-2 py-1.5 ${
-              affordableOnly ? "border-gold bg-gold/10 text-gold" : "border-line text-ink-3"
-            }`}
-          >
-            can afford
-          </button>
         </div>
         <div className="mt-1.5 -mx-2 flex gap-1 overflow-x-auto px-2 pb-0.5">
           {shelves.map(({ slot, items }) => (
@@ -446,7 +433,6 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
                     key={item.id}
                     item={item}
                     worn={loadout[slot]?.item === item.id}
-                    affordable={item.price <= balance}
                     slot={slot}
                     onPick={pick}
                   />
@@ -488,13 +474,11 @@ const ShopBox = memo(function ShopBox({
   item,
   slot,
   worn,
-  affordable,
   onPick,
 }: {
   item: AvatarItem;
   slot: Slot;
   worn: boolean;
-  affordable: boolean;
   onPick: (slot: Slot, itemId: string) => void;
 }) {
   const src = itemImage(item.id);
@@ -563,14 +547,10 @@ const ShopBox = memo(function ShopBox({
           ) : (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element -- one cached file, forty boxes */}
-              <img
-                src="/tri-coin.png"
-                alt=""
-                aria-hidden
-                className={`h-3 w-3 object-contain ${affordable ? "" : "opacity-40"}`}
-              />
-              {/* Out of reach is worth saying quietly, not hiding. */}
-              <span className={affordable ? "text-gold" : "text-ink-3"}>{fmtCoins(item.price)}</span>
+              <img src="/tri-coin.png" alt="" aria-hidden className="h-3 w-3 object-contain" />
+              {/* What it WILL cost. Nothing is locked while the shop is a
+                  preview, so a price is a plan, not a gate. */}
+              <span className="text-gold">{fmtCoins(item.price)}</span>
             </>
           )}
         </span>
