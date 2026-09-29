@@ -22,7 +22,7 @@ import { COUNTRY_FLAGS } from "./flags";
 
 export type Slot =
   | "flag" | "skin" | "hair" | "face"
-  | "head" | "eyes" | "torso" | "prize" | "hands" | "legs" | "feet" | "socks" | "watch";
+  | "head" | "eyes" | "torso" | "prize" | "legs" | "feet" | "socks" | "watch";
 
 export interface AvatarItem {
   id: string;
@@ -176,11 +176,6 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "prize.medal", slot: "prize", label: "Week winner's medal", price: 0, tier: "epic", colour: GOLD, accent: "#b23a48", sprite: "medal", hideBack: true, earned: "win a week" },
   { id: "prize.sash", slot: "prize", label: "Month winner's sash", price: 0, tier: "epic", colour: "#b23a48", accent: GOLD, sprite: "sash", earned: "win a month" },
   { id: "prize.crown", slot: "prize", label: "Champion's crown", price: 0, tier: "legendary", colour: GOLD, accent: "#b23a48", sprite: "crown", earned: "win the season" },
-  { id: "hands.none", slot: "hands", label: "Bare hands", price: 0, tier: "common", colour: SKIN_C, accent: WHITE },
-  { id: "hands.gloves.black", slot: "hands", label: "Black gloves", price: 300, tier: "common", colour: BLACK, accent: WHITE, sprite: "gloves" },
-  { id: "hands.gloves.white", slot: "hands", label: "White gloves", price: 300, tier: "common", colour: WHITE, accent: BLACK, sprite: "gloves" },
-  { id: "hands.armwarmers.black", slot: "hands", label: "Black arm warmers", price: 350, tier: "common", colour: BLACK, accent: MINT, sprite: "armwarmers" },
-  { id: "hands.armwarmers.mint", slot: "hands", label: "Mint arm warmers", price: 350, tier: "common", colour: MINT, accent: BLACK, sprite: "armwarmers" },
 
   { id: "watch.none", slot: "watch", label: "No watch", price: 0, tier: "common", colour: BLACK, accent: MINT },
   { id: "watch.on.black", slot: "watch", label: "Black GPS watch", price: 300, tier: "common", colour: BLACK, accent: MINT, sprite: "watch" },
@@ -219,7 +214,6 @@ export const DEFAULT_LOADOUT: Loadout = {
   hair: { item: "hair.short.brown" },
   face: { item: "face.clean" },
   head: { item: "head.none" },
-  hands: { item: "hands.none" },
   eyes: { item: "eyes.none" },
   torso: { item: "torso.tee.magenta" },
   legs: { item: "legs.runshorts.black" },
@@ -251,9 +245,9 @@ const RIM = "#4a5f7a"; // the cool edge on the lit side
 // Legs first, eyewear last: the order things are put on.
 // A crown goes on over the hair and over the helmet, so the prize is the last
 // thing drawn. Nothing else in the slot reaches anything that comes before it.
-const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "hands", "watch", "hair", "face", "head", "eyes", "prize"];
+const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "watch", "hair", "face", "head", "eyes", "prize"];
 // Worn on the chest, so these ride with the breath.
-const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "prize", "hands", "watch", "hair", "face"]);
+const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "prize", "watch", "hair", "face"]);
 
 function shift(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -445,13 +439,19 @@ export function itemImage(itemId: string): string {
 const BODY_CACHE = new Map<string, { upper: string; lower: string }>();
 
 /** The bare figure's two halves, drawn once per view and remembered. */
+/**
+ * The seam between the two zones, at the hips: above it the drawing rides the
+ * breath animation, below it stays planted.
+ */
+const ZONE_SPLIT = 86;
+
 function bodyChunks(
   view: "front" | "back", src: string[], bustOnly: boolean, skin: string, shade: string,
 ): { upper: string; lower: string } {
   const key = `${view}${bustOnly ? ":bust" : ""}:${skin}`;
   const held = BODY_CACHE.get(key);
   if (held) return held;
-  const SPLIT = 86; // the hips: above it breathes, below it stays planted
+  const SPLIT = ZONE_SPLIT;
   const tone = { skin, shade };
   const made = {
     upper: draw(rasterise(src.slice(0, SPLIT), 1, 0, 0, skin, shade, false, "upper", tone)),
@@ -520,8 +520,23 @@ export function avatarSvg(
     if (view === "back" && item.hideBack) continue;
     const sheet = DATA.g[(view === "back" && item.spriteBack) || item.sprite];
     if (!sheet) continue;
+    const zone: Zone = UPPER.has(slot) ? "upper" : "lower";
+    // A tri suit and a wetsuit are one piece: they carry on past the hips,
+    // which is below the seam. Painting the whole sheet in the upper zone put
+    // those legs inside the breathing group, and the lower zone is emitted
+    // after it — so a pair of shorts painted straight over them and the suit
+    // stopped at the waist. Split the sheet at the seam and each half lands in
+    // its own zone, in catalogue order, where it belongs.
+    const cut = Math.ceil(ZONE_SPLIT * sheet.res) - sheet.y0;
+    if (zone === "upper" && cut > 0 && cut < sheet.rows.length) {
+      paint(sheet.rows.slice(0, cut), sheet.res, sheet.x0, sheet.y0, item.colour,
+        item.accent, view === "back", "upper");
+      paint(sheet.rows.slice(cut), sheet.res, sheet.x0, sheet.y0 + cut, item.colour,
+        item.accent, view === "back", "lower");
+      continue;
+    }
     paint(sheet.rows, sheet.res, sheet.x0, sheet.y0, item.colour, item.accent,
-      view === "back", UPPER.has(slot) ? "upper" : "lower");
+      view === "back", zone);
   }
 
   let upperOut = body.upper, lowerOut = body.lower;

@@ -129,10 +129,27 @@ def build(P):
         c.rect(40-HRX+2, HC-HRY*0.5, 40+HRX-2, HC-HRY*0.35, "K")))
     item("hair_buzz", 3, lambda c: (
         c.disc(40, HC-0.5, HRX-0.3, HRY-0.6, "K", y1=HC-HRY*0.58)))
-    item("hair_curly", 3, lambda c: (
-        [c.disc(40+dx, HC-HRY*0.62+dy, 4.6, 4.2, "K")
-         for dx, dy in ((-11, 3.0), (-6, -1.2), (0, -3.0), (6, -1.2), (11, 3.0), (-13, 7.5), (13, 7.5))],
-        c.rect(40-HRX+1.4, HC-HRY*0.52, 40+HRX-1.4, HC-HRY*0.34, "K")))
+    def curls(c, back=False):
+        """Curls, not seven bubbles in a row.
+
+        A cap of hair first so there are no gaps down to the scalp, then a
+        crowd of small discs of three sizes around its edge — same rule as a
+        cauliflower: one size reads as a pattern, three read as texture.
+        """
+        if back:
+            c.disc(40, HC, HRX, HRY, "K")
+        c.disc(40, HC-1.6, HRX-0.4, HRY-1.0, "K", y1=HC-HRY*0.30)
+        c.rect(40-HRX+1.2, HC-HRY*0.44, 40+HRX-1.2, HC-HRY*0.28, "K")
+        for ang, r in ((-1.44, 3.1), (-1.20, 4.0), (-0.96, 3.2), (-0.70, 4.2),
+                       (-0.44, 3.3), (-0.18, 4.1), (0.08, 3.2), (0.34, 4.2),
+                       (0.60, 3.3), (0.86, 4.1), (1.10, 3.2), (1.34, 3.9),
+                       (1.52, 3.0)):
+            cx = 40 + (HRX - 1.4) * math.sin(ang)
+            cy = HC - 1.4 - (HRY - 2.6) * math.cos(ang)
+            c.disc(cx, cy, r, r*0.92, "K")
+
+    item("hair_curly", 3, lambda c: curls(c))
+    item("hair_curly_back", 3, lambda c: curls(c, back=True))
     item("hair_bun", 3, lambda c: (
         c.disc(40, HC-1, HRX, HRY, "K", y1=HC-HRY*0.45),
         c.rect(40-HRX+2, HC-HRY*0.5, 40+HRX-2, HC-HRY*0.35, "K"),
@@ -140,10 +157,7 @@ def build(P):
         c.disc(40, HC-HRY*1.06, 5.4, 4.8, "K")))
     item("hair_short_back", 3, lambda c: c.disc(40, HC, HRX, HRY, "K"))
     item("hair_buzz_back", 3, lambda c: c.disc(40, HC-0.3, HRX-0.3, HRY-0.5, "K"))
-    item("hair_curly_back", 3, lambda c: (
-        c.disc(40, HC, HRX, HRY, "K"),
-        [c.disc(40+dx, HC-HRY*0.62+dy, 4.6, 4.2, "K")
-         for dx, dy in ((-11, 3.0), (-6, -1.2), (0, -3.0), (6, -1.2), (11, 3.0), (-13, 7.5), (13, 7.5))]))
+
     item("hair_bun_back", 3, lambda c: (
         c.disc(40, HC, HRX, HRY, "K"), c.disc(40, HC-HRY*1.06, 5.4, 4.8, "K")))
 
@@ -167,14 +181,34 @@ def build(P):
         (40+HRX*0.11, HC+HRY*0.40), (40+HRX*0.33, HC+HRY*0.42),
         (40+HRX*0.40, HC+HRY*0.51), (40+HRX*0.30, HC+HRY*0.48),
         (40, HC+HRY*0.50), (40-HRX*0.30, HC+HRY*0.48)], "K"))
-    item("helmet", 4, lambda c: (
-        c.disc(40, HC-2.5, HRX+2.2, HRY-0.8, "K", y1=HC-HRY*0.08),
-        c.poly([(40-HRX-1, HC-HRY*0.22), (40+HRX+1, HC-HRY*0.22), (40+HRX+1.6, HC-HRY*0.06), (40-HRX-1.6, HC-HRY*0.06)], "K"),
-        [c.poly([(x, HC-HRY*0.85), (x+3.2, HC-HRY*0.88), (x+3.8, HC-HRY*0.28), (x+0.6, HC-HRY*0.25)], "A", only="K")
-         for x in (40-HRX*0.62, 40-HRX*0.06, 40+HRX*0.5)],
-        c.poly([(40-HRX-1.4, HC-HRY*0.14), (40+HRX+1.4, HC-HRY*0.14), (40+HRX+1.5, HC-HRY*0.07), (40-HRX-1.5, HC-HRY*0.07)], "W", only="K"),
-        [c.poly([(sx, HC-HRY*0.1), (sx+1.4, HC-HRY*0.1), (sx+dx+1.6, HC+HRY*0.42), (sx+dx+0.4, HC+HRY*0.42)], "A")
-         for sx, dx in ((40-HRX*0.88, 2.2), (40+HRX*0.8, -2.2))]))
+    def helmet(c):
+        """A road helmet: shell, vents cut INTO the shell, rim, straps.
+
+        The vents were three white bars painted on the outside, which is why
+        it read as a striped hat. A vent is a hole, so these are cut out of
+        the shell to the dark inside, and they follow the dome instead of
+        standing upright on it.
+        """
+        c.disc(40, HC-2.5, HRX+2.2, HRY-0.8, "K", y1=HC-HRY*0.08)
+        c.poly([(40-HRX-1, HC-HRY*0.22), (40+HRX+1, HC-HRY*0.22),
+                (40+HRX+1.6, HC-HRY*0.06), (40-HRX-1.6, HC-HRY*0.06)], "K")
+        # five vents, the outer ones shorter and raked, as they sit on a curve
+        for x, top, bot, rake in ((-0.70, 0.52, 0.22, -1.5), (-0.36, 0.74, 0.24, -0.7),
+                                  (0.00, 0.82, 0.25, 0.0), (0.36, 0.74, 0.24, 0.7),
+                                  (0.70, 0.52, 0.22, 1.5)):
+            cx = 40 + HRX*x
+            c.poly([(cx-1.5, HC-HRY*top), (cx+1.5, HC-HRY*top),
+                    (cx+1.5+rake, HC-HRY*bot), (cx-1.5+rake, HC-HRY*bot)], ".", only="K")
+        # the rim, lit along the top edge, and a pad showing under it
+        c.poly([(40-HRX-1.4, HC-HRY*0.16), (40+HRX+1.4, HC-HRY*0.16),
+                (40+HRX+1.5, HC-HRY*0.11), (40-HRX-1.5, HC-HRY*0.11)], "W", only="K")
+        c.rect(40-HRX*0.68, HC-HRY*0.09, 40+HRX*0.68, HC-HRY*0.03, "A", only="K")
+        # straps down to a buckle under each ear
+        for sx, dx in ((40-HRX*0.90, 2.4), (40+HRX*0.86, -2.4)):
+            c.poly([(sx, HC-HRY*0.08), (sx+1.1, HC-HRY*0.08),
+                    (sx+dx+1.3, HC+HRY*0.46), (sx+dx+0.5, HC+HRY*0.46)], "A")
+
+    item("helmet", 4, helmet)
     def aero(c):
         """Shell, brow, visor.
 
@@ -195,11 +229,8 @@ def build(P):
                 (40+HRX*0.88, VT+1.4), (40+HRX*0.82, VB-1.2), (40+HRX*0.70, VB),
                 (40-HRX*0.70, VB), (40-HRX*0.82, VB-1.2)], "A")
         c.rect(40-HRX*0.80, VB-1.3, 40+HRX*0.80, VB, "K")
-        # one long glint down the shell, one short one on the glass
-        c.poly([(40-HRX*0.72, HC-HRY*0.74), (40+HRX*0.22, HC-HRY*0.92),
-                (40+HRX*0.50, HC-HRY*0.76), (40-HRX*0.52, HC-HRY*0.56)], "W")
-        [c.rect(40-HRX*0.62+i*0.40, VT+0.9+i*0.40, 40-HRX*0.50+i*0.40, VT+3.1+i*0.40, "W")
-         for i in range(10)]
+        # No glare. The streaks down the shell and across the glass read as
+        # torn paper stuck to a helmet, not as light on it.
 
     item("aero", 4, aero)
     item("aero_back", 4, lambda c: (
@@ -253,11 +284,21 @@ def build(P):
         if band: c.rect(40-TH_+1, hem-band-1, 40+TH_-1, hem-1, "A")
     item("jersey", 2, lambda c: torso(c, HIP-2, (AY1-AY0)*0.5, True, 2))
     item("tee", 2, lambda c: torso(c, HIP-1, (AY1-AY0)*0.32, False, 2.4))
-    item("trisuit", 2, lambda c: (torso(c, HIP+4, (AY1-AY0)*0.42, False, None),
-        c.capsule(L, LY0, LY0+(LY1-LY0)*0.55, LHW+0.5, "K"), c.capsule(R, LY0, LY0+(LY1-LY0)*0.55, LHW+0.5, "K"),
-        c.rect(40-TW_-0.8, SH+3, 40-TW_+1.6, LY0+(LY1-LY0)*0.55, "A", only="K"),
-        c.rect(40+TW_-1.6, SH+3, 40+TW_+0.8, LY0+(LY1-LY0)*0.55, "A", only="K"),
-        c.rect(40-TT+1.0, SH-5.6, 40+TT-1.0, SH-3.8, "A")))
+    # It had sleeves and a collar, so it read as a vest with piping. A tri
+    # suit is sleeveless and it does not stop at the waist: one piece from
+    # the shoulder straps to mid-thigh, a panel down each flank, a short zip.
+    def trisuit(c):
+        END = LY0 + (LY1-LY0)*0.58
+        c.trunk(SH+2, HIP+4, TT-1.2, TW_-0.6, TH_-0.4, "K")
+        for sx in (-1, 1):
+            c.poly([(40+sx*(TT-0.8), SH+3.5), (40+sx*(TT-4.4), SH+3.5),
+                    (40+sx*(TT-5.4), SH-1.8), (40+sx*(TT-2.0), SH-2.4)], "K")
+        c.capsule(L, LY0, END, LHW+0.5, "K"); c.capsule(R, LY0, END, LHW+0.5, "K")
+        c.rect(40-TW_-0.9, SH+4, 40-TW_+1.9, END, "A", only="K")
+        c.rect(40+TW_-1.9, SH+4, 40+TW_+0.9, END, "A", only="K")
+        c.rect(39.3, SH+2, 40.7, SH+12, "A", only="K")
+
+    item("trisuit", 2, trisuit)
     # legs
     def shorts(c, frac):
         c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K")
@@ -305,9 +346,12 @@ def build(P):
     item("runshoes", 3, lambda c: shoe(c, 2.2, "lace"))
     item("carbon", 3, lambda c: shoe(c, 2.8, "plate"))
     item("barefoot", 2, lambda c: [ (c.disc(cx, FY+3, LHW, 4.2, "S"), c.rect(cx-LHW, FY, cx+LHW, FY+4, "S")) for cx in (L, R) ])
+    # A yoke across the shoulders made this a tee with the sleeves cut off.
+    # Two straps and the gap between them is the whole of a singlet.
     item("singlet", 2, lambda c: (
-        c.trunk(SH+1, HIP-1, TT-1.2, TW_-0.8, TH_-0.8, "K"),
-        c.disc(40, SH+3, TT-1.0, 5.5, "K"),
+        c.trunk(SH+2, HIP-1, TT-1.4, TW_-0.8, TH_-0.8, "K"),
+        [c.poly([(40+sx*(TT-1.0), SH+3.5), (40+sx*(TT-4.6), SH+3.5),
+                 (40+sx*(TT-5.6), SH-1.6), (40+sx*(TT-2.0), SH-2.2)], "K") for sx in (-1, 1)],
         c.rect(40-TH_+1, HIP-3.4, 40+TH_-1, HIP-1, "A")))
     item("longsleeve", 2, lambda c: (
         torso(c, HIP-1, (AY1-AY0)*0.92, False, None),
@@ -323,15 +367,23 @@ def build(P):
         c.rect(40-TT+0.5, SH-5.5, 40+TT-0.5, SH-3.2, "A"),
         c.rect(AX-AHW-0.6, AY0+(AY1-AY0)*0.86, AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A"),
         c.rect(80-AX-AHW-0.6, AY0+(AY1-AY0)*0.86, 80-AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A")))
-    item("wetsuit", 2, lambda c: (
-        torso(c, HIP+4, (AY1-AY0)*0.92, False, None),
-        c.poly([(AX-AHW-0.6, AY0), (40-TT+1, SH-2), (40-TT+1, SH+8), (AX-AHW-0.6, AY0+9)], "K"),
-        c.poly([(80-AX+AHW+0.6, AY0), (40+TT-1, SH-2), (40+TT-1, SH+8), (80-AX+AHW+0.6, AY0+9)], "K"),
-        c.capsule(L, LY0, LY0+(LY1-LY0)*0.62, LHW+0.6, "K"), c.capsule(R, LY0, LY0+(LY1-LY0)*0.62, LHW+0.6, "K"),
-        c.rect(40-TT+0.8, SH-5.8, 40+TT-0.8, SH-3.6, "A"),
-        c.rect(39.4, SH-3.6, 40.6, SH+12, "A"),
-        c.rect(40-TW_-0.6, SH+4, 40-TW_+1.2, HIP+3, "A", only="K"),
-        c.rect(40+TW_-1.2, SH+4, 40+TW_+0.6, HIP+3, "A", only="K")))
+    # Two seams down the flanks made it a hoodie with drawstrings. What says
+    # wetsuit is that it covers everything and is sealed at each end: sleeves
+    # to the wrist, legs past the knee, a cuff on all four, a collar and a zip.
+    def wetsuit(c):
+        END = LY0 + (LY1-LY0)*0.82
+        torso(c, HIP+4, (AY1-AY0)*0.94, False, None)
+        c.poly([(AX-AHW-0.6, AY0), (40-TT+1, SH-2), (40-TT+1, SH+8), (AX-AHW-0.6, AY0+9)], "K")
+        c.poly([(80-AX+AHW+0.6, AY0), (40+TT-1, SH-2), (40+TT-1, SH+8), (80-AX+AHW+0.6, AY0+9)], "K")
+        c.capsule(L, LY0, END, LHW+0.6, "K"); c.capsule(R, LY0, END, LHW+0.6, "K")
+        for cx in (AX, 80-AX):
+            c.rect(cx-AHW-1.0, AY1-3.6, cx+AHW+1.0, AY1-2.2, "A")
+        for cx in (L, R):
+            c.rect(cx-LHW-0.8, END-2.0, cx+LHW+0.8, END-0.6, "A")
+        c.rect(40-TT+0.8, SH-5.8, 40+TT-0.8, SH-3.6, "A")
+        c.rect(39.4, SH-3.6, 40.6, SH+13, "A")
+
+    item("wetsuit", 2, wetsuit)
     item("tights", 2, lambda c: (
         c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K"),
         c.capsule(L, LY0-2, FY-0.5, LHW+0.4, "K"), c.capsule(R, LY0-2, FY-0.5, LHW+0.4, "K"),
@@ -360,20 +412,6 @@ def build(P):
     item("socks_stripe", 3, lambda c: (socks(c, 0.42),
         [c.rect(cx-LHW+0.1, LY0+(LY1-LY0)*0.42+2.4+i*2.6, cx+LHW-0.1, LY0+(LY1-LY0)*0.42+3.6+i*2.6, "A")
          for cx in (L, R) for i in range(4)]))
-    # hands
-    # A black glove on a dark board was a missing hand. An outline round the
-    # whole mitt turned it into a bangle, so the marks go ON it instead: a
-    # broad cuff and three knuckles, which are enough to imply the shape.
-    item("gloves", 3, lambda c: [(
-        c.rect(cx-AHW-1.8, AY1-AHW-2.6, cx+AHW+1.8, AY1+1.6, "K"),
-        c.disc(cx, AY1+1.4, AHW+1.8, AHW+1.6, "K"),
-        c.rect(cx-AHW-1.9, AY1-AHW-3.6, cx+AHW+1.9, AY1-AHW-1.6, "A"),
-        c.rect(cx-AHW-1.2, AY1-AHW+0.4, cx+AHW+1.2, AY1-AHW+1.4, "W"),
-        [c.rect(cx-AHW-1.2+i*2.0, AY1-1.4, cx-AHW+0.1+i*2.0, AY1-0.4, "A") for i in range(1, 4)],
-        [c.rect(cx-AHW-0.9+i*1.9, AY1+1.8, cx-AHW+0.3+i*1.9, AY1+3.4, ".") for i in range(1, 3)]) for cx in (AX, 80-AX)])
-    item("armwarmers", 2, lambda c: [(
-        c.capsule(cx, AY0+(AY1-AY0)*0.42, AY1-1.5, AHW+0.5, "K"),
-        c.rect(cx-AHW-0.5, AY0+(AY1-AY0)*0.42, cx+AHW+0.5, AY0+(AY1-AY0)*0.50, "A")) for cx in (AX, 80-AX)])
     # prizes — won, not sold. Drawn with more care than the first pass: a
     # wreath of real leaves, a medal with a struck rim, a sash with edging.
     def leaf(c, cx, cy, ln, wd, ang, ch):
@@ -394,19 +432,19 @@ def build(P):
         height, and the top edge just inside where the hair reaches, so the
         crown rests ON him at every angle instead of hovering at the corners.
         """
-        YB0, YB1 = 7.6, 13.2           # band, top and bottom
-        HW0, HW1 = 11.8, 14.6          # its half-width at each
+        YB0, YB1 = 7.0, 14.0           # band, top and bottom
+        HW0, HW1 = 12.4, 15.8          # its half-width at each
         c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW0, YB0), (40-HW0, YB0)], "K")
         # Five points, tallest in the middle, each finished with a pearl. The
         # bases meet, so the points read as one rim and not five spikes.
-        for x, top in ((0.0, 0.3), (-4.9, 1.8), (4.9, 1.8), (-9.7, 3.3), (9.7, 3.3)):
-            c.poly([(40+x-2.0, YB0+0.6), (40+x+2.0, YB0+0.6), (40+x, top)], "K")
-            c.disc(40+x, top + 0.4, 1.0, 1.0, "W")
+        for x, top in ((0.0, 0.9), (-5.2, 2.2), (5.2, 2.2), (-10.3, 3.7), (10.3, 3.7)):
+            c.poly([(40+x-2.2, YB0+0.6), (40+x+2.2, YB0+0.6), (40+x, top)], "K")
+            c.disc(40+x, top + 0.5, 1.15, 1.15, "W")
         # Jewels set in the band, each with a glint in the upper left — the
         # same light that shades the rest of the figure.
-        for x in (-6.8, 0.0, 6.8):
-            c.disc(40+x, YB1-2.6, 1.7, 1.8, "A")
-            c.disc(40+x-0.5, YB1-3.2, 0.55, 0.55, "W")
+        for x in (-7.4, 0.0, 7.4):
+            c.disc(40+x, YB1-3.0, 1.9, 2.0, "A")
+            c.disc(40+x-0.6, YB1-3.7, 0.6, 0.6, "W")
         # A lit top edge and a shadowed lower lip: without them the band is a
         # flat gold rectangle with dots on it.
         c.poly([(40-HW0, YB0), (40+HW0, YB0), (40+HW0-0.5, YB0+0.8), (40-HW0+0.5, YB0+0.8)], "W")
