@@ -14,6 +14,7 @@ import {
 import { coinAccount, fmtCoins } from "@/lib/coins";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
+import type { League } from "./useLeague";
 import { PixelAvatar } from "./PixelAvatar";
 import { CountryFlag } from "./CountryFlag";
 import { flagInk, flagWash } from "@/lib/away";
@@ -72,13 +73,25 @@ const STORE_KEY = "amacomp.locker";
  * the other. That's why a swatch carries a price rather than recolouring what you
  * already have.
  */
-export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKey }) {
+export function AvatarLocker({
+  state,
+  refDay,
+  send,
+}: {
+  state: AppState;
+  refDay: DayKey;
+  send: League["send"];
+}) {
   /**
    * What he's wearing. In a piece of state of its own so the callbacks the
    * boxes get can be created once and never change — 150 boxes re-rendering
    * for a change that touches one of them cost 563ms on a throttled phone.
    */
   const [loadout, setFit] = useState<Loadout>(DEFAULT_LOADOUT);
+  /** The item the till is asking about, then working on. */
+  const [asking, setAsking] = useState<string | null>(null);
+  const [paying, setPaying] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   // Headwear, not Skin: you open the shop to dress, and your face is already
   // sorted. The You shelves are a tap away on the same row.
@@ -87,14 +100,20 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
   // The last outfit comes back on reload — this thing gets opened a hundred times
   // in a row while the art is being judged. Per-browser only, and never required.
   useEffect(() => {
+    // What the server has is the real outfit; the local copy is only a
+    // convenience for someone who hasn't saved yet.
+    if (state.myLoadout) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot, restoring the saved outfit
+      setFit({ ...DEFAULT_LOADOUT, ...state.myLoadout });
+      return;
+    }
     try {
       const raw = localStorage.getItem(STORE_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot, restoring the last outfit
       if (raw) setFit(JSON.parse(raw) as Loadout);
     } catch {
       /* private window, blocked storage: the default kit is fine */
     }
-  }, []);
+  }, [state.myLoadout]);
 
   // Saved after the fact, so the setters above stay pure.
   useEffect(() => {
@@ -111,16 +130,44 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
     setFit((f) => ({ ...f, [slot]: { item: itemId } }));
   }, []);
 
-  // What he has. Not what he can spend — nothing is spendable yet — but a
-  // real number, because a shop with a made-up balance is a mock.
-  const balance = coinAccount(
+  // What he can actually spend: earned, plus anything granted, less what the
+  // shop has already taken.
+  const account = coinAccount(
     state.me?.id ?? "", state.athletes, state.activities, state.settings, refDay,
-  ).balance;
+    state.coinGrants, state.purchases,
+  );
+  const balance = account.balance;
+
+  /** What he owns: the starter kit, plus everything he's paid for. */
+  const owned = new Set([
+    ...STARTER_ITEMS,
+    ...state.purchases.filter((p) => p.athleteId === state.me?.id).map((p) => p.itemId),
+  ]);
+
+  async function buy(itemId: string) {
+    setPaying(itemId);
+    setProblem(null);
+    // The balance and the owned list come back in the state the till returns,
+    // so nothing here has to guess what the purchase did.
+    const error = await send("/api/club", { method: "POST", body: JSON.stringify({ buy: itemId }) });
+    setPaying(null);
+    if (error) {
+      setProblem(error);
+      return;
+    }
+    setAsking(null);
+  }
+
+  async function save() {
+    setPaying("save");
+    setProblem(await send("/api/club", { method: "POST", body: JSON.stringify({ wear: loadout }) }));
+    setPaying(null);
+  }
 
   // What this outfit would cost someone who only has the starter kit.
   const bill = SLOTS.reduce((sum, slot) => {
     const worn = loadout[slot];
-    if (!worn || STARTER_ITEMS.has(worn.item)) return sum;
+    if (!worn || owned.has(worn.item)) return sum;
     return sum + (AVATAR_ITEM_BY_ID.get(worn.item)?.price ?? 0);
   }, 0);
 
@@ -196,14 +243,20 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
         </div>
 
         {/* The till on one line: he opened the shop to shop, not to read. */}
-        <div className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-line bg-deck-2/50 px-3 py-1.5">
+        <div className="mt-2 flex items-center gap-2 rounded-xl border border-line bg-deck-2/50 px-3 py-1.5">
           {/* eslint-disable-next-line @next/next/no-img-element -- one cached file */}
           <img src="/tri-coin.png" alt="" aria-hidden className="h-4 w-4 shrink-0 object-contain" />
           <span className="stamp text-sm leading-none tabular-nums text-gold">{fmtCoins(balance)}</span>
-          <span aria-hidden className="text-ink-3">·</span>
-          <span className="font-mono text-[0.6875rem] text-ink-3">
-            this outfit <span className="text-gold">{fmtCoins(bill)}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[0.625rem] text-ink-3">
+            {bill > 0 ? `${fmtCoins(bill)} to buy this fit` : "all yours"}
           </span>
+          <button
+            onClick={save}
+            disabled={paying === "save"}
+            className="eyebrow shrink-0 rounded-lg border border-gold/50 bg-gold/10 px-2.5 py-1 text-[0.5625rem] text-gold disabled:opacity-40"
+          >
+            {paying === "save" ? "saving" : "save"}
+          </button>
         </div>
         {/* Your row on the Week tab, washed by the lane you've picked — the
             same flagWash the app already uses for an away week. */}
@@ -221,9 +274,11 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
           <span className="shrink-0 font-mono text-[0.6875rem] text-ink-2">105.1/100</span>
         </div>
 
-        <p className="mt-1 text-center font-mono text-[0.5625rem] text-ink-3">
-          everything unlocked · nothing is charged yet
-        </p>
+        {problem && (
+          <p className="mt-1.5 rounded-lg border border-run/40 bg-run/10 px-2 py-1 text-center font-mono text-[0.625rem] text-run">
+            {problem}
+          </p>
+        )}
       </div>
 
       {/* Pinned while you browse: what you're wearing, a search, and a tab per
@@ -333,7 +388,13 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
                     item={item}
                     worn={loadout[slot]?.item === item.id}
                     slot={slot}
+                    owned={owned.has(item.id) || item.price === 0}
+                    asking={asking === item.id}
+                    paying={paying === item.id}
+                    affordable={item.price <= balance}
                     onPick={pick}
+                    onAsk={setAsking}
+                    onBuy={buy}
                   />
                 ))}
               </div>
@@ -396,19 +457,32 @@ const ShopBox = memo(function ShopBox({
   item,
   slot,
   worn,
+  owned,
+  asking,
+  paying,
+  affordable,
   onPick,
+  onAsk,
+  onBuy,
 }: {
   item: AvatarItem;
   slot: Slot;
   worn: boolean;
+  owned: boolean;
+  /** This is the box the till is asking about: "buy 400?" */
+  asking: boolean;
+  paying: boolean;
+  affordable: boolean;
   onPick: (slot: Slot, itemId: string) => void;
+  onAsk: (itemId: string | null) => void;
+  onBuy: (itemId: string) => void;
 }) {
   const src = itemImage(item.id);
-  const free = STARTER_ITEMS.has(item.id) || item.price === 0;
+  const free = owned;
   const tier = TIER[item.tier];
   return (
     <button
-      onClick={() => onPick(slot, item.id)}
+      onClick={() => (owned || item.earned ? onPick(slot, item.id) : onAsk(asking ? null : item.id))}
       aria-pressed={worn}
       className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-colors ${
         worn ? "border-gold bg-gold/10" : `${tier.ring} bg-deck-2/40`
@@ -470,13 +544,35 @@ const ShopBox = memo(function ShopBox({
             <span className="text-gold">{item.earned}</span>
           ) : free ? (
             <span className="text-ink-3">yours</span>
+          ) : asking ? (
+            // The till, inside the box: no dialog to dismiss, and the price
+            // stays in front of you while you decide.
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (affordable && !paying) onBuy(item.id);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && affordable && !paying) onBuy(item.id);
+              }}
+              className={`w-full rounded px-1 py-0.5 text-center ${
+                affordable ? "bg-gold text-on-gold" : "bg-deck-2 text-ink-3"
+              }`}
+            >
+              {paying ? "buying…" : affordable ? `buy ${fmtCoins(item.price)}` : "not enough"}
+            </span>
           ) : (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element -- one cached file, forty boxes */}
-              <img src="/tri-coin.png" alt="" aria-hidden className="h-3 w-3 object-contain" />
-              {/* What it WILL cost. Nothing is locked while the shop is a
-                  preview, so a price is a plan, not a gate. */}
-              <span className="text-gold">{fmtCoins(item.price)}</span>
+              {/* eslint-disable-next-line @next/next/no-img-element -- one cached file, many boxes */}
+              <img
+                src="/tri-coin.png"
+                alt=""
+                aria-hidden
+                className={`h-3 w-3 object-contain ${affordable ? "" : "opacity-40"}`}
+              />
+              <span className={affordable ? "text-gold" : "text-ink-3"}>{fmtCoins(item.price)}</span>
             </>
           )}
         </span>

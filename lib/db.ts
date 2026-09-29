@@ -6,6 +6,8 @@ import {
   type ActivitySource,
   type ActivityEfforts,
   type Athlete,
+  type CoinGrant,
+  type Purchase,
   type GoalChange,
   type RateChange,
   type Settings,
@@ -13,7 +15,7 @@ import {
   type StepDay,
   type StepsLink,
 } from "./types";
-import { leagueHourNow } from "./dates";
+import { leagueHourNow, toDayKey } from "./dates";
 
 /**
  * Storage. Railway Postgres when DATABASE_URL is set, otherwise an in-memory
@@ -150,6 +152,15 @@ export interface Store {
   /** Upsert day totals; a day already stored is REPLACED, never added to. */
   upsertStepDays(athleteId: string, days: { day: string; steps: number }[]): Promise<number>;
   listStepDays(): Promise<StepDay[]>;
+
+  // The Club: coins handed out, things bought, and what you're wearing.
+  listCoinGrants(): Promise<CoinGrant[]>;
+  addCoinGrant(athleteId: string, amount: number, note: string): Promise<CoinGrant>;
+  listPurchases(): Promise<Purchase[]>;
+  /** Buy once. Returns null if they already own it — buying twice is a bug. */
+  addPurchase(athleteId: string, itemId: string, price: number): Promise<Purchase | null>;
+  getLoadout(athleteId: string): Promise<Record<string, { item: string }> | null>;
+  setLoadout(athleteId: string, loadout: Record<string, { item: string }>): Promise<void>;
 }
 
 function newId(): string {
@@ -582,6 +593,30 @@ class PgStore implements Store {
         // A personal shortcut with the code baked in, fetched by a secret key.
         await this.pool.query(`ALTER TABLE step_tokens ADD COLUMN IF NOT EXISTS shortcut BYTEA`);
         await this.pool.query(`ALTER TABLE step_tokens ADD COLUMN IF NOT EXISTS shortcut_key TEXT UNIQUE`);
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS coin_grants (
+            id TEXT PRIMARY KEY,
+            athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            amount INTEGER NOT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
+        // One row per thing owned: the primary key IS the rule that you can't
+        // buy the same item twice.
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS club_purchases (
+            athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            item_id TEXT NOT NULL,
+            price INTEGER NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            PRIMARY KEY (athlete_id, item_id)
+          )`);
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS club_loadouts (
+            athlete_id TEXT PRIMARY KEY REFERENCES athletes(id) ON DELETE CASCADE,
+            data JSONB NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS step_days (
             athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
@@ -1028,6 +1063,78 @@ class PgStore implements Store {
       updatedAt: new Date(row.updated_at).toISOString(),
     }));
   }
+
+  // ------------------------------------------------------------------ Club
+
+  async listCoinGrants(): Promise<CoinGrant[]> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT id, athlete_id, amount, note, to_char(created_at, 'YYYY-MM-DD') AS day
+         FROM coin_grants ORDER BY created_at`,
+    );
+    return r.rows.map((x) => ({
+      id: x.id as string,
+      athleteId: x.athlete_id as string,
+      amount: Number(x.amount),
+      note: x.note as string,
+      day: x.day as string,
+    }));
+  }
+
+  async addCoinGrant(athleteId: string, amount: number, note: string): Promise<CoinGrant> {
+    await this.init();
+    const id = newId();
+    const r = await this.pool.query(
+      `INSERT INTO coin_grants (id, athlete_id, amount, note) VALUES ($1, $2, $3, $4)
+       RETURNING to_char(created_at, 'YYYY-MM-DD') AS day`,
+      [id, athleteId, Math.round(amount), note],
+    );
+    return { id, athleteId, amount: Math.round(amount), note, day: r.rows[0].day as string };
+  }
+
+  async listPurchases(): Promise<Purchase[]> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT athlete_id, item_id, price, to_char(created_at, 'YYYY-MM-DD') AS day
+         FROM club_purchases ORDER BY created_at`,
+    );
+    return r.rows.map((x) => ({
+      athleteId: x.athlete_id as string,
+      itemId: x.item_id as string,
+      price: Number(x.price),
+      day: x.day as string,
+    }));
+  }
+
+  async addPurchase(athleteId: string, itemId: string, price: number): Promise<Purchase | null> {
+    await this.init();
+    // DO NOTHING on conflict: owning a thing twice isn't a thing, and the
+    // primary key is what enforces it rather than a check-then-write race.
+    const r = await this.pool.query(
+      `INSERT INTO club_purchases (athlete_id, item_id, price) VALUES ($1, $2, $3)
+       ON CONFLICT (athlete_id, item_id) DO NOTHING
+       RETURNING to_char(created_at, 'YYYY-MM-DD') AS day`,
+      [athleteId, itemId, Math.round(price)],
+    );
+    if (r.rowCount === 0) return null;
+    return { athleteId, itemId, price: Math.round(price), day: r.rows[0].day as string };
+  }
+
+  async getLoadout(athleteId: string): Promise<Record<string, { item: string }> | null> {
+    await this.init();
+    const r = await this.pool.query(`SELECT data FROM club_loadouts WHERE athlete_id = $1`, [athleteId]);
+    return r.rows[0] ? (r.rows[0].data as Record<string, { item: string }>) : null;
+  }
+
+  async setLoadout(athleteId: string, loadout: Record<string, { item: string }>): Promise<void> {
+    await this.init();
+    await this.pool.query(
+      `INSERT INTO club_loadouts (athlete_id, data, updated_at) VALUES ($1, $2, now())
+       ON CONFLICT (athlete_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
+      [athleteId, JSON.stringify(loadout)],
+    );
+  }
+
 }
 
 // ---------------------------------------------------------------------------
@@ -1307,6 +1414,47 @@ class MemoryStore implements Store {
 
   async listStepDays() {
     return [...this.stepDays.values()].sort((a, b) => a.day.localeCompare(b.day));
+  }
+
+  // ------------------------------------------------------------------ Club
+
+  private coinGrants: CoinGrant[] = [];
+  private purchases: Purchase[] = [];
+  private loadouts = new Map<string, Record<string, { item: string }>>();
+
+  async listCoinGrants(): Promise<CoinGrant[]> {
+    return [...this.coinGrants];
+  }
+
+  async addCoinGrant(athleteId: string, amount: number, note: string): Promise<CoinGrant> {
+    const grant: CoinGrant = {
+      id: newId(),
+      athleteId,
+      amount: Math.round(amount),
+      note,
+      day: toDayKey(new Date()),
+    };
+    this.coinGrants.push(grant);
+    return grant;
+  }
+
+  async listPurchases(): Promise<Purchase[]> {
+    return [...this.purchases];
+  }
+
+  async addPurchase(athleteId: string, itemId: string, price: number): Promise<Purchase | null> {
+    if (this.purchases.some((p) => p.athleteId === athleteId && p.itemId === itemId)) return null;
+    const bought: Purchase = { athleteId, itemId, price: Math.round(price), day: toDayKey(new Date()) };
+    this.purchases.push(bought);
+    return bought;
+  }
+
+  async getLoadout(athleteId: string): Promise<Record<string, { item: string }> | null> {
+    return this.loadouts.get(athleteId) ?? null;
+  }
+
+  async setLoadout(athleteId: string, loadout: Record<string, { item: string }>): Promise<void> {
+    this.loadouts.set(athleteId, loadout);
   }
 }
 

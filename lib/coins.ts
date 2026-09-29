@@ -1,4 +1,4 @@
-import type { Activity, Athlete, Settings } from "./types";
+import type { Activity, Athlete, CoinGrant, Purchase, Settings } from "./types";
 import { isGrant } from "./types";
 import { activityPoints, goalFor, standingsForRange, unscoredGymIds } from "./scoring";
 import {
@@ -41,7 +41,7 @@ export const COIN_RATES = {
   seasonWin: 250,
 } as const;
 
-export type CoinKind = "points" | "quota" | "week" | "month" | "season";
+export type CoinKind = "points" | "quota" | "week" | "month" | "season" | "grant" | "spend";
 
 export interface CoinEntry {
   kind: CoinKind;
@@ -55,8 +55,12 @@ export interface CoinEntry {
 }
 
 export interface CoinAccount {
+  /** Earned and granted, less what's been spent — what you can actually spend. */
   balance: number;
+  /** Everything that ever came IN, before any spending. */
   earned: number;
+  /** What the shop has taken, as a positive number. */
+  spent: number;
   entries: CoinEntry[];
 }
 
@@ -103,6 +107,8 @@ export function coinAccount(
   activities: Activity[],
   settings: Settings,
   refDay: DayKey = todayKey(),
+  grants: CoinGrant[] = [],
+  purchases: Purchase[] = [],
 ): CoinAccount {
   const entries: CoinEntry[] = [];
   const seasonStart = settings.seasonStart;
@@ -173,9 +179,35 @@ export function coinAccount(
     }
   }
 
+  // Coins handed out by hand: a test float, a bounty paid, a prize settled.
+  for (const g of grants) {
+    if (g.athleteId !== athleteId) continue;
+    entries.push({
+      kind: "grant",
+      label: g.note || "Granted",
+      detail: g.day,
+      amount: g.amount,
+      day: g.day,
+    });
+  }
+
+  // And what the shop took. Kept in the same ledger as a negative line, so the
+  // wallet can show where the money went as well as where it came from.
+  for (const p of purchases) {
+    if (p.athleteId !== athleteId) continue;
+    entries.push({
+      kind: "spend",
+      label: p.itemId,
+      detail: p.day,
+      amount: -p.price,
+      day: p.day,
+    });
+  }
+
   entries.sort((a, b) => (a.day === b.day ? b.amount - a.amount : b.day.localeCompare(a.day)));
-  const earned = entries.reduce((sum, e) => sum + e.amount, 0);
-  return { balance: earned, earned, entries };
+  const earned = entries.filter((e) => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
+  const spent = entries.filter((e) => e.amount < 0).reduce((sum, e) => sum - e.amount, 0);
+  return { balance: earned - spent, earned, spent, entries };
 }
 
 /** Everyone's balance, for the Club's rich list. */
@@ -184,11 +216,13 @@ export function coinBoard(
   activities: Activity[],
   settings: Settings,
   refDay: DayKey = todayKey(),
+  grants: CoinGrant[] = [],
+  purchases: Purchase[] = [],
 ): { athlete: Athlete; balance: number }[] {
   return athletes
     .map((athlete) => ({
       athlete,
-      balance: coinAccount(athlete.id, athletes, activities, settings, refDay).balance,
+      balance: coinAccount(athlete.id, athletes, activities, settings, refDay, grants, purchases).balance,
     }))
     .sort((a, b) => b.balance - a.balance || a.athlete.name.localeCompare(b.athlete.name));
 }

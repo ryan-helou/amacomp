@@ -39,7 +39,7 @@ function maybeBackgroundSyncStrava(store: Store, conn: StravaConn): void {
 export async function readState(): Promise<AppState> {
   const store = getStore();
   const me = await currentAthlete();
-  const [athletes, activities, settings, conn, efforts, steps, stepsLink] = await Promise.all([
+  const [athletes, activities, settings, conn, efforts, steps, stepsLink, coinGrants, purchases] = await Promise.all([
     store.listAthletes(),
     store.listActivities(),
     store.getSettings(),
@@ -47,6 +47,8 @@ export async function readState(): Promise<AppState> {
     store.listEfforts(),
     store.listStepDays(),
     me ? store.getStepsLink(me.id) : Promise.resolve({ connected: false, lastSyncAtISO: null, shortcutKey: null }),
+    store.listCoinGrants(),
+    store.listPurchases(),
   ]);
   if (conn) maybeBackgroundSyncStrava(store, conn);
   return {
@@ -66,5 +68,11 @@ export async function readState(): Promise<AppState> {
     // A season of daily step totals for six people is a few hundred rows.
     steps,
     stepsLink,
+    // The Club's books: what's been handed out, what's been bought, and the
+    // avatar you saved. Everyone's grants and purchases ride along because a
+    // balance is only right with the spending taken off it.
+    coinGrants,
+    purchases,
+    myLoadout: me ? await store.getLoadout(me.id) : null,
   };
 }
