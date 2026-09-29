@@ -15,11 +15,12 @@ import { coinAccount, fmtCoins } from "@/lib/coins";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { PixelAvatar } from "./PixelAvatar";
+import { CountryFlag } from "./CountryFlag";
 
 // You first, then what you put on, then what flies behind you.
 const SLOTS: Slot[] = [
   "skin", "hair", "face",
-  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "prize", "banner",
+  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "prize", "flag",
 ];
 
 const SHELF: Record<Slot, string> = {
@@ -27,7 +28,7 @@ const SHELF: Record<Slot, string> = {
   hair: "Hair",
   face: "Face",
   prize: "Prizes",
-  banner: "Banners",
+  flag: "Flags",
   head: "Headwear",
   eyes: "Eyewear",
   torso: "Tops",
@@ -128,6 +129,8 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
     return [{ slot, item }];
   });
 
+  const flying = AVATAR_ITEM_BY_ID.get(loadout.flag?.item ?? "");
+
   const needle = query.trim().toLowerCase();
 
   /** What a shelf shows: everything, or just what matches the search. */
@@ -154,7 +157,11 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
       >
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="stamp text-lg text-gold">LOCKER</h3>
-          <span className="eyebrow text-ink-3">{state.me?.name} · not saved yet</span>
+          <span className="eyebrow flex items-center gap-1.5 text-ink-3">
+            {state.me?.name}
+            {flying?.flag && <CountryFlag id={flying.flag} />}
+            <span>· not saved yet</span>
+          </span>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -398,7 +405,9 @@ const ShopBox = memo(function ShopBox({
           ].filter(Boolean).join(", "),
         }}
       >
-        {item.slot === "skin" ? (
+        {item.flag ? (
+          <CountryFlag id={item.flag} className="h-9 w-[3.375rem] shadow-sm" />
+        ) : item.slot === "skin" ? (
           // A skin tone has no sprite to photograph — it IS the colour.
           <span
             aria-hidden
