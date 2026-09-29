@@ -81,7 +81,7 @@ const TIER: Record<AvatarItem["tier"], { ring: string; tag: string | null; glow?
 const STORE_KEY = "amacomp.locker";
 
 /**
- * The locker, Ryan's preview only (see `canPreviewAvatar`).
+ * The locker, on the laptop only (see `SHOW_AVATAR_SHOP` in lib/club.ts).
  *
  * Nothing here is saved to the league yet: it exists so the figure can be judged
  * at real size, on a real phone, against the app's own background.

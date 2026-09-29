@@ -3,19 +3,19 @@
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { CLUB_LIVE, CLUB_ROOMS, canPreviewAvatar, type ClubRoom } from "@/lib/club";
+import { CLUB_LIVE, CLUB_ROOMS, SHOW_AVATAR_SHOP, type ClubRoom } from "@/lib/club";
 import { Wallet } from "./Wallet";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 
 /**
- * The shop is unfinished work, so it ships as its own chunk that nobody else's
- * phone ever downloads — the catalogue and its prices aren't in the bundle the
- * league gets, only in one fetched after the server has said yes.
+ * The avatar shop is unfinished, and unfinished work doesn't leave the laptop.
+ * `SHOW_AVATAR_SHOP` is false in any built bundle, so this import is dead code
+ * the moment the app is compiled for the league — see the note in lib/club.ts.
  */
-const AvatarLocker = dynamic(() => import("./AvatarLocker").then((m) => m.AvatarLocker), {
-  ssr: false,
-});
+const AvatarLocker = SHOW_AVATAR_SHOP
+  ? dynamic(() => import("@/components/AvatarLocker").then((m) => m.AvatarLocker), { ssr: false })
+  : null;
 
 /**
  * The Club: tri coins, the shop, bets and challenges.
@@ -27,16 +27,8 @@ const AvatarLocker = dynamic(() => import("./AvatarLocker").then((m) => m.Avatar
 export function ClubTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const [room, setRoom] = useState<ClubRoom>("wallet");
 
-  // The teaser is what the league sees. Ryan also gets the locker, so the
-  // figure can be judged in the real app rather than in a mock.
-  if (!CLUB_LIVE) {
-    return (
-      <div className="space-y-5">
-        {canPreviewAvatar(state.previewAvatar) && <AvatarLocker state={state} refDay={refDay} />}
-        <ClubTeaser />
-      </div>
-    );
-  }
+  // The teaser is all the league gets, and it carries nothing unfinished.
+  if (!CLUB_LIVE) return <ClubTeaser />;
 
   return (
     <div className="space-y-4">
@@ -62,6 +54,8 @@ export function ClubTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
 
       {room === "wallet" ? (
         <Wallet state={state} refDay={refDay} />
+      ) : room === "shop" && AvatarLocker ? (
+        <AvatarLocker state={state} refDay={refDay} />
       ) : (
         /* Bets and challenges land here as they're built. */
         <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">

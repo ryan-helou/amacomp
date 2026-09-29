@@ -1,5 +1,4 @@
 import { getStore, type Store, type StravaConn } from "./db";
-import { avatarPreviewGranted } from "./preview";
 import { currentAthlete, isAdmin } from "./session";
 import { stravaConfigured, syncAthlete } from "./strava";
 import type { AppState } from "./types";
@@ -67,7 +66,5 @@ export async function readState(): Promise<AppState> {
     // A season of daily step totals for six people is a few hundred rows.
     steps,
     stepsLink,
-    // Decided on the server from a key, never from who you say you are.
-    previewAvatar: await avatarPreviewGranted(),
   };
 }
