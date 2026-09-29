@@ -19,16 +19,21 @@ export const CLUB_LIVE =
   CLUB_FLAG === "1" ? true : CLUB_FLAG === "0" ? false : process.env.NODE_ENV === "development";
 
 /**
- * Whether the avatar shop exists at all.
+ * Who gets the Club early.
  *
- * It doesn't ship. Ryan's call, 2026-09-28: unfinished work stays on the
- * laptop, so this is decided when the bundle is BUILT, not when a request
- * arrives — `npm run dev` has it, the deployed app has no path to it and none
- * of its code. An earlier version gated it on the signed-in name, which was no
- * gate at all: signing in here is a name and nothing else (lib/session.ts), so
- * anyone who typed "Ryan" was Ryan.
+ * Ryan's call, 2026-09-29: the club goes on the real app, and the name on the
+ * door decides. Matched exactly, for the same reason the trips are (lib/away.ts):
+ * Jona and Jonah are two different people.
+ *
+ * Understand what this is and isn't. Signing in here is a name and nothing
+ * else (lib/session.ts says so), so this stops the lads STUMBLING into
+ * unfinished work — it does not stop anyone who types Ryan's name, and the
+ * shop's item names sit in a chunk any browser can fetch. That's a trade Ryan
+ * made knowingly: five mates, not five attackers.
  */
-export const SHOW_AVATAR_SHOP = process.env.NODE_ENV === "development";
+export function canSeeClub(name: string | null | undefined): boolean {
+  return name === "Ryan";
+}
 
 /** What a coin is called, singular and plural, in one place. */
 export const COIN = { one: "tri coin", many: "tri coins", short: "TC" } as const;
