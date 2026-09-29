@@ -73,6 +73,207 @@ class C:
         x0,x1,y0,y1 = min(xs), max(xs), min(ys), max(ys)
         return {"res": s.res, "x0": x0, "y0": y0, "rows": ["".join(s.g[j][x0:x1+1]) for j in range(y0, y1+1)]}
 
+# --------------------------------------------------------------------- flags
+# A flag is a small language: bands, a cross, a canton, a disc, an emblem. The
+# colours are literal (chars "1".."9" index each flag's own palette), which is
+# the one place the wardrobe needs real colours rather than the wearer's chosen
+# one — a Canadian flag in mint is not a Canadian flag.
+
+class Flag:
+    """A cloth of w x h units, drawn in normalised 0..1 coordinates."""
+
+    # res 2, not 3: a flag is mostly flat colour, and the diagonals of a union
+    # flag at res 3 turn into thousands of one-cell runs — 390KB for Jamaica
+    # alone. Two cells per unit matches the garments and keeps a box light.
+    def __init__(s, res=2, w=76.0, h=52.0, y0=5.0):
+        s.res, s.w_, s.h_ = res, w, h
+        s.c = C(res)
+        s.x0, s.y0 = (W - w) / 2, y0
+
+    def _x(s, u): return s.x0 + u * s.w_
+    def _y(s, v): return s.y0 + v * s.h_
+
+    def field(s, ch): s.c.rect(s._x(0), s._y(0), s._x(1), s._y(1), ch)
+
+    def bands(s, chars, vertical=True, weights=None):
+        weights = weights or [1] * len(chars)
+        total = float(sum(weights)); at = 0.0
+        for ch, wgt in zip(chars, weights):
+            a, b = at / total, (at + wgt) / total
+            if vertical: s.c.rect(s._x(a), s._y(0), s._x(b), s._y(1), ch)
+            else:        s.c.rect(s._x(0), s._y(a), s._x(1), s._y(b), ch)
+            at += wgt
+
+    def stripes(s, n, chars, vertical=False):
+        for i in range(n):
+            a, b, ch = i / n, (i + 1) / n, chars[i % len(chars)]
+            if vertical: s.c.rect(s._x(a), s._y(0), s._x(b), s._y(1), ch)
+            else:        s.c.rect(s._x(0), s._y(a), s._x(1), s._y(b), ch)
+
+    def box(s, u0, v0, u1, v1, ch, only=None):
+        s.c.rect(s._x(u0), s._y(v0), s._x(u1), s._y(v1), ch, only=only)
+
+    def disc(s, u, v, r, ch, only=None):
+        # r is a fraction of the cloth HEIGHT, so a disc stays round.
+        s.c.disc(s._x(u), s._y(v), r * s.h_, r * s.h_, ch, only=only)
+
+    def ring(s, u, v, r, ch, inner):
+        s.disc(u, v, r, ch); s.disc(u, v, inner, ".")
+
+    def cross(s, u, thick, ch):
+        """A Nordic cross: upright at u, arms `thick` of the height."""
+        t = thick / 2.0
+        s.c.rect(s._x(0), s._y(0.5 - t), s._x(1), s._y(0.5 + t), ch)
+        s.c.rect(s._x(u) - t * s.h_, s._y(0), s._x(u) + t * s.h_, s._y(1), ch)
+
+    def saltire(s, thick, ch):
+        n, hw = 240, thick / 2.0 * s.h_
+        for i in range(n + 1):
+            t = i / n
+            for u, v in ((t, t), (t, 1 - t)):
+                s.c.rect(s._x(u) - hw, s._y(v) - hw * 0.66, s._x(u) + hw, s._y(v) + hw * 0.66, ch)
+
+    def star(s, u, v, r, ch, points=5, inner=0.42, turn=0.0):
+        import math
+        R = r * s.h_; pts = []
+        for i in range(points * 2):
+            ang = turn - math.pi / 2 + i * math.pi / points
+            rad = R if i % 2 == 0 else R * inner
+            pts.append((s._x(u) + rad * math.cos(ang), s._y(v) + rad * math.sin(ang)))
+        s.c.poly(pts, ch)
+
+    def diamond(s, u, v, rw, rh, ch):
+        s.c.poly([(s._x(u), s._y(v) - rh * s.h_), (s._x(u) + rw * s.w_, s._y(v)),
+                  (s._x(u), s._y(v) + rh * s.h_), (s._x(u) - rw * s.w_, s._y(v))], ch)
+
+    def triangle(s, pts, ch): s.c.poly([(s._x(u), s._y(v)) for u, v in pts], ch)
+
+    def maple(s, u, v, r, ch):
+        """Eleven points at measured radii — the deep notches are what make it
+        read as a maple leaf instead of a starburst at this size."""
+        spec = [(0.00, 1.00), (0.09, 0.42), (0.24, 0.62), (0.21, 0.30), (0.44, 0.38),
+                (0.38, 0.14), (0.66, 0.18), (0.52, -0.04), (0.31, -0.14), (0.34, -0.32),
+                (0.11, -0.28), (0.07, -0.58)]
+        pts = list(spec) + [(-sx, sy) for sx, sy in reversed(spec[1:])]
+        s.c.poly([(s._x(u) + px * r * s.h_ * 1.3, s._y(v) - py * r * s.h_) for px, py in pts], ch)
+        s.c.rect(s._x(u) - 0.04 * r * s.h_, s._y(v) + 0.50 * r * s.h_,
+                 s._x(u) + 0.04 * r * s.h_, s._y(v) + 0.66 * r * s.h_, ch)
+
+    def cedar(s, u, v, r, ch):
+        """Lebanon's cedar: three tiers of boughs on a short trunk."""
+        R = r * s.h_
+        for spread, top, bot in ((1.00, 0.16, 0.52), (0.72, -0.18, 0.20), (0.42, -0.54, -0.14)):
+            s.c.poly([(s._x(u), s._y(v) + top * R - 0.34 * R),
+                      (s._x(u) + spread * R, s._y(v) + bot * R),
+                      (s._x(u), s._y(v) + bot * R - 0.14 * R),
+                      (s._x(u) - spread * R, s._y(v) + bot * R)], ch)
+        s.c.rect(s._x(u) - 0.08 * R, s._y(v) + 0.44 * R, s._x(u) + 0.08 * R, s._y(v) + 0.70 * R, ch)
+
+    def arm(s, u0, v0, u1, v1, thick, ch):
+        """A thick straight arm from (u0,v0) to (u1,v1) — the limbs of a Y."""
+        n, hw = 220, thick / 2.0 * s.h_
+        for i in range(n + 1):
+            t = i / n
+            s.c.rect(s._x(u0 + (u1 - u0) * t) - hw, s._y(v0 + (v1 - v0) * t) - hw * 0.66,
+                     s._x(u0 + (u1 - u0) * t) + hw, s._y(v0 + (v1 - v0) * t) + hw * 0.66, ch)
+
+    def rail(s, ch):
+        """What it hangs from, so it reads as a banner and not a painted wall."""
+        s.c.rect(s._x(-0.04), s._y(0) - 2.4, s._x(1.04), s._y(0) - 0.8, ch)
+        for u in (0.05, 0.95):
+            s.c.rect(s._x(u) - 0.7, s._y(0) - 1.0, s._x(u) + 0.7, s._y(0) + 1.2, ch)
+
+    def pack(s): return s.c.pack()
+
+
+# The flags themselves. Palette entries are chars "1".."8"; "R" is the rail it
+# hangs from. Kept as data so a new country is four lines, not a drawing.
+FLAGS = [
+    dict(id="ca", label="Canada", pal=["#D52B1E", "#FFFFFF"], draw=lambda f: (
+        f.bands(["1", "2", "1"], weights=[1, 2, 1]), f.maple(0.5, 0.5, 0.36, "1"))),
+    dict(id="lb", label="Lebanon", pal=["#ED1C24", "#FFFFFF", "#00A651"], draw=lambda f: (
+        f.bands(["1", "2", "1"], vertical=False, weights=[1, 2, 1]), f.cedar(0.5, 0.5, 0.30, "3"))),
+    dict(id="jp", label="Japan", pal=["#FFFFFF", "#BC002D"], draw=lambda f: (
+        f.field("1"), f.disc(0.5, 0.5, 0.30, "2"))),
+    dict(id="it", label="Italy", pal=["#008C45", "#F4F5F0", "#CD212A"], draw=lambda f: f.bands(["1", "2", "3"])),
+    dict(id="fr", label="France", pal=["#0055A4", "#FFFFFF", "#EF4135"], draw=lambda f: f.bands(["1", "2", "3"])),
+    dict(id="ie", label="Ireland", pal=["#169B62", "#FFFFFF", "#FF883E"], draw=lambda f: f.bands(["1", "2", "3"])),
+    dict(id="be", label="Belgium", pal=["#2D2926", "#FAE042", "#ED2939"], draw=lambda f: f.bands(["1", "2", "3"])),
+    dict(id="es", label="Spain", pal=["#AA151B", "#F1BF00", "#C8102E"], draw=lambda f: (
+        f.bands(["1", "2", "1"], vertical=False, weights=[1, 2, 1]),
+        # the arms: a crowned shield between two pillars
+        f.box(0.235, 0.40, 0.255, 0.62, "1"), f.box(0.345, 0.40, 0.365, 0.62, "1"),
+        f.box(0.265, 0.39, 0.335, 0.60, "1"), f.triangle([(0.265, 0.60), (0.335, 0.60), (0.30, 0.655)], "1"),
+        f.box(0.275, 0.355, 0.325, 0.385, "1"))),
+    dict(id="pt", label="Portugal", pal=["#046A38", "#DA291C", "#FFE900", "#FFFFFF"], draw=lambda f: (
+        f.bands(["1", "2"], weights=[2, 3]), f.disc(0.40, 0.5, 0.22, "3"),
+        f.disc(0.40, 0.5, 0.15, "4"), f.disc(0.40, 0.5, 0.10, "2"))),
+    dict(id="gr", label="Greece", pal=["#0D5EAF", "#FFFFFF"], draw=lambda f: (
+        f.stripes(9, ["1", "2"]), f.box(0, 0, 0.29, 5 / 9, "1"),
+        f.box(0.115, 0, 0.175, 5 / 9, "2"), f.box(0, 0.21, 0.29, 0.34, "2"))),
+    dict(id="de", label="Germany", pal=["#1A1A1A", "#DD0000", "#FFCE00"], draw=lambda f: f.bands(["1", "2", "3"], vertical=False)),
+    dict(id="nl", label="Netherlands", pal=["#AE1C28", "#FFFFFF", "#21468B"], draw=lambda f: f.bands(["1", "2", "3"], vertical=False)),
+    dict(id="pl", label="Poland", pal=["#FFFFFF", "#DC143C"], draw=lambda f: f.bands(["1", "2"], vertical=False)),
+    dict(id="ua", label="Ukraine", pal=["#0057B7", "#FFD700"], draw=lambda f: f.bands(["1", "2"], vertical=False)),
+    dict(id="ch", label="Switzerland", pal=["#D52B1E", "#FFFFFF"], draw=lambda f: (
+        f.field("1"), f.box(0.42, 0.22, 0.58, 0.78, "2"), f.box(0.335, 0.37, 0.665, 0.63, "2"))),
+    dict(id="dk", label="Denmark", pal=["#C60C30", "#FFFFFF"], draw=lambda f: (f.field("1"), f.cross(0.38, 0.20, "2"))),
+    dict(id="se", label="Sweden", pal=["#006AA7", "#FECC00"], draw=lambda f: (f.field("1"), f.cross(0.38, 0.20, "2"))),
+    dict(id="no", label="Norway", pal=["#BA0C2F", "#FFFFFF", "#00205B"], draw=lambda f: (
+        f.field("1"), f.cross(0.38, 0.30, "2"), f.cross(0.38, 0.13, "3"))),
+    dict(id="fi", label="Finland", pal=["#FFFFFF", "#002F6C"], draw=lambda f: (f.field("1"), f.cross(0.38, 0.20, "2"))),
+    dict(id="is", label="Iceland", pal=["#02529C", "#FFFFFF", "#DC1E35"], draw=lambda f: (
+        f.field("1"), f.cross(0.38, 0.30, "2"), f.cross(0.38, 0.14, "3"))),
+    dict(id="gb", label="Britain", pal=["#012169", "#FFFFFF", "#C8102E"], draw=lambda f: (
+        f.field("1"), f.saltire(0.30, "2"), f.saltire(0.13, "3"),
+        f.cross(0.5, 0.33, "2"), f.cross(0.5, 0.20, "3"))),
+    dict(id="us", label="United States", pal=["#B31942", "#FFFFFF", "#0A3161"], draw=lambda f: (
+        f.stripes(13, ["1", "2"]), f.box(0, 0, 0.42, 7 / 13, "3"),
+        [f.star(0.05 + (i % 5) * 0.085, 0.07 + (i // 5) * 0.12, 0.045, "2") for i in range(20)])),
+    dict(id="mx", label="Mexico", pal=["#006847", "#FFFFFF", "#CE1126", "#6B4423", "#1E7A46"], draw=lambda f: (
+        f.bands(["1", "2", "3"]),
+        # eagle on the cactus, wreath beneath — a silhouette, at this size
+        f.triangle([(0.44, 0.40), (0.50, 0.34), (0.56, 0.40), (0.50, 0.56)], "4"),
+        f.triangle([(0.415, 0.36), (0.475, 0.46), (0.435, 0.50)], "4"),
+        f.triangle([(0.585, 0.36), (0.525, 0.46), (0.565, 0.50)], "4"),
+        f.box(0.487, 0.54, 0.513, 0.62, "5"),
+        f.triangle([(0.44, 0.60), (0.50, 0.66), (0.56, 0.60), (0.50, 0.63)], "5"))),
+    dict(id="br", label="Brazil", pal=["#009739", "#FEDD00", "#012169", "#FFFFFF"], draw=lambda f: (
+        f.field("1"), f.diamond(0.5, 0.5, 0.40, 0.40, "2"), f.disc(0.5, 0.5, 0.20, "3"),
+        f.box(0.36, 0.46, 0.64, 0.50, "4", only="3"))),
+    dict(id="ar", label="Argentina", pal=["#74ACDF", "#FFFFFF", "#F6B40E"], draw=lambda f: (
+        f.bands(["1", "2", "1"], vertical=False), f.star(0.5, 0.5, 0.15, "3", points=16, inner=0.62))),
+    dict(id="au", label="Australia", pal=["#012169", "#FFFFFF", "#C8102E"], draw=lambda f: (
+        f.field("1"), f.box(0, 0, 0.42, 0.5, "2"),
+        f.box(0, 0, 0.42, 0.5, "1"), f.box(0.17, 0, 0.25, 0.5, "2"), f.box(0, 0.19, 0.42, 0.31, "2"),
+        f.star(0.21, 0.75, 0.13, "2", points=7, inner=0.45),
+        [f.star(u, v, 0.055, "2", points=7, inner=0.45) for u, v in
+         ((0.72, 0.18), (0.85, 0.45), (0.72, 0.78), (0.60, 0.50), (0.78, 0.62))])),
+    dict(id="ke", label="Kenya", pal=["#1A1A1A", "#BB0000", "#006600", "#FFFFFF"], draw=lambda f: (
+        f.bands(["1", "4", "2", "4", "3"], vertical=False, weights=[6, 1, 6, 1, 6]),
+        f.diamond(0.5, 0.5, 0.075, 0.44, "4"), f.diamond(0.5, 0.5, 0.055, 0.36, "2"))),
+    dict(id="ma", label="Morocco", pal=["#C1272D", "#006233"], draw=lambda f: (
+        f.field("1"), f.star(0.5, 0.5, 0.26, "2", points=5, inner=0.48),
+        f.star(0.5, 0.5, 0.17, "1", points=5, inner=0.48))),
+    dict(id="za", label="South Africa", pal=["#007A4D", "#FFFFFF", "#DE3831", "#002395", "#1A1A1A", "#FFB612"], draw=lambda f: (
+        f.bands(["3", "4"], vertical=False),
+        # the green Y, drawn as its two arms and its stem, each with a white edge
+        f.arm(0.00, 0.06, 0.62, 0.50, 0.30, "2"), f.arm(0.00, 0.94, 0.62, 0.50, 0.30, "2"),
+        f.arm(0.00, 0.06, 0.62, 0.50, 0.19, "1"), f.arm(0.00, 0.94, 0.62, 0.50, 0.19, "1"),
+        f.box(0.00, 0.35, 0.62, 0.65, "2"), f.box(0.00, 0.405, 0.62, 0.595, "1"),
+        # the black triangle at the hoist, in its gold sleeve
+        f.triangle([(0, 0), (0.34, 0.5), (0, 1)], "6"),
+        f.triangle([(0, 0.10), (0.24, 0.5), (0, 0.90)], "5"))),
+    dict(id="jm", label="Jamaica", pal=["#009B3A", "#FED100", "#1A1A1A"], draw=lambda f: (
+        f.field("1"), f.triangle([(0, 0), (0.5, 0.5), (0, 1)], "3"),
+        f.triangle([(1, 0), (0.5, 0.5), (1, 1)], "3"), f.saltire(0.16, "2"))),
+    dict(id="ama", label="AmaComp", pal=["#D4147E", "#16D39A", "#C9A227", "#101215"], draw=lambda f: (
+        f.field("4"), f.bands(["1", "2"], weights=[1, 1]),
+        f.box(0.06, 0.12, 0.94, 0.88, "4"), f.disc(0.5, 0.5, 0.30, "3"), f.disc(0.5, 0.5, 0.21, "4"),
+        f.star(0.5, 0.5, 0.16, "3"))),
+]
+
+
 def build(P):
     HC, HRX, HRY = P["HEAD_CY"], P["HEAD_RX"], P["HEAD_RY"]
     SH, HIP = P["SH_Y"], P["HIP_Y"]
@@ -205,7 +406,15 @@ def build(P):
         c.rect(cx-1.55, cy-1.15, cx+1.55, cy-0.35, "K"); c.rect(cx-1.15, cy+0.25, cx+1.15, cy+0.7, "K")
         c.rect(cx+4.3, cy-1.0, cx+5.2, cy+0.0, "K")
     item("watch", 4, watch)
-    return {"W": W, "H": H, "base": body(False), "back": body(True), "g": G}
+    # flags: their own sheets, with their own colours
+    flags = {}
+    for spec in FLAGS:
+        f = Flag()
+        spec["draw"](f)
+        f.rail("R")
+        flags[spec["id"]] = {"label": spec["label"], "pal": spec["pal"], "sheet": f.pack()}
+
+    return {"W": W, "H": H, "base": body(False), "back": body(True), "g": G, "flags": flags}
 
 if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "classic"
@@ -214,4 +423,4 @@ if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     dest = os.path.join(here, "..", "lib", "avatar", "sprites.json")
     json.dump(out, open(dest, "w"))
-    print("built", which, "| items:", len(out["g"]), "->", os.path.relpath(dest))
+    print("built", which, "| items:", len(out["g"]), "| flags:", len(out["flags"]), "->", os.path.relpath(dest))

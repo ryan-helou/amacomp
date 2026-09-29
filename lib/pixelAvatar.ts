@@ -19,7 +19,7 @@ import sprites from "./avatar/sprites.json";
  * objects need finer cells, and the same rules light them all.
  */
 
-export type Slot = "head" | "eyes" | "torso" | "legs" | "feet" | "socks" | "watch";
+export type Slot = "banner" | "head" | "eyes" | "torso" | "legs" | "feet" | "socks" | "watch";
 
 export interface AvatarItem {
   id: string;
@@ -38,12 +38,30 @@ export interface AvatarItem {
   spriteBack?: string;
   /** A visor is the eyewear: it hides whatever is in the eyes slot. */
   coversEyes?: boolean;
+  /**
+   * Literal colours for sprites drawn in chars "1".."8" — flags, and anything
+   * else whose colours are not the wearer's to choose. A Canadian flag in mint
+   * is not a Canadian flag.
+   */
+  palette?: string[];
+  /**
+   * Skip the per-row lighting. Cloth hanging flat has no round surface to
+   * shade, and the shading is what stops big flat areas merging into a handful
+   * of rectangles — a union flag went from 212KB of markup to a fraction of it.
+   */
+  flat?: boolean;
 }
 
 /** What each athlete is wearing: one item per slot, and that's the whole of it. */
 export interface Loadout {
   [slot: string]: { item: string };
 }
+
+type Sheet = { res: number; x0: number; y0: number; rows: string[] };
+const DATA = sprites as unknown as {
+  W: number; H: number; base: string[]; back: string[]; g: Record<string, Sheet>;
+  flags: Record<string, { label: string; pal: string[]; sheet: Sheet }>;
+};
 
 const SKIN_C = "#dda077", WHITE = "#f3f3f1", BLACK = "#20242b";
 const MAGENTA = "#d4147e", MINT = "#16d39a", CYAN = "#00c6c8";
@@ -108,6 +126,51 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "watch.on.gold", slot: "watch", label: "Gold GPS watch", price: 450, tier: "rare", colour: GOLD, accent: BLACK, sprite: "watch" },
 ];
 
+/**
+ * The banner you fly behind you.
+ *
+ * Built from the generated flag data rather than listed by hand: scripts/
+ * gen-avatar.py owns which countries exist and what they look like, so adding
+ * one is four lines of Python and nothing here. Price follows the work in the
+ * drawing — a tricolour is a tricolour; a union flag is not.
+ */
+/**
+ * What a banner costs. Priced by hand rather than by how fussy the drawing is —
+ * the first attempt counted painted pixels, which made every flag 800 because a
+ * flag is a rectangle of paint whatever is on it.
+ *
+ * The two the league actually has a claim on are cheap: Canada because that's
+ * where we are, Lebanon because that's where Ryan's from. Everything else is
+ * 400, the ones with real work in them 600, and the house flag is the prize.
+ */
+const BANNER_PRICE: Record<string, number> = {
+  ca: 250, lb: 250,
+  gb: 600, us: 600, br: 600, za: 600, au: 600, mx: 600, ke: 600,
+  ama: 2000,
+};
+const BANNER_TIER: Record<string, AvatarItem["tier"]> = { ama: "legendary" };
+
+export const BANNER_ITEMS: AvatarItem[] = Object.entries(DATA.flags).map(([id, flag]) => {
+  const price = BANNER_PRICE[id] ?? 400;
+  return {
+    id: `banner.${id}`,
+    slot: "banner" as const,
+    label: `${flag.label} banner`,
+    price,
+    tier: BANNER_TIER[id] ?? (price >= 600 ? "rare" : "common"),
+    colour: flag.pal[0],
+    accent: flag.pal[1] ?? flag.pal[0],
+    flat: true,
+    sprite: `flag.${id}`,
+    palette: flag.pal,
+  };
+});
+
+AVATAR_ITEMS.push(
+  { id: "banner.none", slot: "banner", label: "No banner", price: 0, tier: "common", colour: "#20242b", accent: "#f3f3f1" },
+  ...BANNER_ITEMS,
+);
+
 export const AVATAR_ITEM_BY_ID = new Map(AVATAR_ITEMS.map((i) => [i.id, i]));
 
 /** What a new athlete turns up in, before they've bought anything. */
@@ -141,14 +204,19 @@ const OUTLINE = "#14161b";
 const RIM = "#4a5f7a"; // the cool edge on the lit side
 
 // Legs first, eyewear last: the order things are put on.
+// The banner is not in here: it is drawn before the body, above.
 const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "watch", "head", "eyes"];
 // Worn on the chest, so these ride with the breath.
 const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "watch"]);
 
-type Sheet = { res: number; x0: number; y0: number; rows: string[] };
-const DATA = sprites as unknown as {
-  W: number; H: number; base: string[]; back: string[]; g: Record<string, Sheet>;
-};
+/** Wardrobe sheets live in `g`; flags in `flags`, keyed "flag.<id>". */
+function sheetFor(name: string): Sheet | undefined {
+  if (name.startsWith("flag.")) return DATA.flags[name.slice(5)]?.sheet;
+  return DATA.g[name];
+}
+
+/** What a banner hangs from. Steel, in every country. */
+const RAIL = "#6b7280";
 
 function shift(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -158,17 +226,25 @@ function shift(hex: string, f: number): string {
     .padStart(6, "0")}`;
 }
 
+/**
+ * Which plane a layer sits in. "behind" is scenery — the banner hangs there,
+ * so the figure stands in front of it; "upper" is everything that rides with
+ * the breath; "lower" is planted. They are drawn in that order.
+ */
+type Zone = "behind" | "upper" | "lower";
+
 type Layer = {
   grid: (string | null)[][]; res: number; x0: number; y0: number;
-  w: number; h: number; upper: boolean;
+  w: number; h: number; zone: Zone;
 };
 
 /** One sprite sheet turned into a lit grid of pixels. */
 function rasterise(
   rows: string[], res: number, x0: number, y0: number,
-  colour: string, accent: string, mirror: boolean, upper: boolean,
+  colour: string, accent: string, mirror: boolean, zone: Zone,
+  palette?: string[], flat = false,
 ): Layer {
-    const w = rows[0].length, h = rows.length;
+  const w = rows[0].length, h = rows.length;
   const grid: (string | null)[][] = Array.from({ length: h }, () => new Array(w).fill(null));
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -178,11 +254,15 @@ function rasterise(
       grid[y][sx] =
         ch === "S" ? SKIN : ch === "D" ? SKIN_D : ch === "H" ? HAIR :
         ch === "E" ? EYE : ch === "M" ? MOUTH : ch === "W" ? LIGHT :
+        ch === "R" ? RAIL :
+        // "1".."8" are an item's OWN colours — a flag's, not the wearer's.
+        ch >= "1" && ch <= "8" ? palette?.[ch.charCodeAt(0) - 49] ?? colour :
         ch === "A" ? accent : colour;
     }
   }
   // Light from the upper left, proportional to this layer's density.
   const span = Math.max(1, Math.round(3 * res));
+  if (flat) return { grid, res, x0: mirror ? DATA.W * res - (x0 + w) : x0, y0, w, h, zone };
   for (let y = 0; y < h; y++) {
     let x = 0;
     while (x < w) {
@@ -200,7 +280,7 @@ function rasterise(
       x = end + 1;
     }
   }
-  return { grid, res, x0: mirror ? DATA.W * res - (x0 + w) : x0, y0, w, h, upper };
+  return { grid, res, x0: mirror ? DATA.W * res - (x0 + w) : x0, y0, w, h, zone };
 }
 
 /** A lit grid turned into SVG: outline first, then the colour runs. */
@@ -276,9 +356,9 @@ function draw(L: Layer): string {
 export function itemSvg(itemId: string): string {
   const item = AVATAR_ITEM_BY_ID.get(itemId);
   if (!item?.sprite) return "";
-  const sheet = DATA.g[item.sprite];
+  const sheet = sheetFor(item.sprite);
   if (!sheet) return "";
-  const L = rasterise(sheet.rows, sheet.res, sheet.x0, sheet.y0, item.colour, item.accent, false, false);
+  const L = rasterise(sheet.rows, sheet.res, sheet.x0, sheet.y0, item.colour, item.accent, false, "lower", item.palette, item.flat);
 
   // The drawn bounds, so a watch fills its box as well as a tri suit does.
   let minX = L.w, maxX = -1, minY = L.h, maxY = -1;
@@ -330,7 +410,7 @@ export function avatarSvg(
   loadout: Loadout,
   { view = "front", crop = "full" }: { view?: "front" | "back"; crop?: "full" | "bust" } = {},
 ): string {
-  const { W, H, g } = DATA;
+  const { W, H } = DATA;
   const src = view === "back" ? DATA.back : DATA.base;
   const headItem = AVATAR_ITEM_BY_ID.get(loadout.head?.item ?? "");
 
@@ -338,36 +418,49 @@ export function avatarSvg(
 
   const paint = (
     rows: string[], res: number, x0: number, y0: number,
-    colour: string, accent: string, mirror: boolean, upper: boolean,
+    colour: string, accent: string, mirror: boolean, zone: Zone,
+    palette?: string[], flat = false,
   ) => {
-    layers.push(rasterise(rows, res, x0, y0, colour, accent, mirror, upper));
+    layers.push(rasterise(rows, res, x0, y0, colour, accent, mirror, zone, palette, flat));
   };
 
 
+  // The banner hangs BEHIND him, so it goes down before the body does — it is
+  // scenery, not something worn, and it never breathes with the chest.
+  const flown = loadout.banner ? AVATAR_ITEM_BY_ID.get(loadout.banner.item) : undefined;
+  if (flown?.sprite) {
+    const sheet = sheetFor(flown.sprite);
+    // A flag is never mirrored: the back of the banner is the front of it.
+    if (sheet) paint(sheet.rows, sheet.res, sheet.x0, sheet.y0, flown.colour, flown.accent,
+      false, "behind", flown.palette, flown.flat);
+  }
+
   const SPLIT = 86; // the hips: above it breathes, below it stays planted
-  paint(src.slice(0, SPLIT), 1, 0, 0, SKIN, SKIN_D, false, true);
-  paint(src.slice(SPLIT), 1, 0, SPLIT, SKIN, SKIN_D, false, false);
+  paint(src.slice(0, SPLIT), 1, 0, 0, SKIN, SKIN_D, false, "upper");
+  paint(src.slice(SPLIT), 1, 0, SPLIT, SKIN, SKIN_D, false, "lower");
 
   for (const slot of ORDER) {
     const worn = loadout[slot];
     const item = worn ? AVATAR_ITEM_BY_ID.get(worn.item) : undefined;
     if (!item?.sprite) continue;
     if (slot === "eyes" && headItem?.coversEyes) continue;
-    const sheet = g[(view === "back" && item.spriteBack) || item.sprite];
+    const sheet = sheetFor((view === "back" && item.spriteBack) || item.sprite);
     if (!sheet) continue;
     paint(sheet.rows, sheet.res, sheet.x0, sheet.y0, item.colour, item.accent,
-      view === "back", UPPER.has(slot));
+      view === "back", UPPER.has(slot) ? "upper" : "lower", item.palette);
   }
 
-  let upperOut = "", lowerOut = "";
+  let behindOut = "", upperOut = "", lowerOut = "";
   for (const L of layers) {
     const chunk = draw(L);
-    if (L.upper) upperOut += chunk; else lowerOut += chunk;
+    if (L.zone === "behind") behindOut += chunk;
+    else if (L.zone === "upper") upperOut += chunk;
+    else lowerOut += chunk;
   }
 
   const box = crop === "bust" ? "14 2 52 52" : `-1 0 ${W + 2} ${H}`;
   return (
     `<svg viewBox="${box}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" ` +
-    `role="img" aria-label="Pixel avatar"><g class="avatar-breath">${upperOut}</g>${lowerOut}</svg>`
+    `role="img" aria-label="Pixel avatar">${behindOut}<g class="avatar-breath">${upperOut}</g>${lowerOut}</svg>`
   );
 }
