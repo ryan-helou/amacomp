@@ -52,8 +52,18 @@ console.log("\nthe figure renders");
   check("and a breathing group", svg.includes("avatar-breath"), true);
   const bust = avatarSvg(DEFAULT_LOADOUT, { crop: "bust" });
   // Same drawing, different window onto it: the bust must not be a second sprite.
-  check("the bust crops rather than redraws",
-    bust.replace(/viewBox="[^"]+"/, "") === svg.replace(/viewBox="[^"]+"/, ""), true);
+  // The bust is a WINDOW onto the same drawing, not a second sprite that can
+  // drift from it. It may leave out layers the window can't show (his shoes
+  // aren't in a head-and-shoulders crop), so the check is that every rectangle
+  // it draws is one the full figure draws too — and that it drew something.
+  const rects = (out: string) => new Set(out.match(/<rect[^/]*\/>/g) ?? []);
+  const full = rects(svg);
+  const cropped = [...rects(bust)];
+  check("the bust draws something", cropped.length > 20, true);
+  check("and every mark in it comes from the same drawing",
+    cropped.filter((r) => !full.has(r)), []);
+  check("a different window, not a different picture",
+    bust.match(/viewBox="([^"]+)"/)![1] !== svg.match(/viewBox="([^"]+)"/)![1], true);
 }
 
 console.log("\nwhat you wear changes what is drawn");

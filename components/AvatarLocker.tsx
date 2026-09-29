@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
   AVATAR_ITEM_BY_ID,
   DEFAULT_LOADOUT,
@@ -109,8 +109,17 @@ const STORE_KEY = "amacomp.locker";
  * already have.
  */
 export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKey }) {
-  const [loadout, setLoadout] = useState<Loadout>(KITS[0].loadout);
-  const [past, setPast] = useState<Loadout[]>([]);
+  /**
+   * The outfit and how it got here, in one piece of state.
+   *
+   * One object rather than two, so the callbacks the boxes get can be created
+   * once and never change — 124 boxes re-rendering for a change that touches
+   * one of them cost 563ms on a throttled phone.
+   */
+  const [{ loadout, past }, setFit] = useState<{ loadout: Loadout; past: Loadout[] }>({
+    loadout: KITS[0].loadout,
+    past: [],
+  });
   const [query, setQuery] = useState("");
   const [affordableOnly, setAffordableOnly] = useState(false);
 
@@ -120,33 +129,35 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
     try {
       const raw = localStorage.getItem(STORE_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot, restoring the last outfit
-      if (raw) setLoadout(JSON.parse(raw) as Loadout);
+      if (raw) setFit({ loadout: JSON.parse(raw) as Loadout, past: [] });
     } catch {
       /* private window, blocked storage: the default kit is fine */
     }
   }, []);
 
-  function wear(next: Loadout) {
-    setPast((p) => [loadout, ...p].slice(0, 20));
-    setLoadout(next);
+  // Saved after the fact, so the setters above stay pure.
+  useEffect(() => {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(next));
-    } catch {
-      /* nothing to do: the figure still changes */
-    }
-  }
-
-  function undo() {
-    const [previous, ...rest] = past;
-    if (!previous) return;
-    setPast(rest);
-    setLoadout(previous);
-    try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(previous));
+      localStorage.setItem(STORE_KEY, JSON.stringify(loadout));
     } catch {
       /* the figure still changes */
     }
-  }
+  }, [loadout]);
+
+  const wear = useCallback((next: Loadout) => {
+    setFit((f) => ({ loadout: next, past: [f.loadout, ...f.past].slice(0, 20) }));
+  }, []);
+
+  const pick = useCallback((slot: Slot, itemId: string) => {
+    setFit((f) => ({
+      loadout: { ...f.loadout, [slot]: { item: itemId } },
+      past: [f.loadout, ...f.past].slice(0, 20),
+    }));
+  }, []);
+
+  const undo = useCallback(() => {
+    setFit((f) => (f.past.length ? { loadout: f.past[0], past: f.past.slice(1) } : f));
+  }, []);
 
   function surprise() {
     const next: Loadout = {};
@@ -334,7 +345,7 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
       >
         <div className="flex items-center gap-2">
           <span className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-gold/50 bg-deck-2">
-            <PixelAvatar loadout={loadout} bust className="h-full w-full" />
+            <PixelAvatar loadout={loadout} bust flat className="h-full w-full" />
           </span>
           <input
             value={query}
@@ -404,7 +415,8 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
                     item={item}
                     worn={loadout[slot]?.item === item.id}
                     affordable={item.price <= balance}
-                    onPick={() => wear({ ...loadout, [slot]: { item: item.id } })}
+                    slot={slot}
+                    onPick={pick}
                   />
                 ))}
               </div>
@@ -422,10 +434,10 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
       <div className="flex items-center gap-3 border-t border-line bg-deck-2/30 px-4 py-3">
         <span className="eyebrow text-ink-3">On the board</span>
         <span className="h-9 w-9 overflow-hidden rounded-full border border-gold/50 bg-deck-2">
-          <PixelAvatar loadout={loadout} bust className="h-full w-full" />
+          <PixelAvatar loadout={loadout} bust flat className="h-full w-full" />
         </span>
         <span className="h-9 w-9 overflow-hidden rounded-full border border-line bg-deck-2">
-          <PixelAvatar loadout={DEFAULT_LOADOUT} bust className="h-full w-full" />
+          <PixelAvatar loadout={DEFAULT_LOADOUT} bust flat className="h-full w-full" />
         </span>
         <span className="font-mono text-[0.625rem] text-ink-3">yours · a new athlete&rsquo;s</span>
       </div>
@@ -440,23 +452,25 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
  * inline figures is megabytes of markup and a phone that stutters; forty images
  * is forty nodes, and the browser caches each one by its source.
  */
-function ShopBox({
+const ShopBox = memo(function ShopBox({
   item,
+  slot,
   worn,
   affordable,
   onPick,
 }: {
   item: AvatarItem;
+  slot: Slot;
   worn: boolean;
   affordable: boolean;
-  onPick: () => void;
+  onPick: (slot: Slot, itemId: string) => void;
 }) {
   const src = itemImage(item.id);
   const free = STARTER_ITEMS.has(item.id) || item.price === 0;
   const tier = TIER[item.tier];
   return (
     <button
-      onClick={onPick}
+      onClick={() => onPick(slot, item.id)}
       aria-pressed={worn}
       className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-colors ${
         worn ? "border-gold bg-gold/10" : `${tier.ring} bg-deck-2/40`
@@ -465,9 +479,12 @@ function ShopBox({
       <span
         className="relative flex h-[4.5rem] items-center justify-center p-2"
         style={{
-          background: tier.glow
-            ? `radial-gradient(75% 65% at 50% 55%, color-mix(in srgb, ${tier.glow} 22%, transparent) 0%, transparent 70%)`
-            : undefined,
+          background: [
+            tier.glow
+              ? `radial-gradient(75% 65% at 50% 55%, color-mix(in srgb, ${tier.glow} 26%, transparent) 0%, transparent 70%)`
+              : null,
+            "linear-gradient(180deg, color-mix(in srgb, var(--color-ink) 12%, transparent) 0%, transparent 55%, color-mix(in srgb, #000 22%, transparent) 100%)",
+          ].filter(Boolean).join(", "),
         }}
       >
         {src ? (
@@ -519,4 +536,4 @@ function ShopBox({
       </span>
     </button>
   );
-}
+});

@@ -169,6 +169,19 @@ class Flag:
                       (s._x(u) - spread * R, s._y(v) + bot * R)], ch)
         s.c.rect(s._x(u) - 0.08 * R, s._y(v) + 0.44 * R, s._x(u) + 0.08 * R, s._y(v) + 0.70 * R, ch)
 
+    def crescent(s, u, v, r, ch, bg, bite=0.80, offset=0.30):
+        """A disc with a smaller disc of the FIELD laid over it."""
+        s.disc(u, v, r, ch)
+        s.disc(u + offset * r, v, r * bite, bg)
+
+    def checker(s, u0, v0, u1, v1, cols, rows, a, b):
+        """A chequerboard — Croatia's shield, a finish flag."""
+        for j in range(rows):
+            for i in range(cols):
+                s.box(u0 + (u1 - u0) * i / cols, v0 + (v1 - v0) * j / rows,
+                      u0 + (u1 - u0) * (i + 1) / cols, v0 + (v1 - v0) * (j + 1) / rows,
+                      a if (i + j) % 2 == 0 else b)
+
     def arm(s, u0, v0, u1, v1, thick, ch):
         """A thick straight arm from (u0,v0) to (u1,v1) — the limbs of a Y."""
         n, hw = 220, thick / 2.0 * s.h_
@@ -267,6 +280,54 @@ FLAGS = [
     dict(id="jm", label="Jamaica", pal=["#009B3A", "#FED100", "#1A1A1A"], draw=lambda f: (
         f.field("1"), f.triangle([(0, 0), (0.5, 0.5), (0, 1)], "3"),
         f.triangle([(1, 0), (0.5, 0.5), (1, 1)], "3"), f.saltire(0.16, "2"))),
+    dict(id="sct", label="Scotland", pal=["#005EB8", "#FFFFFF"], draw=lambda f: (
+        f.field("1"), f.saltire(0.22, "2"))),
+    dict(id="at", label="Austria", pal=["#ED2939", "#FFFFFF"], draw=lambda f: (
+        f.bands(["1", "2", "1"], vertical=False))),
+    dict(id="cz", label="Czechia", pal=["#FFFFFF", "#D7141A", "#11457E"], draw=lambda f: (
+        f.bands(["1", "2"], vertical=False), f.triangle([(0, 0), (0.42, 0.5), (0, 1)], "3"))),
+    dict(id="hr", label="Croatia", pal=["#FF0000", "#FFFFFF", "#171796"], draw=lambda f: (
+        f.bands(["1", "2", "3"], vertical=False),
+        f.checker(0.40, 0.24, 0.60, 0.76, 4, 5, "1", "2"))),
+    dict(id="co", label="Colombia", pal=["#FCD116", "#003893", "#CE1126"], draw=lambda f: (
+        f.bands(["1", "2", "3"], vertical=False, weights=[2, 1, 1]))),
+    dict(id="pe", label="Peru", pal=["#D91023", "#FFFFFF"], draw=lambda f: f.bands(["1", "2", "1"])),
+    dict(id="cl", label="Chile", pal=["#FFFFFF", "#D52B1E", "#0039A6"], draw=lambda f: (
+        f.bands(["1", "2"], vertical=False), f.box(0, 0, 0.34, 0.5, "3"),
+        f.star(0.17, 0.25, 0.15, "1"))),
+    dict(id="ng", label="Nigeria", pal=["#008751", "#FFFFFF"], draw=lambda f: f.bands(["1", "2", "1"])),
+    dict(id="gh", label="Ghana", pal=["#CE1126", "#FCD116", "#006B3F", "#1A1A1A"], draw=lambda f: (
+        f.bands(["1", "2", "3"], vertical=False), f.star(0.5, 0.5, 0.15, "4"))),
+    dict(id="eg", label="Egypt", pal=["#CE1126", "#FFFFFF", "#1A1A1A", "#C09300"], draw=lambda f: (
+        f.bands(["1", "2", "3"], vertical=False),
+        f.star(0.5, 0.5, 0.13, "4", points=5, inner=0.5))),
+    dict(id="in", label="India", pal=["#FF9933", "#FFFFFF", "#138808", "#000080"], draw=lambda f: (
+        f.bands(["1", "2", "3"], vertical=False),
+        f.disc(0.5, 0.5, 0.14, "4"), f.disc(0.5, 0.5, 0.10, "2"), f.disc(0.5, 0.5, 0.035, "4"))),
+    dict(id="cn", label="China", pal=["#EE1C25", "#FFDE00"], draw=lambda f: (
+        f.field("1"), f.star(0.17, 0.30, 0.16, "2"),
+        [f.star(u, v, 0.055, "2") for u, v in ((0.31, 0.14), (0.38, 0.26), (0.38, 0.42), (0.31, 0.54))])),
+    dict(id="kr", label="South Korea", pal=["#FFFFFF", "#CD2E3A", "#0047A0", "#1A1A1A"], draw=lambda f: (
+        f.field("1"),
+        f.disc(0.5, 0.5, 0.21, "2"),
+        f.box(0.30, 0.5, 0.70, 0.79, "3", only="2"),
+        f.disc(0.5 - 0.105 * 52 / 76, 0.5, 0.105, "2"),
+        f.disc(0.5 + 0.105 * 52 / 76, 0.5, 0.105, "3"),
+        [f.box(u, v, u + 0.11, v + 0.035, "4") for u, v in
+         ((0.10, 0.17), (0.10, 0.24), (0.10, 0.31), (0.79, 0.17), (0.79, 0.24), (0.79, 0.31),
+          (0.10, 0.66), (0.10, 0.73), (0.10, 0.80), (0.79, 0.66), (0.79, 0.73), (0.79, 0.80))])),
+    dict(id="tr", label="Turkey", pal=["#E30A17", "#FFFFFF"], draw=lambda f: (
+        f.field("1"), f.crescent(0.34, 0.5, 0.20, "2", "1"), f.star(0.60, 0.5, 0.095, "2"))),
+    dict(id="vn", label="Vietnam", pal=["#DA251D", "#FFFF00"], draw=lambda f: (
+        f.field("1"), f.star(0.5, 0.5, 0.26, "2"))),
+    dict(id="th", label="Thailand", pal=["#A51931", "#FFFFFF", "#2D2A4A"], draw=lambda f: (
+        f.bands(["1", "2", "3", "2", "1"], vertical=False, weights=[1, 1, 2, 1, 1]))),
+    dict(id="ph", label="Philippines", pal=["#0038A8", "#CE1126", "#FFFFFF", "#FCD116"], draw=lambda f: (
+        f.bands(["1", "2"], vertical=False), f.triangle([(0, 0), (0.38, 0.5), (0, 1)], "3"),
+        f.star(0.13, 0.5, 0.10, "4", points=8, inner=0.42),
+        [f.star(u, v, 0.045, "4") for u, v in ((0.04, 0.16), (0.04, 0.84), (0.28, 0.5))])),
+    dict(id="fin", label="Chequered", pal=["#F3F3F1", "#15171B"], draw=lambda f: (
+        f.checker(0, 0, 1, 1, 8, 6, "2", "1"))),
     dict(id="ama", label="AmaComp", pal=["#D4147E", "#16D39A", "#C9A227", "#101215"], draw=lambda f: (
         f.field("4"), f.bands(["1", "2"], weights=[1, 1]),
         f.box(0.06, 0.12, 0.94, 0.88, "4"), f.disc(0.5, 0.5, 0.30, "3"), f.disc(0.5, 0.5, 0.21, "4"),
@@ -326,6 +387,8 @@ def build(P):
          for sx, dx in ((40-HRX*0.88, 2.2), (40+HRX*0.8, -2.2))]))
     item("aero", 4, lambda c: (
         c.disc(40, HC-3, HRX+2.6, HRY+0.6, "K", y1=HC+HRY*0.12),
+        c.poly([(40-HRX*0.75, HC-HRY*0.80), (40+HRX*0.25, HC-HRY*0.98), (40+HRX*0.55, HC-HRY*0.82),
+                (40-HRX*0.55, HC-HRY*0.62)], "W"),
         c.rect(40-HRX, HC-HRY*0.2, 40+HRX+2, HC+HRY*0.12, "K"),
         c.disc(40, HC+HRY*0.16, HRX*1.06, HRY*0.42, "A"),
         [c.rect(40-HRX*0.62+i*0.5, HC-HRY*0.02+i*0.5, 40-HRX*0.5+i*0.5, HC+HRY*0.06+i*0.5, "W") for i in range(14)]))
@@ -350,12 +413,12 @@ def build(P):
         c.rect(40-HRX+0.1, HC-HRY*0.30, 40+HRX-0.1, HC-HRY*0.26, "A"),
         c.rect(40-HRX*0.7, HC-HRY*0.35, 40-HRX*0.35, HC-HRY*0.31, "W")))
     item("visor", 4, lambda c: (
-        c.rect(40-HRX+0.2, HC-HRY*0.40, 40+HRX-0.2, HC-HRY*0.16, "K"),
+        c.disc(40, HC-1.0, HRX+0.7, HRY-0.2, "K", y0=HC-HRY*0.46, y1=HC-HRY*0.14),
         c.poly([(40+HRX*0.75, HC-HRY*0.36), (40+HRX+7.5, HC-HRY*0.30), (40+HRX+9.5, HC-HRY*0.16),
                 (40+HRX+8.5, HC-HRY*0.06), (40+HRX*0.75, HC-HRY*0.12)], "K"),
         c.disc(40+HRX+8.0, HC-HRY*0.21, 1.6, 1.3, "K"),
-        c.rect(40-HRX+0.2, HC-HRY*0.26, 40+HRX-0.2, HC-HRY*0.20, "A"),
-        c.rect(40-HRX*0.7, HC-HRY*0.38, 40-HRX*0.3, HC-HRY*0.34, "W")))
+        c.disc(40, HC-1.0, HRX+0.7, HRY-0.2, "A", y0=HC-HRY*0.30, y1=HC-HRY*0.22),
+        c.rect(40-HRX*0.7, HC-HRY*0.42, 40-HRX*0.3, HC-HRY*0.38, "W")))
     # eyes
     item("shades", 4, lambda c: (
         c.disc(40-HRX*0.45, EYE_Y, HRX*0.36, HRY*0.23, "K"), c.disc(40+HRX*0.45, EYE_Y, HRX*0.36, HRY*0.23, "K"),
@@ -377,8 +440,11 @@ def build(P):
         if band: c.rect(40-TH_+1, hem-band-1, 40+TH_-1, hem-1, "A")
     item("jersey", 2, lambda c: torso(c, HIP-2, (AY1-AY0)*0.5, True, 2))
     item("tee", 2, lambda c: torso(c, HIP-1, (AY1-AY0)*0.32, False, 2.4))
-    item("trisuit", 2, lambda c: (torso(c, HIP+4, (AY1-AY0)*0.42, True, None),
-        c.capsule(L, LY0, LY0+(LY1-LY0)*0.55, LHW+0.4, "K"), c.capsule(R, LY0, LY0+(LY1-LY0)*0.55, LHW+0.4, "K")))
+    item("trisuit", 2, lambda c: (torso(c, HIP+4, (AY1-AY0)*0.42, False, None),
+        c.capsule(L, LY0, LY0+(LY1-LY0)*0.55, LHW+0.5, "K"), c.capsule(R, LY0, LY0+(LY1-LY0)*0.55, LHW+0.5, "K"),
+        c.rect(40-TW_-0.8, SH+3, 40-TW_+1.6, LY0+(LY1-LY0)*0.55, "A", only="K"),
+        c.rect(40+TW_-1.6, SH+3, 40+TW_+0.8, LY0+(LY1-LY0)*0.55, "A", only="K"),
+        c.rect(40-TT+1.0, SH-5.6, 40+TT-1.0, SH-3.8, "A")))
     # legs
     def shorts(c, frac):
         c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K")
@@ -418,22 +484,27 @@ def build(P):
         c.rect(40-TH_+1, HIP-3.4, 40+TH_-1, HIP-1, "A")))
     item("longsleeve", 2, lambda c: (
         torso(c, HIP-1, (AY1-AY0)*0.92, False, None),
+        c.poly([(AX-AHW-0.6, AY0), (40-TT+1, SH-2), (40-TT+1, SH+8), (AX-AHW-0.6, AY0+9)], "K"),
+        c.poly([(80-AX+AHW+0.6, AY0), (40+TT-1, SH-2), (40+TT-1, SH+8), (80-AX+AHW+0.6, AY0+9)], "K"),
         c.rect(AX-AHW-0.6, AY0+(AY1-AY0)*0.86, AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A"),
         c.rect(80-AX-AHW-0.6, AY0+(AY1-AY0)*0.86, 80-AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A")))
     item("jacket", 2, lambda c: (
         torso(c, HIP, (AY1-AY0)*0.92, False, None),
+        c.poly([(AX-AHW-0.6, AY0), (40-TT+1, SH-2), (40-TT+1, SH+8), (AX-AHW-0.6, AY0+9)], "K"),
+        c.poly([(80-AX+AHW+0.6, AY0), (40+TT-1, SH-2), (40+TT-1, SH+8), (80-AX+AHW+0.6, AY0+9)], "K"),
         c.rect(39.2, SH-5, 40.8, HIP, "A"),
         c.rect(40-TT+0.5, SH-5.5, 40+TT-0.5, SH-3.2, "A"),
         c.rect(AX-AHW-0.6, AY0+(AY1-AY0)*0.86, AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A"),
         c.rect(80-AX-AHW-0.6, AY0+(AY1-AY0)*0.86, 80-AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A")))
     item("wetsuit", 2, lambda c: (
         torso(c, HIP+4, (AY1-AY0)*0.92, False, None),
-        c.capsule(L, LY0, LY0+(LY1-LY0)*0.62, LHW+0.4, "K"), c.capsule(R, LY0, LY0+(LY1-LY0)*0.62, LHW+0.4, "K"),
-        c.rect(40-TT+0.8, SH-5.8, 40+TT-0.8, SH-3.4, "A"),
-        c.rect(40-TW_-1.0, SH+6, 40-TW_+1.4, HIP+2, "A", only="K"),
-        c.rect(40+TW_-1.4, SH+6, 40+TW_+1.0, HIP+2, "A", only="K"),
-        c.capsule(AX, AY0+(AY1-AY0)*0.10, AY0+(AY1-AY0)*0.26, AHW+0.5, "A"),
-        c.capsule(80-AX, AY0+(AY1-AY0)*0.10, AY0+(AY1-AY0)*0.26, AHW+0.5, "A")))
+        c.poly([(AX-AHW-0.6, AY0), (40-TT+1, SH-2), (40-TT+1, SH+8), (AX-AHW-0.6, AY0+9)], "K"),
+        c.poly([(80-AX+AHW+0.6, AY0), (40+TT-1, SH-2), (40+TT-1, SH+8), (80-AX+AHW+0.6, AY0+9)], "K"),
+        c.capsule(L, LY0, LY0+(LY1-LY0)*0.62, LHW+0.6, "K"), c.capsule(R, LY0, LY0+(LY1-LY0)*0.62, LHW+0.6, "K"),
+        c.rect(40-TT+0.8, SH-5.8, 40+TT-0.8, SH-3.6, "A"),
+        c.rect(39.4, SH-3.6, 40.6, SH+12, "A"),
+        c.rect(40-TW_-0.6, SH+4, 40-TW_+1.2, HIP+3, "A", only="K"),
+        c.rect(40+TW_-1.2, SH+4, 40+TW_+0.6, HIP+3, "A", only="K")))
     item("tights", 2, lambda c: (
         c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K"),
         c.capsule(L, LY0-2, FY-0.5, LHW+0.4, "K"), c.capsule(R, LY0-2, FY-0.5, LHW+0.4, "K"),
@@ -450,22 +521,24 @@ def build(P):
     item("trail", 3, lambda c: (shoe(c, 3.2, "lace"),
         [c.rect(cx-LHW-0.5+i*1.8, FY+7.4, cx-LHW+0.4+i*1.8, FY+8.4, ".") for cx in (L, R) for i in range(4)]))
     item("slides", 3, lambda c: [(
-        c.rect(cx-LHW, FY, cx+LHW, FY+5.0, "S"),
-        c.disc(cx, FY+4.4, LHW, 2.4, "S"),
-        c.rect(cx-LHW-0.5, FY+5.2, cx+LHW+0.5, FY+6.8, "K"),
-        c.rect(cx-LHW-0.7, FY+6.4, cx+LHW+0.7, FY+7.4, "A"),
-        c.rect(cx-LHW-0.3, FY+2.4, cx+LHW+0.3, FY+3.8, "K"),
-        c.rect(cx-LHW-0.1, FY+2.7, cx+LHW+0.1, FY+3.1, "A")) for cx in (L, R)])
+        c.rect(cx-LHW, FY-2, cx+LHW, FY+5.0, "S"),
+        c.disc(cx, FY+4.4, LHW, 3.2, "S"),
+        [c.rect(cx-LHW+0.2+i*1.5, FY+6.0, cx-LHW+1.3+i*1.5, FY+7.0, "D") for i in range(4)],
+        c.rect(cx-LHW-0.8, FY+7.0, cx+LHW+0.8, FY+9.0, "K"),
+        c.disc(cx, FY+8.0, LHW+0.8, 1.4, "K"),
+        c.rect(cx-LHW-0.9, FY+8.6, cx+LHW+0.9, FY+9.6, "A"),
+        c.rect(cx-LHW-0.3, FY+1.6, cx+LHW+0.3, FY+3.6, "K"),
+        c.rect(cx-LHW-0.3, FY+2.0, cx+LHW+0.3, FY+2.6, "A")) for cx in (L, R)])
     item("socks_stripe", 3, lambda c: (socks(c, 0.42),
         [c.rect(cx-LHW+0.1, LY0+(LY1-LY0)*0.42+2.4+i*2.6, cx+LHW-0.1, LY0+(LY1-LY0)*0.42+3.6+i*2.6, "A")
          for cx in (L, R) for i in range(4)]))
     # hands
     item("gloves", 3, lambda c: [(
-        c.disc(cx, AY1-0.4, AHW+1.5, AHW+1.9, "K"),
-        c.rect(cx-AHW-1.5, AY1-AHW-2.0, cx+AHW+1.5, AY1-0.4, "K"),
-        c.rect(cx-AHW-1.6, AY1-AHW-3.0, cx+AHW+1.6, AY1-AHW-1.2, "A"),
-        c.rect(cx-AHW-0.6, AY1-AHW+0.2, cx+AHW+0.6, AY1-AHW+1.0, "W"),
-        [c.rect(cx-AHW-0.2+i*1.7, AY1+0.4, cx-AHW+0.9+i*1.7, AY1+2.2, "A") for i in range(3)]) for cx in (AX, 80-AX)])
+        c.rect(cx-AHW-1.8, AY1-AHW-2.6, cx+AHW+1.8, AY1+1.6, "K"),
+        c.disc(cx, AY1+1.4, AHW+1.8, AHW+1.6, "K"),
+        c.rect(cx-AHW-1.9, AY1-AHW-3.6, cx+AHW+1.9, AY1-AHW-1.6, "A"),
+        c.rect(cx-AHW-1.2, AY1-AHW+0.4, cx+AHW+1.2, AY1-AHW+1.4, "W"),
+        [c.rect(cx-AHW-0.9+i*1.9, AY1+1.8, cx-AHW+0.3+i*1.9, AY1+3.4, ".") for i in range(1, 3)]) for cx in (AX, 80-AX)])
     item("armwarmers", 2, lambda c: [(
         c.capsule(cx, AY0+(AY1-AY0)*0.42, AY1-1.5, AHW+0.5, "K"),
         c.rect(cx-AHW-0.5, AY0+(AY1-AY0)*0.42, cx+AHW+0.5, AY0+(AY1-AY0)*0.50, "A")) for cx in (AX, 80-AX)])
