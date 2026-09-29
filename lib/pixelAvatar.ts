@@ -20,7 +20,8 @@ import sprites from "./avatar/sprites.json";
  */
 
 export type Slot =
-  | "banner" | "head" | "eyes" | "torso" | "hands" | "legs" | "feet" | "socks" | "watch";
+  | "banner" | "skin" | "hair" | "face"
+  | "head" | "eyes" | "torso" | "hands" | "legs" | "feet" | "socks" | "watch";
 
 export interface AvatarItem {
   id: string;
@@ -37,6 +38,8 @@ export interface AvatarItem {
   sprite?: string;
   /** Some items look different from behind — only the aero helmet, so far. */
   spriteBack?: string;
+  /** Nothing to draw from behind: a shaved head is just a head. */
+  hideBack?: boolean;
   /** A visor is the eyewear: it hides whatever is in the eyes slot. */
   coversEyes?: boolean;
   /**
@@ -75,6 +78,35 @@ const GOLD = "#c9a227", ORANGE = "#ff7a29", LIME = "#5f9a12";
  * garment, the item is the garment in a colour.
  */
 export const AVATAR_ITEMS: AvatarItem[] = [
+  // You, rather than what you're wearing: free, because six athletes looking
+  // like the same person in different kit was the thing worth fixing first.
+  { id: "skin.light", slot: "skin", label: "Light", price: 0, tier: "common", colour: "#f0c9a6", accent: "#c9a07d" },
+  { id: "skin.fair", slot: "skin", label: "Fair", price: 0, tier: "common", colour: "#dda077", accent: "#b2764f" },
+  { id: "skin.olive", slot: "skin", label: "Olive", price: 0, tier: "common", colour: "#c98a55", accent: "#9c6334" },
+  { id: "skin.tan", slot: "skin", label: "Tan", price: 0, tier: "common", colour: "#a96b3e", accent: "#7d4a26" },
+  { id: "skin.brown", slot: "skin", label: "Brown", price: 0, tier: "common", colour: "#7c4a2a", accent: "#5a331b" },
+  { id: "skin.deep", slot: "skin", label: "Deep", price: 0, tier: "common", colour: "#54301b", accent: "#3a2012" },
+
+  { id: "hair.short.brown", slot: "hair", label: "Short brown", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "hair_short", spriteBack: "hair_short_back" },
+  { id: "hair.short.black", slot: "hair", label: "Short black", price: 0, tier: "common", colour: "#17120e", accent: WHITE, sprite: "hair_short", spriteBack: "hair_short_back" },
+  { id: "hair.short.blonde", slot: "hair", label: "Short blonde", price: 0, tier: "common", colour: "#c8943f", accent: WHITE, sprite: "hair_short", spriteBack: "hair_short_back" },
+  { id: "hair.short.ginger", slot: "hair", label: "Short ginger", price: 0, tier: "common", colour: "#a84b1c", accent: WHITE, sprite: "hair_short", spriteBack: "hair_short_back" },
+  { id: "hair.short.grey", slot: "hair", label: "Short grey", price: 0, tier: "common", colour: "#9aa0a8", accent: WHITE, sprite: "hair_short", spriteBack: "hair_short_back" },
+  { id: "hair.buzz.black", slot: "hair", label: "Buzz cut", price: 0, tier: "common", colour: "#17120e", accent: WHITE, sprite: "hair_buzz", spriteBack: "hair_buzz_back" },
+  { id: "hair.buzz.brown", slot: "hair", label: "Brown buzz cut", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "hair_buzz", spriteBack: "hair_buzz_back" },
+  { id: "hair.curly.black", slot: "hair", label: "Black curls", price: 0, tier: "common", colour: "#17120e", accent: WHITE, sprite: "hair_curly", spriteBack: "hair_curly_back" },
+  { id: "hair.curly.brown", slot: "hair", label: "Brown curls", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "hair_curly", spriteBack: "hair_curly_back" },
+  { id: "hair.long.brown", slot: "hair", label: "Long brown", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "hair_long", spriteBack: "hair_long_back" },
+  { id: "hair.long.blonde", slot: "hair", label: "Long blonde", price: 0, tier: "common", colour: "#c8943f", accent: WHITE, sprite: "hair_long", spriteBack: "hair_long_back" },
+  { id: "hair.bun.black", slot: "hair", label: "Top knot", price: 0, tier: "common", colour: "#17120e", accent: WHITE, sprite: "hair_bun", spriteBack: "hair_bun_back" },
+  { id: "hair.bald", slot: "hair", label: "Shaved", price: 0, tier: "common", colour: "#33241a", accent: WHITE },
+
+  { id: "face.clean", slot: "face", label: "Clean shaven", price: 0, tier: "common", colour: "#33241a", accent: WHITE },
+  { id: "face.stubble", hideBack: true, slot: "face", label: "Stubble", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "beard_stubble" },
+  { id: "face.beard", hideBack: true, slot: "face", label: "Beard", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "beard_full" },
+  { id: "face.beard.black", hideBack: true, slot: "face", label: "Black beard", price: 0, tier: "common", colour: "#17120e", accent: WHITE, sprite: "beard_full" },
+  { id: "face.moustache", hideBack: true, slot: "face", label: "Moustache", price: 0, tier: "common", colour: "#33241a", accent: WHITE, sprite: "moustache" },
+
   { id: "head.none", slot: "head", label: "Bare head", price: 0, tier: "common", colour: SKIN_C, accent: WHITE },
   { id: "head.helmet.magenta", slot: "head", label: "Magenta helmet", price: 400, tier: "rare", colour: MAGENTA, accent: WHITE, sprite: "helmet" },
   { id: "head.helmet.black", slot: "head", label: "Black helmet", price: 400, tier: "rare", colour: BLACK, accent: WHITE, sprite: "helmet" },
@@ -207,6 +239,9 @@ export const AVATAR_ITEM_BY_ID = new Map(AVATAR_ITEMS.map((i) => [i.id, i]));
 
 /** What a new athlete turns up in, before they've bought anything. */
 export const DEFAULT_LOADOUT: Loadout = {
+  skin: { item: "skin.fair" },
+  hair: { item: "hair.short.brown" },
+  face: { item: "face.clean" },
   head: { item: "head.none" },
   hands: { item: "hands.none" },
   eyes: { item: "eyes.none" },
@@ -238,9 +273,9 @@ const RIM = "#4a5f7a"; // the cool edge on the lit side
 
 // Legs first, eyewear last: the order things are put on.
 // The banner is not in here: it is drawn before the body, above.
-const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "hands", "watch", "head", "eyes"];
+const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "hands", "watch", "hair", "face", "head", "eyes"];
 // Worn on the chest, so these ride with the breath.
-const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "hands", "watch"]);
+const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "hands", "watch", "hair", "face"]);
 
 /** Wardrobe sheets live in `g`; flags in `flags`, keyed "flag.<id>". */
 function sheetFor(name: string): Sheet | undefined {
@@ -275,7 +310,7 @@ type Layer = {
 function rasterise(
   rows: string[], res: number, x0: number, y0: number,
   colour: string, accent: string, mirror: boolean, zone: Zone,
-  palette?: string[], flat = false,
+  palette?: string[], flat = false, tone?: { skin: string; shade: string },
 ): Layer {
   const w = rows[0].length, h = rows.length;
   const grid: (string | null)[][] = Array.from({ length: h }, () => new Array(w).fill(null));
@@ -285,7 +320,7 @@ function rasterise(
       if (ch === ".") continue;
       const sx = mirror ? w - 1 - x : x;
       grid[y][sx] =
-        ch === "S" ? SKIN : ch === "D" ? SKIN_D : ch === "H" ? HAIR :
+        ch === "S" ? tone?.skin ?? SKIN : ch === "D" ? tone?.shade ?? SKIN_D : ch === "H" ? HAIR :
         ch === "E" ? EYE : ch === "M" ? MOUTH : ch === "W" ? LIGHT :
         ch === "R" ? RAIL :
         // "1".."8" are an item's OWN colours — a flag's, not the wearer's.
@@ -447,15 +482,15 @@ const BODY_CACHE = new Map<string, { upper: string; lower: string }>();
 
 /** The bare figure's two halves, drawn once per view and remembered. */
 function bodyChunks(
-  view: "front" | "back", src: string[], bustOnly: boolean,
+  view: "front" | "back", src: string[], bustOnly: boolean, skin: string, shade: string,
 ): { upper: string; lower: string } {
-  const key = `${view}${bustOnly ? ":bust" : ""}`;
+  const key = `${view}${bustOnly ? ":bust" : ""}:${skin}`;
   const held = BODY_CACHE.get(key);
   if (held) return held;
   const SPLIT = 86; // the hips: above it breathes, below it stays planted
   const made = {
-    upper: draw(rasterise(src.slice(0, SPLIT), 1, 0, 0, SKIN, SKIN_D, false, "upper")),
-    lower: bustOnly ? "" : draw(rasterise(src.slice(SPLIT), 1, 0, SPLIT, SKIN, SKIN_D, false, "lower")),
+    upper: draw(rasterise(src.slice(0, SPLIT), 1, 0, 0, skin, shade, false, "upper")),
+    lower: bustOnly ? "" : draw(rasterise(src.slice(SPLIT), 1, 0, SPLIT, skin, shade, false, "lower")),
   };
   BODY_CACHE.set(key, made);
   return made;
@@ -474,6 +509,9 @@ export function avatarSvg(
   const { W, H } = DATA;
   const src = view === "back" ? DATA.back : DATA.base;
   const headItem = AVATAR_ITEM_BY_ID.get(loadout.head?.item ?? "");
+  // Skin is read before anything is painted: an item's own bare-skin pixels
+  // (the foot inside a sandal) have to match the body they belong to.
+  const tone = AVATAR_ITEM_BY_ID.get(loadout.skin?.item ?? "") ?? AVATAR_ITEM_BY_ID.get("skin.fair")!;
 
   const layers: Layer[] = [];
 
@@ -482,7 +520,8 @@ export function avatarSvg(
     colour: string, accent: string, mirror: boolean, zone: Zone,
     palette?: string[], flat = false,
   ) => {
-    layers.push(rasterise(rows, res, x0, y0, colour, accent, mirror, zone, palette, flat));
+    layers.push(rasterise(rows, res, x0, y0, colour, accent, mirror, zone, palette, flat,
+      { skin: tone.colour, shade: tone.accent }));
   };
 
 
@@ -503,10 +542,18 @@ export function avatarSvg(
    * drawing — every rectangle it emits is one the full figure emits too, which
    * is what the test checks.
    */
-  const IN_BUST: Set<Slot> = new Set(["banner", "torso", "head", "eyes"]);
+  const IN_BUST: Set<Slot> = new Set(["banner", "torso", "head", "eyes", "hair", "face"]);
   const wanted = (slot: Slot) => crop !== "bust" || IN_BUST.has(slot);
 
-  const body = bodyChunks(view, src, crop === "bust");
+  const body = bodyChunks(view, src, crop === "bust", tone.colour, tone.accent);
+
+  // Brows ride with whatever hair you chose, in its colour — they belong to
+  // the face, not to any one hairstyle.
+  const mane = AVATAR_ITEM_BY_ID.get(loadout.hair?.item ?? "");
+  if (mane && view === "front") {
+    const brows = sheetFor("brows");
+    if (brows) paint(brows.rows, brows.res, brows.x0, brows.y0, mane.colour, mane.accent, false, "upper");
+  }
 
   for (const slot of ORDER) {
     if (!wanted(slot)) continue;
@@ -514,6 +561,7 @@ export function avatarSvg(
     const item = worn ? AVATAR_ITEM_BY_ID.get(worn.item) : undefined;
     if (!item?.sprite) continue;
     if (slot === "eyes" && headItem?.coversEyes) continue;
+    if (view === "back" && item.hideBack) continue;
     const sheet = sheetFor((view === "back" && item.spriteBack) || item.sprite);
     if (!sheet) continue;
     paint(sheet.rows, sheet.res, sheet.x0, sheet.y0, item.colour, item.accent,
