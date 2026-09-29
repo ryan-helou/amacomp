@@ -2,7 +2,8 @@ import {
   AVATAR_ITEMS, AVATAR_ITEM_BY_ID, DEFAULT_LOADOUT, STARTER_ITEMS,
   avatarSvg, itemImage, itemSvg, rackFor, type Loadout,
 } from "./pixelAvatar";
-import { COUNTRY_FLAGS, FLAG_BY_ID } from "./flags";
+import { COUNTRY_FLAGS, FLAG_BY_ID, laneFlag } from "./flags";
+import { flagWash } from "./away";
 import sprites from "./avatar/sprites.json";
 
 /**
@@ -287,6 +288,31 @@ console.log("\nnothing on the face may cover the eyes");
     });
     check(`${item.label} leaves the eyes alone`, hits, 0);
   }
+}
+
+console.log("\nlanes are the wash the Week tab already knows how to draw");
+{
+  // Ryan saw Alberto's Peru and amaGoh's Italy on the Week tab and said sell
+  // those too. They must be drawn by the SAME code that draws an away week —
+  // a second implementation of "what Italy looks like" would drift in a month.
+  const lanes = AVATAR_ITEMS.filter((i) => i.slot === "lane" && i.id !== "lane.none");
+  check("one lane per country", lanes.length, COUNTRY_FLAGS.length);
+  check("none of them is a sprite either", lanes.filter((l) => l.sprite).length, 0);
+
+  for (const lane of lanes) {
+    const away = laneFlag(lane.flag ?? "");
+    check(`${lane.label} resolves to a flag`, !!away, true);
+    check(`${lane.label} paints something`, !!flagWash(away!).backgroundImage, true);
+  }
+
+  // The two the app draws specially must keep their emblems, or Japan becomes
+  // a red-white-red stripe and Canada loses its leaf.
+  check("Japan keeps its sun", laneFlag("jp")?.emblem, "sun");
+  check("Canada keeps its leaf", laneFlag("ca")?.emblem, "leaf");
+
+  // And no two lanes may wash the same, or you're paying twice for one look.
+  const washes = new Set(lanes.map((l) => JSON.stringify(flagWash(laneFlag(l.flag ?? "")!))));
+  check("every lane looks different", washes.size, lanes.length);
 }
 
 console.log(failures === 0 ? "\nAll avatar tests passed.\n" : `\n${failures} failing.\n`);

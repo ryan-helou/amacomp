@@ -16,11 +16,13 @@ import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { PixelAvatar } from "./PixelAvatar";
 import { CountryFlag } from "./CountryFlag";
+import { flagInk, flagWash } from "@/lib/away";
+import { laneFlag } from "@/lib/flags";
 
 // You first, then what you put on, then what flies behind you.
 const SLOTS: Slot[] = [
   "skin", "hair", "face",
-  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "prize", "flag",
+  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "prize", "flag", "lane",
 ];
 
 const SHELF: Record<Slot, string> = {
@@ -29,6 +31,7 @@ const SHELF: Record<Slot, string> = {
   face: "Face",
   prize: "Prizes",
   flag: "Flags",
+  lane: "Lanes",
   head: "Headwear",
   eyes: "Eyewear",
   torso: "Tops",
@@ -130,6 +133,7 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
   });
 
   const flying = AVATAR_ITEM_BY_ID.get(loadout.flag?.item ?? "");
+  const lane = laneFlag(AVATAR_ITEM_BY_ID.get(loadout.lane?.item ?? "")?.flag ?? "");
 
   const needle = query.trim().toLowerCase();
 
@@ -201,6 +205,22 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
             this outfit <span className="text-gold">{fmtCoins(bill)}</span>
           </span>
         </div>
+        {/* Your row on the Week tab, washed by the lane you've picked — the
+            same flagWash the app already uses for an away week. */}
+        <div
+          className="mt-2 flex items-center gap-2 overflow-hidden rounded-xl border border-line px-2.5 py-2"
+          style={{ ...(lane ? { ...flagWash(lane), ...flagInk(lane) } : { background: "var(--color-deck-2)" }) }}
+        >
+          <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-line bg-deck-2">
+            <PixelAvatar loadout={loadout} bust flat className="h-full w-full" />
+          </span>
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            <span className="truncate text-[0.8125rem] text-ink">{state.me?.name}</span>
+            {flying?.flag && <CountryFlag id={flying.flag} />}
+          </span>
+          <span className="shrink-0 font-mono text-[0.6875rem] text-ink-2">105.1/100</span>
+        </div>
+
         <p className="mt-1 text-center font-mono text-[0.5625rem] text-ink-3">
           everything unlocked · nothing is charged yet
         </p>
@@ -405,7 +425,9 @@ const ShopBox = memo(function ShopBox({
           ].filter(Boolean).join(", "),
         }}
       >
-        {item.flag ? (
+        {item.slot === "lane" ? (
+          <LaneSwatch flag={item.flag} />
+        ) : item.flag ? (
           <CountryFlag id={item.flag} className="h-9 w-[3.375rem] shadow-sm" />
         ) : item.slot === "skin" ? (
           // A skin tone has no sprite to photograph — it IS the colour.
@@ -462,3 +484,18 @@ const ShopBox = memo(function ShopBox({
     </button>
   );
 });
+
+/** A lane's picture: the wash it puts behind your row, in miniature. */
+function LaneSwatch({ flag }: { flag?: string }) {
+  const away = laneFlag(flag ?? "");
+  return (
+    <span
+      className="flex h-9 w-full items-center gap-1 overflow-hidden rounded-md border border-line px-1.5"
+      style={away ? { ...flagWash(away), ...flagInk(away) } : { background: "var(--color-deck-2)" }}
+      aria-hidden
+    >
+      <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-ink/20" />
+      <span className="h-1.5 flex-1 rounded-full bg-ink/25" />
+    </span>
+  );
+}
