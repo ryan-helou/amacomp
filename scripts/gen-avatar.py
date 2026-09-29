@@ -341,6 +341,21 @@ def build(P):
         c.rect(40-HRX+1, HC-HRY*0.22, 40+HRX-1, HC-HRY*0.04, "K"),
         c.poly([(40+HRX*0.8, HC-HRY*0.2), (40+HRX+13, HC-HRY*0.14), (40+HRX+17, HC+HRY*0.02), (40+HRX+12, HC+HRY*0.08), (40+HRX*0.8, HC-HRY*0.02)], "K"),
         c.rect(40-HRX+1, HC-HRY*0.09, 40+HRX-1, HC-HRY*0.04, "A")))
+    item("beanie", 4, lambda c: (
+        c.disc(40, HC-1.5, HRX+0.9, HRY-0.4, "K", y1=HC-HRY*0.04),
+        c.rect(40-HRX-0.6, HC-HRY*0.26, 40+HRX+0.6, HC-HRY*0.02, "A"),
+        c.disc(40, HC-HRY*1.02, 2.6, 2.6, "A")))
+    item("headband", 4, lambda c: (
+        c.rect(40-HRX+0.1, HC-HRY*0.36, 40+HRX-0.1, HC-HRY*0.12, "K"),
+        c.rect(40-HRX+0.1, HC-HRY*0.30, 40+HRX-0.1, HC-HRY*0.26, "A"),
+        c.rect(40-HRX*0.7, HC-HRY*0.35, 40-HRX*0.35, HC-HRY*0.31, "W")))
+    item("visor", 4, lambda c: (
+        c.rect(40-HRX+0.2, HC-HRY*0.40, 40+HRX-0.2, HC-HRY*0.16, "K"),
+        c.poly([(40+HRX*0.75, HC-HRY*0.36), (40+HRX+7.5, HC-HRY*0.30), (40+HRX+9.5, HC-HRY*0.16),
+                (40+HRX+8.5, HC-HRY*0.06), (40+HRX*0.75, HC-HRY*0.12)], "K"),
+        c.disc(40+HRX+8.0, HC-HRY*0.21, 1.6, 1.3, "K"),
+        c.rect(40-HRX+0.2, HC-HRY*0.26, 40+HRX-0.2, HC-HRY*0.20, "A"),
+        c.rect(40-HRX*0.7, HC-HRY*0.38, 40-HRX*0.3, HC-HRY*0.34, "W")))
     # eyes
     item("shades", 4, lambda c: (
         c.disc(40-HRX*0.45, EYE_Y, HRX*0.36, HRY*0.23, "K"), c.disc(40+HRX*0.45, EYE_Y, HRX*0.36, HRY*0.23, "K"),
@@ -397,6 +412,63 @@ def build(P):
     item("runshoes", 3, lambda c: shoe(c, 2.2, "lace"))
     item("carbon", 3, lambda c: shoe(c, 2.8, "plate"))
     item("barefoot", 2, lambda c: [ (c.disc(cx, FY+3, LHW, 4.2, "S"), c.rect(cx-LHW, FY, cx+LHW, FY+4, "S")) for cx in (L, R) ])
+    item("singlet", 2, lambda c: (
+        c.trunk(SH+1, HIP-1, TT-1.2, TW_-0.8, TH_-0.8, "K"),
+        c.disc(40, SH+3, TT-1.0, 5.5, "K"),
+        c.rect(40-TH_+1, HIP-3.4, 40+TH_-1, HIP-1, "A")))
+    item("longsleeve", 2, lambda c: (
+        torso(c, HIP-1, (AY1-AY0)*0.92, False, None),
+        c.rect(AX-AHW-0.6, AY0+(AY1-AY0)*0.86, AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A"),
+        c.rect(80-AX-AHW-0.6, AY0+(AY1-AY0)*0.86, 80-AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A")))
+    item("jacket", 2, lambda c: (
+        torso(c, HIP, (AY1-AY0)*0.92, False, None),
+        c.rect(39.2, SH-5, 40.8, HIP, "A"),
+        c.rect(40-TT+0.5, SH-5.5, 40+TT-0.5, SH-3.2, "A"),
+        c.rect(AX-AHW-0.6, AY0+(AY1-AY0)*0.86, AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A"),
+        c.rect(80-AX-AHW-0.6, AY0+(AY1-AY0)*0.86, 80-AX+AHW+0.6, AY0+(AY1-AY0)*0.92, "A")))
+    item("wetsuit", 2, lambda c: (
+        torso(c, HIP+4, (AY1-AY0)*0.92, False, None),
+        c.capsule(L, LY0, LY0+(LY1-LY0)*0.62, LHW+0.4, "K"), c.capsule(R, LY0, LY0+(LY1-LY0)*0.62, LHW+0.4, "K"),
+        c.rect(40-TT+0.8, SH-5.8, 40+TT-0.8, SH-3.4, "A"),
+        c.rect(40-TW_-1.0, SH+6, 40-TW_+1.4, HIP+2, "A", only="K"),
+        c.rect(40+TW_-1.4, SH+6, 40+TW_+1.0, HIP+2, "A", only="K"),
+        c.capsule(AX, AY0+(AY1-AY0)*0.10, AY0+(AY1-AY0)*0.26, AHW+0.5, "A"),
+        c.capsule(80-AX, AY0+(AY1-AY0)*0.10, AY0+(AY1-AY0)*0.26, AHW+0.5, "A")))
+    item("tights", 2, lambda c: (
+        c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K"),
+        c.capsule(L, LY0-2, FY-0.5, LHW+0.4, "K"), c.capsule(R, LY0-2, FY-0.5, LHW+0.4, "K"),
+        c.rect(L-LHW-0.4, FY-3.5, L+LHW+0.4, FY-2.3, "A"), c.rect(R-LHW-0.4, FY-3.5, R+LHW+0.4, FY-2.3, "A")))
+    item("splitshorts", 2, lambda c: (
+        c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K"),
+        c.rect(L-LHW-0.8, HIP+1, R+LHW+0.8, LY0+(LY1-LY0)*0.30, "K"),
+        c.rect(40-2.0, HIP+3, 40+2.0, LY0+(LY1-LY0)*0.30, "."),
+        c.poly([(L-LHW-0.9, LY0+(LY1-LY0)*0.30), (L+LHW*0.2, LY0+(LY1-LY0)*0.30),
+                (L-LHW-0.9, LY0+(LY1-LY0)*0.14)], "."),
+        c.poly([(R+LHW+0.9, LY0+(LY1-LY0)*0.30), (R-LHW*0.2, LY0+(LY1-LY0)*0.30),
+                (R+LHW+0.9, LY0+(LY1-LY0)*0.14)], "."),
+        c.rect(40-TH_+0.5, HIP-3.6, 40+TH_-0.5, HIP-2.2, "A")))
+    item("trail", 3, lambda c: (shoe(c, 3.2, "lace"),
+        [c.rect(cx-LHW-0.5+i*1.8, FY+7.4, cx-LHW+0.4+i*1.8, FY+8.4, ".") for cx in (L, R) for i in range(4)]))
+    item("slides", 3, lambda c: [(
+        c.rect(cx-LHW, FY, cx+LHW, FY+5.0, "S"),
+        c.disc(cx, FY+4.4, LHW, 2.4, "S"),
+        c.rect(cx-LHW-0.5, FY+5.2, cx+LHW+0.5, FY+6.8, "K"),
+        c.rect(cx-LHW-0.7, FY+6.4, cx+LHW+0.7, FY+7.4, "A"),
+        c.rect(cx-LHW-0.3, FY+2.4, cx+LHW+0.3, FY+3.8, "K"),
+        c.rect(cx-LHW-0.1, FY+2.7, cx+LHW+0.1, FY+3.1, "A")) for cx in (L, R)])
+    item("socks_stripe", 3, lambda c: (socks(c, 0.42),
+        [c.rect(cx-LHW+0.1, LY0+(LY1-LY0)*0.42+2.4+i*2.6, cx+LHW-0.1, LY0+(LY1-LY0)*0.42+3.6+i*2.6, "A")
+         for cx in (L, R) for i in range(4)]))
+    # hands
+    item("gloves", 3, lambda c: [(
+        c.disc(cx, AY1-0.4, AHW+1.5, AHW+1.9, "K"),
+        c.rect(cx-AHW-1.5, AY1-AHW-2.0, cx+AHW+1.5, AY1-0.4, "K"),
+        c.rect(cx-AHW-1.6, AY1-AHW-3.0, cx+AHW+1.6, AY1-AHW-1.2, "A"),
+        c.rect(cx-AHW-0.6, AY1-AHW+0.2, cx+AHW+0.6, AY1-AHW+1.0, "W"),
+        [c.rect(cx-AHW-0.2+i*1.7, AY1+0.4, cx-AHW+0.9+i*1.7, AY1+2.2, "A") for i in range(3)]) for cx in (AX, 80-AX)])
+    item("armwarmers", 2, lambda c: [(
+        c.capsule(cx, AY0+(AY1-AY0)*0.42, AY1-1.5, AHW+0.5, "K"),
+        c.rect(cx-AHW-0.5, AY0+(AY1-AY0)*0.42, cx+AHW+0.5, AY0+(AY1-AY0)*0.50, "A")) for cx in (AX, 80-AX)])
     # watch
     def watch(c):
         cx, cy = AX, (AY0+AY1)/2 + 2

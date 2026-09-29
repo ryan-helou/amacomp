@@ -16,7 +16,7 @@ import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { PixelAvatar } from "./PixelAvatar";
 
-const SLOTS: Slot[] = ["head", "eyes", "torso", "legs", "feet", "socks", "watch", "banner"];
+const SLOTS: Slot[] = ["head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "banner"];
 
 const KITS: { name: string; loadout: Loadout }[] = [
   {
@@ -62,6 +62,7 @@ const SHELF: Record<Slot, string> = {
   head: "Headwear",
   eyes: "Eyewear",
   torso: "Tops",
+  hands: "Hands",
   legs: "Bottoms",
   feet: "Shoes",
   socks: "Socks",

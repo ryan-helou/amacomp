@@ -19,7 +19,8 @@ import sprites from "./avatar/sprites.json";
  * objects need finer cells, and the same rules light them all.
  */
 
-export type Slot = "banner" | "head" | "eyes" | "torso" | "legs" | "feet" | "socks" | "watch";
+export type Slot =
+  | "banner" | "head" | "eyes" | "torso" | "hands" | "legs" | "feet" | "socks" | "watch";
 
 export interface AvatarItem {
   id: string;
@@ -83,6 +84,12 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "head.runcap.white", slot: "head", label: "White run cap", price: 200, tier: "common", colour: WHITE, accent: BLACK, sprite: "runcap" },
   { id: "head.aero.black", slot: "head", label: "Black aero helmet", price: 900, tier: "epic", colour: BLACK, accent: GOLD, sprite: "aero", spriteBack: "aero_back", coversEyes: true },
   { id: "head.aero.gold", slot: "head", label: "Gold aero helmet", price: 1200, tier: "legendary", colour: GOLD, accent: BLACK, sprite: "aero", spriteBack: "aero_back", coversEyes: true },
+  { id: "head.beanie.black", slot: "head", label: "Black beanie", price: 150, tier: "common", colour: BLACK, accent: WHITE, sprite: "beanie" },
+  { id: "head.beanie.magenta", slot: "head", label: "Magenta beanie", price: 150, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "beanie" },
+  { id: "head.headband.mint", slot: "head", label: "Mint headband", price: 100, tier: "common", colour: MINT, accent: WHITE, sprite: "headband" },
+  { id: "head.headband.magenta", slot: "head", label: "Magenta headband", price: 100, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "headband" },
+  { id: "head.visor.white", slot: "head", label: "White visor", price: 250, tier: "common", colour: WHITE, accent: BLACK, sprite: "visor" },
+  { id: "head.visor.black", slot: "head", label: "Black visor", price: 250, tier: "common", colour: BLACK, accent: LIME, sprite: "visor" },
 
   { id: "eyes.none", slot: "eyes", label: "No eyewear", price: 0, tier: "common", colour: BLACK, accent: WHITE },
   { id: "eyes.shades.black", slot: "eyes", label: "Black shades", price: 400, tier: "rare", colour: BLACK, accent: WHITE, sprite: "shades" },
@@ -99,6 +106,15 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "torso.jersey.gold", slot: "torso", label: "Gold cycling jersey", price: 750, tier: "epic", colour: GOLD, accent: BLACK, sprite: "jersey" },
   { id: "torso.trisuit.black", slot: "torso", label: "Black tri suit", price: 900, tier: "epic", colour: BLACK, accent: GOLD, sprite: "trisuit" },
   { id: "torso.trisuit.cyan", slot: "torso", label: "Cyan tri suit", price: 900, tier: "epic", colour: CYAN, accent: WHITE, sprite: "trisuit" },
+  { id: "torso.singlet.mint", slot: "torso", label: "Mint singlet", price: 300, tier: "common", colour: MINT, accent: WHITE, sprite: "singlet" },
+  { id: "torso.singlet.magenta", slot: "torso", label: "Magenta singlet", price: 300, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "singlet" },
+  { id: "torso.singlet.white", slot: "torso", label: "White singlet", price: 300, tier: "common", colour: WHITE, accent: BLACK, sprite: "singlet" },
+  { id: "torso.longsleeve.black", slot: "torso", label: "Black long sleeve", price: 450, tier: "common", colour: BLACK, accent: MINT, sprite: "longsleeve" },
+  { id: "torso.longsleeve.cyan", slot: "torso", label: "Cyan long sleeve", price: 450, tier: "common", colour: CYAN, accent: WHITE, sprite: "longsleeve" },
+  { id: "torso.jacket.orange", slot: "torso", label: "Orange rain jacket", price: 700, tier: "rare", colour: ORANGE, accent: BLACK, sprite: "jacket" },
+  { id: "torso.jacket.black", slot: "torso", label: "Black rain jacket", price: 700, tier: "rare", colour: BLACK, accent: ORANGE, sprite: "jacket" },
+  { id: "torso.wetsuit.black", slot: "torso", label: "Black wetsuit", price: 1100, tier: "epic", colour: BLACK, accent: CYAN, sprite: "wetsuit" },
+  { id: "torso.wetsuit.cyan", slot: "torso", label: "Cyan wetsuit", price: 1100, tier: "epic", colour: "#0b3d52", accent: CYAN, sprite: "wetsuit" },
 
   { id: "legs.runshorts.black", slot: "legs", label: "Black running shorts", price: 0, tier: "common", colour: BLACK, accent: WHITE, sprite: "runshorts" },
   { id: "legs.runshorts.lime", slot: "legs", label: "Lime running shorts", price: 150, tier: "common", colour: LIME, accent: WHITE, sprite: "runshorts" },
@@ -106,6 +122,10 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "legs.bibs.magenta", slot: "legs", label: "Magenta bib shorts", price: 500, tier: "rare", colour: MAGENTA, accent: WHITE, sprite: "bibs" },
   { id: "legs.jammers.black", slot: "legs", label: "Black jammers", price: 200, tier: "common", colour: BLACK, accent: WHITE, sprite: "jammers" },
   { id: "legs.jammers.cyan", slot: "legs", label: "Cyan jammers", price: 200, tier: "common", colour: CYAN, accent: WHITE, sprite: "jammers" },
+  { id: "legs.tights.black", slot: "legs", label: "Black tights", price: 400, tier: "common", colour: BLACK, accent: MINT, sprite: "tights" },
+  { id: "legs.tights.magenta", slot: "legs", label: "Magenta tights", price: 400, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "tights" },
+  { id: "legs.splitshorts.lime", slot: "legs", label: "Lime split shorts", price: 250, tier: "common", colour: LIME, accent: WHITE, sprite: "splitshorts" },
+  { id: "legs.splitshorts.black", slot: "legs", label: "Black split shorts", price: 250, tier: "common", colour: BLACK, accent: LIME, sprite: "splitshorts" },
 
   { id: "feet.barefoot", slot: "feet", label: "Barefoot", price: 0, tier: "common", colour: SKIN_C, accent: WHITE, sprite: "barefoot" },
   { id: "feet.runshoes.white", slot: "feet", label: "White running shoes", price: 600, tier: "rare", colour: WHITE, accent: MAGENTA, sprite: "runshoes" },
@@ -114,12 +134,24 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "feet.bikeshoes.black", slot: "feet", label: "Black cycling shoes", price: 500, tier: "rare", colour: BLACK, accent: GOLD, sprite: "bikeshoes" },
   { id: "feet.carbon.gold", slot: "feet", label: "Gold carbon plate", price: 1500, tier: "legendary", colour: GOLD, accent: BLACK, sprite: "carbon" },
   { id: "feet.carbon.mint", slot: "feet", label: "Mint carbon plate", price: 1500, tier: "legendary", colour: MINT, accent: BLACK, sprite: "carbon" },
+  { id: "feet.trail.lime", slot: "feet", label: "Lime trail shoes", price: 650, tier: "rare", colour: LIME, accent: BLACK, sprite: "trail" },
+  { id: "feet.trail.black", slot: "feet", label: "Black trail shoes", price: 650, tier: "rare", colour: BLACK, accent: ORANGE, sprite: "trail" },
+  { id: "feet.slides.cyan", slot: "feet", label: "Cyan recovery slides", price: 120, tier: "common", colour: CYAN, accent: WHITE, sprite: "slides" },
+  { id: "feet.slides.magenta", slot: "feet", label: "Magenta recovery slides", price: 120, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "slides" },
 
   { id: "socks.none", slot: "socks", label: "No socks", price: 0, tier: "common", colour: WHITE, accent: BLACK },
   { id: "socks.short.white", slot: "socks", label: "White short socks", price: 100, tier: "common", colour: WHITE, accent: BLACK, sprite: "socks_short" },
   { id: "socks.short.black", slot: "socks", label: "Black short socks", price: 100, tier: "common", colour: BLACK, accent: WHITE, sprite: "socks_short" },
   { id: "socks.tall.white", slot: "socks", label: "White tall socks", price: 150, tier: "common", colour: WHITE, accent: BLACK, sprite: "socks_tall" },
   { id: "socks.tall.magenta", slot: "socks", label: "Magenta tall socks", price: 150, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "socks_tall" },
+  { id: "socks.stripe.magenta", slot: "socks", label: "Magenta striped socks", price: 200, tier: "common", colour: WHITE, accent: MAGENTA, sprite: "socks_stripe" },
+  { id: "socks.stripe.cyan", slot: "socks", label: "Cyan striped socks", price: 200, tier: "common", colour: WHITE, accent: CYAN, sprite: "socks_stripe" },
+
+  { id: "hands.none", slot: "hands", label: "Bare hands", price: 0, tier: "common", colour: SKIN_C, accent: WHITE },
+  { id: "hands.gloves.black", slot: "hands", label: "Black gloves", price: 300, tier: "common", colour: BLACK, accent: WHITE, sprite: "gloves" },
+  { id: "hands.gloves.white", slot: "hands", label: "White gloves", price: 300, tier: "common", colour: WHITE, accent: BLACK, sprite: "gloves" },
+  { id: "hands.armwarmers.black", slot: "hands", label: "Black arm warmers", price: 350, tier: "common", colour: BLACK, accent: MINT, sprite: "armwarmers" },
+  { id: "hands.armwarmers.mint", slot: "hands", label: "Mint arm warmers", price: 350, tier: "common", colour: MINT, accent: BLACK, sprite: "armwarmers" },
 
   { id: "watch.none", slot: "watch", label: "No watch", price: 0, tier: "common", colour: BLACK, accent: MINT },
   { id: "watch.on.black", slot: "watch", label: "Black GPS watch", price: 300, tier: "common", colour: BLACK, accent: MINT, sprite: "watch" },
@@ -176,6 +208,7 @@ export const AVATAR_ITEM_BY_ID = new Map(AVATAR_ITEMS.map((i) => [i.id, i]));
 /** What a new athlete turns up in, before they've bought anything. */
 export const DEFAULT_LOADOUT: Loadout = {
   head: { item: "head.none" },
+  hands: { item: "hands.none" },
   eyes: { item: "eyes.none" },
   torso: { item: "torso.tee.magenta" },
   legs: { item: "legs.runshorts.black" },
@@ -205,9 +238,9 @@ const RIM = "#4a5f7a"; // the cool edge on the lit side
 
 // Legs first, eyewear last: the order things are put on.
 // The banner is not in here: it is drawn before the body, above.
-const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "watch", "head", "eyes"];
+const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "hands", "watch", "head", "eyes"];
 // Worn on the chest, so these ride with the breath.
-const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "watch"]);
+const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "hands", "watch"]);
 
 /** Wardrobe sheets live in `g`; flags in `flags`, keyed "flag.<id>". */
 function sheetFor(name: string): Sheet | undefined {
