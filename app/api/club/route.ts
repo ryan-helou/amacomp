@@ -31,6 +31,15 @@ export async function POST(req: Request) {
   if (typeof body.buy === "string") {
     const item = AVATAR_ITEM_BY_ID.get(body.buy);
     if (!item) return NextResponse.json({ error: "No such item." }, { status: 400 });
+    // A prize is won, not sold. It has no price to charge, so there is nothing
+    // here to do but say so — otherwise a free row lands in the ledger and the
+    // shelf stops meaning anything.
+    if (item.earned) {
+      return NextResponse.json(
+        { error: `${item.label} isn't for sale — ${item.earned}.` },
+        { status: 403 },
+      );
+    }
     // The price comes from the catalogue, never from the request — otherwise
     // the buyer names their own price.
     const [athletes, activities, settings, grants, purchases] = await Promise.all([

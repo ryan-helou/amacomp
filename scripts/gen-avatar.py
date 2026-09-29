@@ -343,6 +343,73 @@ def build(P):
     item("armwarmers", 2, lambda c: [(
         c.capsule(cx, AY0+(AY1-AY0)*0.42, AY1-1.5, AHW+0.5, "K"),
         c.rect(cx-AHW-0.5, AY0+(AY1-AY0)*0.42, cx+AHW+0.5, AY0+(AY1-AY0)*0.50, "A")) for cx in (AX, 80-AX)])
+    # prizes — won, not sold. Drawn with more care than the first pass: a
+    # wreath of real leaves, a medal with a struck rim, a sash with edging.
+    def leaf(c, cx, cy, ln, wd, ang, ch):
+        """A pointed oval lying along `ang` — a leaf, not a green dot."""
+        ca, sa = math.cos(ang), math.sin(ang)
+        pts = []
+        for t, w in ((-1.0, 0.0), (-0.35, 1.0), (0.35, 1.0), (1.0, 0.0),
+                     (0.35, -1.0), (-0.35, -1.0)):
+            px, py = t * ln, w * wd
+            pts.append((cx + px * ca - py * sa, cy + px * sa + py * ca))
+        c.poly(pts, ch)
+
+    def wreath(c):
+        # Two sprigs climbing the skull from temple to crown, each leaf lying
+        # along the tangent so the wreath follows the head instead of sitting
+        # beside it. It stops short of the top: a laurel is open there, and the
+        # gap is what stops it reading as a hat.
+        RX, RY = HRX + 1.4, HRY + 1.4
+        for side in (-1, 1):
+            for i in range(7):
+                t = i / 6.0
+                th = math.radians(96 - 74 * t)          # from temple to crown
+                cx = 40 + side * RX * math.sin(th)
+                cy = HC - RY * math.cos(th)
+                ang = math.atan2(math.sin(th), side * math.cos(th))
+                ln = 2.5 - 0.7 * t
+                leaf(c, cx, cy, ln, 1.15 - 0.3 * t, ang, "K")
+                # A hairline vein on every other leaf. Any more than that and
+                # seven leaves read as one chain with a white stripe down it.
+                if i % 2 == 0:
+                    leaf(c, cx, cy, ln - 1.2, 0.3, ang, "W")
+        # the clasp in the gap at the crown
+        c.disc(40, HC - RY + 1.5, 2.2, 1.7, "A")
+
+    item("laurel", 4, wreath)
+
+    item("medal", 4, lambda c: (
+        # A striped ribbon, not two bare straps.
+        c.poly([(40-4.8, SH-4), (40-1.2, SH+7.5), (40+0.6, SH+7.5), (40-2.6, SH-4)], "A"),
+        c.poly([(40+4.8, SH-4), (40+1.2, SH+7.5), (40-0.6, SH+7.5), (40+2.6, SH-4)], "A"),
+        c.poly([(40-4.0, SH-4), (40-1.6, SH+5.0), (40-0.9, SH+5.0), (40-3.3, SH-4)], "W"),
+        c.poly([(40+4.0, SH-4), (40+1.6, SH+5.0), (40+0.9, SH+5.0), (40+3.3, SH-4)], "W"),
+        # The medallion: a struck rim, a sunk field, a star.
+        c.disc(40, SH+11.0, 5.0, 5.0, "K"),
+        c.disc(40, SH+11.0, 4.0, 4.0, "A"),
+        c.disc(40, SH+11.0, 3.4, 3.4, "K"),
+        c.poly([(40, SH+8.6), (40+0.9, SH+10.4), (40+2.8, SH+10.5), (40+1.3, SH+11.7),
+                (40+1.9, SH+13.5), (40, SH+12.4), (40-1.9, SH+13.5), (40-1.3, SH+11.7),
+                (40-2.8, SH+10.5), (40-0.9, SH+10.4)], "W"),
+        c.disc(40-2.0, SH+9.2, 1.1, 1.1, "W")))
+
+    def sash(c):
+        # Shoulder to opposite hip, in one straight band, with gold edging down
+        # both sides — the edging is what separates a sash from a bandage. The
+        # ends are pulled in from the silhouette so no part of it hangs in air.
+        x0, y0, x1, y1 = 31.0, 48.0, 47.5, 85.0
+        def band(a, b, ch):
+            c.poly([(x0+a, y0), (x0+b, y0), (x1+b, y1), (x1+a, y1)], ch)
+        band(-4.2, 4.2, "K")
+        band(-4.2, -2.9, "A")
+        band(2.9, 4.2, "A")
+        # a rosette where it lands on the hip
+        c.disc(x1, y1 - 1.5, 2.9, 2.9, "A")
+        c.disc(x1, y1 - 1.5, 1.6, 1.6, "K")
+
+    item("sash", 3, sash)
+
     # watch
     def watch(c):
         cx, cy = AX, (AY0+AY1)/2 + 2

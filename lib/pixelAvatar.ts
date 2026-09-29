@@ -22,7 +22,7 @@ import { COUNTRY_FLAGS } from "./flags";
 
 export type Slot =
   | "flag" | "skin" | "hair" | "face"
-  | "head" | "eyes" | "torso" | "hands" | "legs" | "feet" | "socks" | "watch";
+  | "head" | "eyes" | "torso" | "prize" | "hands" | "legs" | "feet" | "socks" | "watch";
 
 export interface AvatarItem {
   id: string;
@@ -45,6 +45,11 @@ export interface AvatarItem {
   coversEyes?: boolean;
   /** For a flag: which one, from lib/flags.ts. Drawn as a tag, not a sprite. */
   flag?: string;
+  /**
+   * A prize is not for sale. Where the price would go, the shop prints this —
+   * "win a week" — because what it costs is a result, not coins.
+   */
+  earned?: string;
 }
 
 /** What each athlete is wearing: one item per slot, and that's the whole of it. */
@@ -169,6 +174,10 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "socks.stripe.magenta", slot: "socks", label: "Magenta striped socks", price: 200, tier: "common", colour: WHITE, accent: MAGENTA, sprite: "socks_stripe" },
   { id: "socks.stripe.cyan", slot: "socks", label: "Cyan striped socks", price: 200, tier: "common", colour: WHITE, accent: CYAN, sprite: "socks_stripe" },
 
+  { id: "prize.none", slot: "prize", label: "No prize", price: 0, tier: "common", colour: GOLD, accent: WHITE },
+  { id: "prize.medal", slot: "prize", label: "Week winner's medal", price: 0, tier: "epic", colour: GOLD, accent: "#b23a48", sprite: "medal", hideBack: true, earned: "win a week" },
+  { id: "prize.sash", slot: "prize", label: "Month winner's sash", price: 0, tier: "epic", colour: "#b23a48", accent: GOLD, sprite: "sash", earned: "win a month" },
+  { id: "prize.laurel", slot: "prize", label: "Champion's laurel", price: 0, tier: "legendary", colour: "#3f8f34", accent: GOLD, sprite: "laurel", earned: "win the season" },
   { id: "hands.none", slot: "hands", label: "Bare hands", price: 0, tier: "common", colour: SKIN_C, accent: WHITE },
   { id: "hands.gloves.black", slot: "hands", label: "Black gloves", price: 300, tier: "common", colour: BLACK, accent: WHITE, sprite: "gloves" },
   { id: "hands.gloves.white", slot: "hands", label: "White gloves", price: 300, tier: "common", colour: WHITE, accent: BLACK, sprite: "gloves" },
@@ -218,6 +227,7 @@ export const DEFAULT_LOADOUT: Loadout = {
   legs: { item: "legs.runshorts.black" },
   feet: { item: "feet.runshoes.white" },
   socks: { item: "socks.short.white" },
+  prize: { item: "prize.none" },
   watch: { item: "watch.none" },
 };
 
@@ -241,9 +251,9 @@ const OUTLINE = "#14161b";
 const RIM = "#4a5f7a"; // the cool edge on the lit side
 
 // Legs first, eyewear last: the order things are put on.
-const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "hands", "watch", "hair", "face", "head", "eyes"];
+const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "prize", "hands", "watch", "hair", "face", "head", "eyes"];
 // Worn on the chest, so these ride with the breath.
-const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "hands", "watch", "hair", "face"]);
+const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "prize", "hands", "watch", "hair", "face"]);
 
 function shift(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -488,7 +498,7 @@ export function avatarSvg(
    * drawing — every rectangle it emits is one the full figure emits too, which
    * is what the test checks.
    */
-  const IN_BUST: Set<Slot> = new Set(["torso", "head", "eyes", "hair", "face"]);
+  const IN_BUST: Set<Slot> = new Set(["torso", "prize", "head", "eyes", "hair", "face"]);
   const wanted = (slot: Slot) => crop !== "bust" || IN_BUST.has(slot);
 
   const body = bodyChunks(view, src, crop === "bust", tone.colour, tone.accent);
