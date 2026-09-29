@@ -136,13 +136,13 @@ console.log("\nthe shop has a photo of everything it sells");
   const shots = new Set(AVATAR_ITEMS.filter((i) => i.id.startsWith("torso.jersey.")).map((i) => itemSvg(i.id)));
   check("each colour photographs differently", shots.size, 3);
 
-  // Cropped to what it fills: a watch shouldn't arrive as a mostly-empty box.
-  const watch = itemSvg("watch.on.black").match(/viewBox="([^"]+)"/)![1].split(" ").map(Number);
-  check("the shot is cropped to the item", watch[2] < 30 && watch[3] < 30, true);
+  // Cropped to what it fills: a sock shouldn't arrive as a mostly-empty box.
+  const sock = itemSvg("socks.short.white").match(/viewBox="([^"]+)"/)![1].split(" ").map(Number);
+  check("the shot is cropped to the item", sock[2] < 40 && sock[3] < 40, true);
 
   // And it must be servable as an image, since that is how a shelf of forty
   // boxes stays one node each.
-  check("it comes as an image source", itemImage("watch.on.black").startsWith("data:image/svg+xml"), true);
+  check("it comes as an image source", itemImage("socks.short.white").startsWith("data:image/svg+xml"), true);
   check("nothing has no image", itemImage("head.none"), "");
 }
 
@@ -155,7 +155,7 @@ console.log("\nmerging rectangles mustn't change which pixels are covered");
   const RIM = "#4a5f7a"; // the cool edge sits on EMPTY cells, so it isn't sprite area
   const sheets = (sprites as unknown as { g: Record<string, { res: number; x0: number; y0: number; rows: string[] }> }).g;
 
-  for (const id of ["torso.jersey.magenta", "watch.on.black", "feet.carbon.gold", "head.aero.gold"]) {
+  for (const id of ["torso.jersey.magenta", "socks.short.white", "feet.carbon.gold", "head.aero.gold"]) {
     const item = AVATAR_ITEM_BY_ID.get(id)!;
     const sheet = sheets[item.sprite!];
     const res = sheet.res, ox = sheet.x0 / res, oy = sheet.y0 / res;
@@ -224,7 +224,7 @@ console.log("\na figure wearing one of everything");
     head: { item: "head.helmet.magenta" }, eyes: { item: "eyes.shades.black" },
     torso: { item: "torso.jersey.gold" }, hands: { item: "hands.gloves.black" },
     legs: { item: "legs.bibs.black" }, feet: { item: "feet.carbon.gold" },
-    socks: { item: "socks.tall.white" }, watch: { item: "watch.on.gold" },
+    socks: { item: "socks.tall.white" },
     banner: { item: "banner.ca" },
   };
   const svg = avatarSvg(dressed);

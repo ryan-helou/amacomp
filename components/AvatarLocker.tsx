@@ -22,7 +22,7 @@ import { flagLane } from "@/lib/flags";
 // You first, then what you put on, then what flies behind you.
 const SLOTS: Slot[] = [
   "skin", "hair", "face",
-  "head", "eyes", "torso", "legs", "feet", "socks", "watch", "prize", "flag",
+  "head", "eyes", "torso", "legs", "feet", "socks", "prize", "flag",
 ];
 
 const SHELF: Record<Slot, string> = {
@@ -36,7 +36,6 @@ const SHELF: Record<Slot, string> = {
   legs: "Bottoms",
   feet: "Shoes",
   socks: "Socks",
-  watch: "Watches",
   prize: "Trophies",
 };
 

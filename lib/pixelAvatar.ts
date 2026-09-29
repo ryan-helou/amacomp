@@ -16,13 +16,13 @@ import { COUNTRY_FLAGS } from "./flags";
  *   - lighting comes from the upper left, applied per row of each layer.
  *
  * Items carry their own resolution. The body is one cell per unit; helmets and
- * eyewear are three or four; the watch is four. Mixing is deliberate: small hard
+ * eyewear are three or four. Mixing is deliberate: small hard
  * objects need finer cells, and the same rules light them all.
  */
 
 export type Slot =
   | "flag" | "skin" | "hair" | "face"
-  | "head" | "eyes" | "torso" | "prize" | "legs" | "feet" | "socks" | "watch";
+  | "head" | "eyes" | "torso" | "prize" | "legs" | "feet" | "socks";
 
 export interface AvatarItem {
   id: string;
@@ -177,9 +177,6 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "prize.sash", slot: "prize", label: "Month winner's sash", price: 0, tier: "epic", colour: "#b23a48", accent: GOLD, sprite: "sash", earned: "win a month" },
   { id: "prize.crown", slot: "prize", label: "Champion's crown", price: 0, tier: "legendary", colour: GOLD, accent: "#b23a48", sprite: "crown", earned: "win the season" },
 
-  { id: "watch.none", slot: "watch", label: "No watch", price: 0, tier: "common", colour: BLACK, accent: MINT },
-  { id: "watch.on.black", slot: "watch", label: "Black GPS watch", price: 300, tier: "common", colour: BLACK, accent: MINT, sprite: "watch" },
-  { id: "watch.on.gold", slot: "watch", label: "Gold GPS watch", price: 450, tier: "rare", colour: GOLD, accent: BLACK, sprite: "watch" },
 ];
 
 /**
@@ -220,7 +217,6 @@ export const DEFAULT_LOADOUT: Loadout = {
   feet: { item: "feet.runshoes.white" },
   socks: { item: "socks.short.white" },
   prize: { item: "prize.none" },
-  watch: { item: "watch.none" },
 };
 
 /**
@@ -245,9 +241,9 @@ const RIM = "#4a5f7a"; // the cool edge on the lit side
 // Legs first, eyewear last: the order things are put on.
 // A crown goes on over the hair and over the helmet, so the prize is the last
 // thing drawn. Nothing else in the slot reaches anything that comes before it.
-const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "watch", "hair", "face", "head", "eyes", "prize"];
+const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "hair", "face", "head", "eyes", "prize"];
 // Worn on the chest, so these ride with the breath.
-const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "prize", "watch", "hair", "face"]);
+const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "prize", "hair", "face"]);
 
 function shift(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -396,7 +392,7 @@ export function itemSvg(itemId: string): string {
   if (!sheet) return "";
   const L = rasterise(sheet.rows, sheet.res, sheet.x0, sheet.y0, item.colour, item.accent, false, "lower");
 
-  // The drawn bounds, so a watch fills its box as well as a tri suit does.
+  // The drawn bounds, so a sock fills its box as well as a tri suit does.
   let minX = L.w, maxX = -1, minY = L.h, maxY = -1;
   for (let y = 0; y < L.h; y++) {
     for (let x = 0; x < L.w; x++) {

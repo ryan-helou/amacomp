@@ -483,15 +483,6 @@ def build(P):
 
     item("sash", 3, sash)
 
-    # watch
-    def watch(c):
-        cx, cy = AX, (AY0+AY1)/2 + 2
-        c.rect(cx-4.8, cy-4.4, cx+4.8, cy-1.4, "K"); c.rect(cx-4.8, cy+1.4, cx+4.8, cy+4.4, "K")
-        c.disc(cx, cy, 4.15, 4.15, "K"); c.disc(cx, cy, 3.5, 3.5, "A")
-        c.disc(cx, cy, 2.85, 2.85, "K"); c.disc(cx, cy, 2.6, 2.6, "W")
-        c.rect(cx-1.55, cy-1.15, cx+1.55, cy-0.35, "K"); c.rect(cx-1.15, cy+0.25, cx+1.15, cy+0.7, "K")
-        c.rect(cx+4.3, cy-1.0, cx+5.2, cy+0.0, "K")
-    item("watch", 4, watch)
     return {"W": W, "H": H, "base": body(False), "back": body(True), "g": G}
 
 if __name__ == "__main__":
