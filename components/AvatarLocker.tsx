@@ -155,6 +155,8 @@ export function AvatarLocker({
       setProblem(error);
       return;
     }
+    const item = AVATAR_ITEM_BY_ID.get(itemId);
+    if (item) pick(item.slot, item.id); // you bought it to wear it
     setAsking(null);
   }
 
@@ -180,6 +182,7 @@ export function AvatarLocker({
   });
 
   const flying = AVATAR_ITEM_BY_ID.get(loadout.flag?.item ?? "");
+  const askedItem = asking ? AVATAR_ITEM_BY_ID.get(asking) : undefined;
   const lane = laneFlag(AVATAR_ITEM_BY_ID.get(loadout.lane?.item ?? "")?.flag ?? "");
 
   const needle = query.trim().toLowerCase();
@@ -274,11 +277,7 @@ export function AvatarLocker({
           <span className="shrink-0 font-mono text-[0.6875rem] text-ink-2">105.1/100</span>
         </div>
 
-        {problem && (
-          <p className="mt-1.5 rounded-lg border border-run/40 bg-run/10 px-2 py-1 text-center font-mono text-[0.625rem] text-run">
-            {problem}
-          </p>
-        )}
+
       </div>
 
       {/* Pinned while you browse: what you're wearing, a search, and a tab per
@@ -389,12 +388,9 @@ export function AvatarLocker({
                     worn={loadout[slot]?.item === item.id}
                     slot={slot}
                     owned={owned.has(item.id) || item.price === 0}
-                    asking={asking === item.id}
-                    paying={paying === item.id}
                     affordable={item.price <= balance}
                     onPick={pick}
                     onAsk={setAsking}
-                    onBuy={buy}
                   />
                 ))}
               </div>
@@ -432,6 +428,20 @@ export function AvatarLocker({
         </div>
       )}
 
+      {askedItem && (
+        <BuySheet
+          item={askedItem}
+          balance={balance}
+          paying={paying === askedItem.id}
+          problem={problem}
+          onClose={() => {
+            setAsking(null);
+            setProblem(null);
+          }}
+          onBuy={() => buy(askedItem.id)}
+        />
+      )}
+
       <div className="flex items-center gap-3 border-t border-line bg-deck-2/30 px-4 py-3">
         <span className="eyebrow text-ink-3">On the board</span>
         <span className="h-9 w-9 overflow-hidden rounded-full border border-gold/50 bg-deck-2">
@@ -458,31 +468,25 @@ const ShopBox = memo(function ShopBox({
   slot,
   worn,
   owned,
-  asking,
-  paying,
   affordable,
   onPick,
   onAsk,
-  onBuy,
 }: {
   item: AvatarItem;
   slot: Slot;
   worn: boolean;
   owned: boolean;
-  /** This is the box the till is asking about: "buy 400?" */
-  asking: boolean;
-  paying: boolean;
   affordable: boolean;
   onPick: (slot: Slot, itemId: string) => void;
-  onAsk: (itemId: string | null) => void;
-  onBuy: (itemId: string) => void;
+  /** Opens the till for something you don't own yet. */
+  onAsk: (itemId: string) => void;
 }) {
   const src = itemImage(item.id);
   const free = owned;
   const tier = TIER[item.tier];
   return (
     <button
-      onClick={() => (owned || item.earned ? onPick(slot, item.id) : onAsk(asking ? null : item.id))}
+      onClick={() => (owned || item.earned ? onPick(slot, item.id) : onAsk(item.id))}
       aria-pressed={worn}
       className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-colors ${
         worn ? "border-gold bg-gold/10" : `${tier.ring} bg-deck-2/40`
@@ -544,25 +548,6 @@ const ShopBox = memo(function ShopBox({
             <span className="text-gold">{item.earned}</span>
           ) : free ? (
             <span className="text-ink-3">yours</span>
-          ) : asking ? (
-            // The till, inside the box: no dialog to dismiss, and the price
-            // stays in front of you while you decide.
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (affordable && !paying) onBuy(item.id);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && affordable && !paying) onBuy(item.id);
-              }}
-              className={`w-full rounded px-1 py-0.5 text-center ${
-                affordable ? "bg-gold text-on-gold" : "bg-deck-2 text-ink-3"
-              }`}
-            >
-              {paying ? "buying…" : affordable ? `buy ${fmtCoins(item.price)}` : "not enough"}
-            </span>
           ) : (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element -- one cached file, many boxes */}
@@ -593,5 +578,115 @@ function LaneSwatch({ flag }: { flag?: string }) {
       <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-ink/20" />
       <span className="h-1.5 flex-1 rounded-full bg-ink/25" />
     </span>
+  );
+}
+
+/**
+ * The till, as a sheet.
+ *
+ * A purchase is the one thing in here that can't be undone with another tap,
+ * so it gets a moment of its own: the thing, what it costs, what you'll have
+ * left, and a button that says the number out loud.
+ */
+function BuySheet({
+  item,
+  balance,
+  paying,
+  problem,
+  onClose,
+  onBuy,
+}: {
+  item: AvatarItem;
+  balance: number;
+  paying: boolean;
+  problem: string | null;
+  onClose: () => void;
+  onBuy: () => void;
+}) {
+  const src = itemImage(item.id);
+  const affordable = item.price <= balance;
+  const after = balance - item.price;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+      <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-scrim" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Buy ${item.label}`}
+        className="relative glass-raised rounded-t-3xl border-t border-line-2 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3"
+      >
+        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-ink-3" />
+
+        <div className="flex items-center gap-3">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-line bg-deck-2/60 p-2">
+            {item.slot === "lane" ? (
+              <LaneSwatch flag={item.flag} />
+            ) : item.flag ? (
+              <CountryFlag id={item.flag} className="h-8 w-12" />
+            ) : item.slot === "skin" ? (
+              <span
+                aria-hidden
+                className="h-10 w-10 rounded-full border-2 border-line"
+                style={{ background: `linear-gradient(145deg, ${item.colour} 55%, ${item.accent} 100%)` }}
+              />
+            ) : src ? (
+              // eslint-disable-next-line @next/next/no-img-element -- a generated data: URI
+              <img src={src} alt="" className="pixel-avatar h-full w-full object-contain" />
+            ) : null}
+          </span>
+          <span className="min-w-0">
+            {TIER[item.tier].tag && (
+              <span className="eyebrow block text-[0.5rem]" style={{ color: TIER[item.tier].glow }}>
+                {TIER[item.tier].tag}
+              </span>
+            )}
+            <span className="block text-base text-ink">{item.label}</span>
+            <span className="flex items-center gap-1 font-mono text-xs text-ink-3">
+              {/* eslint-disable-next-line @next/next/no-img-element -- one cached file */}
+              <img src="/tri-coin.png" alt="" aria-hidden className="h-3.5 w-3.5 object-contain" />
+              <span className="text-gold">{fmtCoins(item.price)}</span>
+            </span>
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between rounded-xl border border-line bg-deck-2/40 px-3 py-2 font-mono text-xs">
+          <span className="text-ink-3">
+            you have <span className="text-ink-2">{fmtCoins(balance)}</span>
+          </span>
+          <span className={affordable ? "text-ink-3" : "text-run"}>
+            {affordable ? (
+              <>
+                after <span className="text-gold">{fmtCoins(after)}</span>
+              </>
+            ) : (
+              <>{fmtCoins(item.price - balance)} short</>
+            )}
+          </span>
+        </div>
+
+        {problem && (
+          <p className="mt-2 rounded-lg border border-run/40 bg-run/10 px-3 py-2 text-center font-mono text-[0.6875rem] text-run">
+            {problem}
+          </p>
+        )}
+
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={onClose}
+            className="eyebrow flex-1 rounded-xl border border-line py-3 text-ink-2"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onBuy}
+            disabled={!affordable || paying}
+            className="eyebrow flex-[2] rounded-xl bg-gold py-3 text-on-gold disabled:opacity-40"
+          >
+            {paying ? "Buying…" : affordable ? `Buy for ${fmtCoins(item.price)}` : "Not enough coins"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
