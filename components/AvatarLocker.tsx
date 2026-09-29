@@ -216,12 +216,26 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
   const shelves = SLOTS.map((slot) => ({ slot, items: shown(slot) })).filter((s) => s.items.length > 0);
   const hits = shelves.reduce((n, s) => n + s.items.length, 0);
 
-  /** Jump to a shelf, leaving room for the bar that's pinned over it. */
+  /**
+   * Jump to a shelf, leaving room for the bar pinned over it.
+   *
+   * Then keep checking until it stops moving. Shelves render as they come
+   * into view, so the page grows and shrinks under you mid-scroll and a single
+   * jump lands in the wrong place — Tops ended up 62px behind the bar, and
+   * jumping back UP to Hair overshot by 88.
+   */
   function jump(slot: Slot) {
-    const el = document.getElementById(`shelf-${slot}`);
-    if (!el) return;
-    const bar = document.getElementById("locker-bar")?.getBoundingClientRect().height ?? 0;
-    window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - bar - 12, behavior: "smooth" });
+    let tries = 0;
+    const settle = () => {
+      const el = document.getElementById(`shelf-${slot}`);
+      const bar = document.getElementById("locker-bar");
+      if (!el || !bar) return;
+      const off = el.getBoundingClientRect().top - bar.getBoundingClientRect().bottom - 12;
+      if (Math.abs(off) <= 2) return; // landed
+      window.scrollBy({ top: off, behavior: tries === 0 ? "smooth" : "auto" });
+      if (++tries < 12) window.setTimeout(settle, 140);
+    };
+    settle();
   }
 
   return (
@@ -251,8 +265,8 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
             >
               <span
                 aria-hidden
-                className="pointer-events-none absolute inset-x-4 bottom-2 h-3 rounded-[50%]"
-                style={{ background: "radial-gradient(50% 100% at 50% 50%, rgba(0,0,0,0.55), transparent 70%)" }}
+                className="pointer-events-none absolute inset-x-6 bottom-[1.35rem] h-2.5 rounded-[50%]"
+                style={{ background: "radial-gradient(50% 100% at 50% 50%, rgba(0,0,0,0.5), transparent 72%)" }}
               />
               <PixelAvatar
                 loadout={loadout}
@@ -402,9 +416,13 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
               key={slot}
               id={`shelf-${slot}`}
               className={hidden ? "opacity-40" : ""}
-              // Nine shelves of boxes is a lot of layout; skip the ones nobody
-              // is looking at. The reserved height keeps the scrollbar honest.
-              style={{ contentVisibility: "auto", containIntrinsicSize: "auto 420px" }}
+              // Shelves off-screen skip layout — a hundred and fifty boxes is
+              // a lot of it — and reserve the height they'll need so scrolling
+              // and the jump chips land where they say they will.
+              style={{
+                contentVisibility: "auto",
+                containIntrinsicSize: `auto ${36 + Math.ceil(items.length / 3) * 170}px`,
+              }}
             >
               <h4 className="flex items-center gap-2">
                 <span className="eyebrow shrink-0 text-ink-2">{SHELF[slot]}</span>

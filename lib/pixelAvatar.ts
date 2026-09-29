@@ -129,10 +129,10 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "head.visor.black", slot: "head", label: "Black visor", price: 250, tier: "common", colour: BLACK, accent: LIME, sprite: "visor" },
 
   { id: "eyes.none", slot: "eyes", label: "No eyewear", price: 0, tier: "common", colour: BLACK, accent: WHITE },
-  { id: "eyes.shades.black", slot: "eyes", label: "Black shades", price: 400, tier: "rare", colour: BLACK, accent: WHITE, sprite: "shades" },
-  { id: "eyes.shades.gold", slot: "eyes", label: "Gold shades", price: 500, tier: "epic", colour: GOLD, accent: BLACK, sprite: "shades" },
-  { id: "eyes.goggles.cyan", slot: "eyes", label: "Cyan goggles", price: 150, tier: "common", colour: CYAN, accent: "#9fdfe4", sprite: "goggles" },
-  { id: "eyes.goggles.black", slot: "eyes", label: "Black goggles", price: 150, tier: "common", colour: BLACK, accent: "#9fdfe4", sprite: "goggles" },
+  { id: "eyes.shades.black", hideBack: true, slot: "eyes", label: "Black shades", price: 400, tier: "rare", colour: BLACK, accent: WHITE, sprite: "shades" },
+  { id: "eyes.shades.gold", hideBack: true, slot: "eyes", label: "Gold shades", price: 500, tier: "epic", colour: GOLD, accent: BLACK, sprite: "shades" },
+  { id: "eyes.goggles.cyan", slot: "eyes", label: "Cyan goggles", price: 150, tier: "common", colour: CYAN, accent: "#9fdfe4", sprite: "goggles", spriteBack: "goggles_back" },
+  { id: "eyes.goggles.black", slot: "eyes", label: "Black goggles", price: 150, tier: "common", colour: BLACK, accent: "#9fdfe4", sprite: "goggles", spriteBack: "goggles_back" },
 
   { id: "torso.bare", slot: "torso", label: "Bare chest", price: 0, tier: "common", colour: SKIN_C, accent: WHITE },
   { id: "torso.tee.magenta", slot: "torso", label: "Magenta running shirt", price: 350, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "tee" },
