@@ -499,9 +499,12 @@ function bodyChunks(
   const held = BODY_CACHE.get(key);
   if (held) return held;
   const SPLIT = 86; // the hips: above it breathes, below it stays planted
+  const tone = { skin, shade };
   const made = {
-    upper: draw(rasterise(src.slice(0, SPLIT), 1, 0, 0, skin, shade, false, "upper")),
-    lower: bustOnly ? "" : draw(rasterise(src.slice(SPLIT), 1, 0, SPLIT, skin, shade, false, "lower")),
+    upper: draw(rasterise(src.slice(0, SPLIT), 1, 0, 0, skin, shade, false, "upper", undefined, false, tone)),
+    lower: bustOnly
+      ? ""
+      : draw(rasterise(src.slice(SPLIT), 1, 0, SPLIT, skin, shade, false, "lower", undefined, false, tone)),
   };
   BODY_CACHE.set(key, made);
   return made;

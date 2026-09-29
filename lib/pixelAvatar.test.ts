@@ -229,19 +229,61 @@ console.log("\na figure wearing one of everything");
   check("and from behind", avatarSvg(dressed, { view: "back" }).length > 5000, true);
   check("and as a bust", avatarSvg(dressed, { crop: "bust" }).length > 2000, true);
 
-  // Skin is a choice, and it has to reach the body AND the skin inside an item
-  // (the foot in a sandal), not just one of them.
-  const pale = avatarSvg({ ...dressed, skin: { item: "skin.light" }, feet: { item: "feet.slides.cyan" } });
-  const dark = avatarSvg({ ...dressed, skin: { item: "skin.deep" }, feet: { item: "feet.slides.cyan" } });
-  check("changing skin changes the figure", pale !== dark, true);
-  check("the light tone is drawn", pale.includes("#f0c9a6"), true);
-  check("and the deep one isn't in it", pale.includes("#54301b"), false);
+  // Skin has to reach the BODY, not just the bare-skin pixels inside an item.
+  // The old check asked whether the chosen colour appeared anywhere, and passed
+  // while the body was still drawn in the default tone — the colour it found
+  // was a sandal's foot. So: pick a tone, and the default must be GONE.
+  const FAIR = "#dda077";
+  for (const [tone, hex] of [["skin.light", "#f0c9a6"], ["skin.deep", "#54301b"], ["skin.brown", "#7c4a2a"]] as const) {
+    const svg = avatarSvg({ ...dressed, skin: { item: tone }, feet: { item: "feet.slides.cyan" } });
+    check(`${tone} is drawn`, svg.includes(hex), true);
+    check(`${tone} leaves no default skin behind`, svg.includes(FAIR), false);
+  }
+  check("and the bust follows the same tone",
+    avatarSvg({ ...dressed, skin: { item: "skin.deep" } }, { crop: "bust" }).includes(FAIR), false);
 
   // A shaved head has nothing to draw from behind — it must not put the
   // eyebrows on the back of his skull.
   const baldBack = avatarSvg({ ...dressed, hair: { item: "hair.bald" }, head: { item: "head.none" } }, { view: "back" });
   const hairBack = avatarSvg({ ...dressed, hair: { item: "hair.curly.black" }, head: { item: "head.none" } }, { view: "back" });
   check("a shaved head is bare from behind", baldBack.length < hairBack.length, true);
+}
+
+console.log("\nnothing on the face may cover the eyes");
+{
+  /**
+   * The beard grew over his eyes and the drawing couldn't tell me — a layer
+   * painted on top still emits the rectangles underneath it, so comparing
+   * output finds nothing. This works in sprite space instead: the eyes are the
+   * "E" cells of the body sheet, and a beard or a hairstyle must not put a
+   * filled cell on any of them. (Eyewear is exempt: covering eyes is its job.)
+   */
+  const sheet = sprites as unknown as {
+    base: string[];
+    g: Record<string, { res: number; x0: number; y0: number; rows: string[] }>;
+  };
+
+  const eyes = new Set<string>();
+  sheet.base.forEach((row, y) => {
+    [...row].forEach((c, x) => { if (c === "E") eyes.add(`${x},${y}`); });
+  });
+  check("the body has eyes to protect", eyes.size > 10, true);
+
+  for (const item of AVATAR_ITEMS) {
+    if (item.slot !== "face" && item.slot !== "hair") continue;
+    if (!item.sprite) continue;
+    const sh = sheet.g[item.sprite];
+    let hits = 0;
+    sh.rows.forEach((row, ry) => {
+      [...row].forEach((c, rx) => {
+        if (c === "." || c === "M") return; // "M" is the mouth showing through
+        const ux = Math.floor((sh.x0 + rx) / sh.res);
+        const uy = Math.floor((sh.y0 + ry) / sh.res);
+        if (eyes.has(`${ux},${uy}`)) hits++;
+      });
+    });
+    check(`${item.label} leaves the eyes alone`, hits, 0);
+  }
 }
 
 console.log(failures === 0 ? "\nAll avatar tests passed.\n" : `\n${failures} failing.\n`);

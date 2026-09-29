@@ -274,32 +274,32 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
           everything unlocked · nothing is charged yet
         </p>
 
-        <div className="mt-2 -mx-3 flex gap-1.5 overflow-x-auto px-3 pb-0.5">
+        <div className="mt-2 flex flex-wrap justify-center gap-1.5">
           {KITS.map((k) => (
             <button
               key={k.name}
               onClick={() => wear({ ...loadout, ...k.loadout })}
-              className="eyebrow shrink-0 rounded-full border border-line bg-deck-2/40 px-3 py-1.5 text-ink-2"
+              className="eyebrow rounded-full border border-line bg-deck-2/40 px-2.5 py-1 text-[0.5625rem] text-ink-2"
             >
               {k.name}
             </button>
           ))}
           <button
             onClick={surprise}
-            className="eyebrow shrink-0 rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
+            className="eyebrow rounded-full border border-dashed border-line px-2.5 py-1 text-[0.5625rem] text-ink-3"
           >
             Random
           </button>
           <button
             onClick={() => wear({ ...DEFAULT_LOADOUT, ...Object.fromEntries(YOU.map((s2) => [s2, loadout[s2]])) })}
-            className="eyebrow shrink-0 rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
+            className="eyebrow rounded-full border border-dashed border-line px-2.5 py-1 text-[0.5625rem] text-ink-3"
           >
             Reset
           </button>
           <button
             onClick={undo}
             disabled={past.length === 0}
-            className="eyebrow shrink-0 rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3 disabled:opacity-30"
+            className="eyebrow rounded-full border border-dashed border-line px-2.5 py-1 text-[0.5625rem] text-ink-3 disabled:opacity-30"
           >
             Undo
           </button>
