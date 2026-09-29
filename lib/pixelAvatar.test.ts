@@ -273,8 +273,8 @@ console.log("\nnothing on the face may cover the eyes");
   check("the body has eyes to protect", eyes.size > 10, true);
 
   for (const item of AVATAR_ITEMS) {
-    // The laurel is worn on the skull like hair, so it is held to the same
-    // rule — a wreath that grows down over the eyes is the beard bug again.
+    // The crown is worn on the skull like hair, so it is held to the same
+    // rule — a band that slips down over the eyes is the beard bug again.
     if (item.slot !== "face" && item.slot !== "hair" && item.slot !== "prize") continue;
     if (!item.sprite) continue;
     const sh = sheet.g[item.sprite];

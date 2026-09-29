@@ -355,29 +355,33 @@ def build(P):
             pts.append((cx + px * ca - py * sa, cy + px * sa + py * ca))
         c.poly(pts, ch)
 
-    def wreath(c):
-        # Two sprigs climbing the skull from temple to crown, each leaf lying
-        # along the tangent so the wreath follows the head instead of sitting
-        # beside it. It stops short of the top: a laurel is open there, and the
-        # gap is what stops it reading as a hat.
-        RX, RY = HRX + 1.4, HRY + 1.4
-        for side in (-1, 1):
-            for i in range(7):
-                t = i / 6.0
-                th = math.radians(96 - 74 * t)          # from temple to crown
-                cx = 40 + side * RX * math.sin(th)
-                cy = HC - RY * math.cos(th)
-                ang = math.atan2(math.sin(th), side * math.cos(th))
-                ln = 2.5 - 0.7 * t
-                leaf(c, cx, cy, ln, 1.15 - 0.3 * t, ang, "K")
-                # A hairline vein on every other leaf. Any more than that and
-                # seven leaves read as one chain with a white stripe down it.
-                if i % 2 == 0:
-                    leaf(c, cx, cy, ln - 1.2, 0.3, ang, "W")
-        # the clasp in the gap at the crown
-        c.disc(40, HC - RY + 1.5, 2.2, 1.7, "A")
+    def crown(c):
+        """A band round the skull with five points on it.
 
-    item("laurel", 4, wreath)
+        Everything is measured off the head ellipse rather than picked: the
+        band's bottom edge sits just inside the widest the skull gets at that
+        height, and the top edge just inside where the hair reaches, so the
+        crown rests ON him at every angle instead of hovering at the corners.
+        """
+        YB0, YB1 = 7.6, 13.2           # band, top and bottom
+        HW0, HW1 = 11.8, 14.6          # its half-width at each
+        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW0, YB0), (40-HW0, YB0)], "K")
+        # Five points, tallest in the middle, each finished with a pearl. The
+        # bases meet, so the points read as one rim and not five spikes.
+        for x, top in ((0.0, 0.3), (-4.9, 1.8), (4.9, 1.8), (-9.7, 3.3), (9.7, 3.3)):
+            c.poly([(40+x-2.0, YB0+0.6), (40+x+2.0, YB0+0.6), (40+x, top)], "K")
+            c.disc(40+x, top + 0.4, 1.0, 1.0, "W")
+        # Jewels set in the band, each with a glint in the upper left — the
+        # same light that shades the rest of the figure.
+        for x in (-6.8, 0.0, 6.8):
+            c.disc(40+x, YB1-2.6, 1.7, 1.8, "A")
+            c.disc(40+x-0.5, YB1-3.2, 0.55, 0.55, "W")
+        # A lit top edge and a shadowed lower lip: without them the band is a
+        # flat gold rectangle with dots on it.
+        c.poly([(40-HW0, YB0), (40+HW0, YB0), (40+HW0-0.5, YB0+0.8), (40-HW0+0.5, YB0+0.8)], "W")
+        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW1-0.5, YB1-1.1), (40-HW1+0.5, YB1-1.1)], "A")
+
+    item("crown", 4, crown)
 
     item("medal", 4, lambda c: (
         # A striped ribbon, not two bare straps.

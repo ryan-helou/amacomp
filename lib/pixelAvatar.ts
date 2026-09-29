@@ -177,7 +177,7 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "prize.none", slot: "prize", label: "No prize", price: 0, tier: "common", colour: GOLD, accent: WHITE },
   { id: "prize.medal", slot: "prize", label: "Week winner's medal", price: 0, tier: "epic", colour: GOLD, accent: "#b23a48", sprite: "medal", hideBack: true, earned: "win a week" },
   { id: "prize.sash", slot: "prize", label: "Month winner's sash", price: 0, tier: "epic", colour: "#b23a48", accent: GOLD, sprite: "sash", earned: "win a month" },
-  { id: "prize.laurel", slot: "prize", label: "Champion's laurel", price: 0, tier: "legendary", colour: "#3f8f34", accent: GOLD, sprite: "laurel", earned: "win the season" },
+  { id: "prize.crown", slot: "prize", label: "Champion's crown", price: 0, tier: "legendary", colour: GOLD, accent: "#b23a48", sprite: "crown", earned: "win the season" },
   { id: "hands.none", slot: "hands", label: "Bare hands", price: 0, tier: "common", colour: SKIN_C, accent: WHITE },
   { id: "hands.gloves.black", slot: "hands", label: "Black gloves", price: 300, tier: "common", colour: BLACK, accent: WHITE, sprite: "gloves" },
   { id: "hands.gloves.white", slot: "hands", label: "White gloves", price: 300, tier: "common", colour: WHITE, accent: BLACK, sprite: "gloves" },
@@ -251,7 +251,9 @@ const OUTLINE = "#14161b";
 const RIM = "#4a5f7a"; // the cool edge on the lit side
 
 // Legs first, eyewear last: the order things are put on.
-const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "prize", "hands", "watch", "hair", "face", "head", "eyes"];
+// A crown goes on over the hair and over the helmet, so the prize is the last
+// thing drawn. Nothing else in the slot reaches anything that comes before it.
+const ORDER: Slot[] = ["legs", "socks", "feet", "torso", "hands", "watch", "hair", "face", "head", "eyes", "prize"];
 // Worn on the chest, so these ride with the breath.
 const UPPER: Set<Slot> = new Set(["head", "eyes", "torso", "prize", "hands", "watch", "hair", "face"]);
 
