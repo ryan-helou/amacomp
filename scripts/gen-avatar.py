@@ -486,6 +486,9 @@ def build(P):
         c.rect(40-HRX-0.5, EYE_Y-1.4, 40-HRX*0.72, EYE_Y-0.2, "K"),
         c.rect(40+HRX*0.72, EYE_Y-1.4, 40+HRX+0.5, EYE_Y-0.2, "K"),
         c.rect(40-HRX*0.7, EYE_Y-1.6, 40-HRX*0.5, EYE_Y-0.6, "W")))
+    item("goggles_back", 4, lambda c: (
+        c.rect(40-HRX-1, EYE_Y-1.6, 40+HRX+1, EYE_Y+1.6, "K"),
+        c.rect(40-HRX*0.5, EYE_Y-1.6, 40-HRX*0.2, EYE_Y+1.6, "W")))
     item("goggles", 4, lambda c: (
         c.rect(40-HRX-1, EYE_Y-1.6, 40+HRX+1, EYE_Y+1.6, "K"),
         c.disc(40-HRX*0.45, EYE_Y, HRX*0.4, HRY*0.3, "K"), c.disc(40+HRX*0.45, EYE_Y, HRX*0.4, HRY*0.3, "K"),
