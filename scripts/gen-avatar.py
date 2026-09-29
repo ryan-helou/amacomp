@@ -420,23 +420,23 @@ def build(P):
         c.disc(40, HC, HRX, HRY, "K"), c.disc(40, HC-HRY*1.02, 4.2, 3.8, "K")))
 
     item("beard_stubble", 3, lambda c: (
-        c.disc(40, HC+HRY*0.34, HRX*0.90, HRY*0.66, "K", y0=HC+HRY*0.46),
-        c.rect(40-HRX*0.90, HC+HRY*0.16, 40-HRX*0.66, HC+HRY*0.52, "K"),
-        c.rect(40+HRX*0.66, HC+HRY*0.16, 40+HRX*0.90, HC+HRY*0.52, "K"),
-        c.rect(40-HRX*0.30, HC+HRY*0.36, 40+HRX*0.30, HC+HRY*0.44, "K"),
+        c.disc(40, HC+HRY*0.48, HRX*0.88, HRY*0.60, "K", y0=HC+HRY*0.56),
+        c.rect(40-HRX*0.92, HC+HRY*0.54, 40-HRX*0.74, HC+HRY*0.70, "K"),
+        c.rect(40+HRX*0.74, HC+HRY*0.54, 40+HRX*0.92, HC+HRY*0.70, "K"),
+        c.rect(40-HRX*0.30, HC+HRY*0.46, 40+HRX*0.30, HC+HRY*0.52, "K"),
         c.rect(40-HRX*0.22, HC+HRY*0.52, 40+HRX*0.22, HC+HRY*0.62, "M")))
     item("beard_full", 3, lambda c: (
-        c.disc(40, HC+HRY*0.30, HRX*0.94, HRY*0.74, "K", y0=HC+HRY*0.40),
-        c.rect(40-HRX*0.94, HC+HRY*0.02, 40-HRX*0.62, HC+HRY*0.54, "K"),
-        c.rect(40+HRX*0.62, HC+HRY*0.02, 40+HRX*0.94, HC+HRY*0.54, "K"),
-        c.rect(40-HRX*0.34, HC+HRY*0.34, 40+HRX*0.34, HC+HRY*0.44, "K"),
+        c.disc(40, HC+HRY*0.44, HRX*0.92, HRY*0.66, "K", y0=HC+HRY*0.50),
+        c.rect(40-HRX*0.96, HC+HRY*0.48, 40-HRX*0.74, HC+HRY*0.70, "K"),
+        c.rect(40+HRX*0.74, HC+HRY*0.48, 40+HRX*0.96, HC+HRY*0.70, "K"),
+        c.rect(40-HRX*0.34, HC+HRY*0.44, 40+HRX*0.34, HC+HRY*0.52, "K"),
         c.rect(40-HRX*0.22, HC+HRY*0.52, 40+HRX*0.22, HC+HRY*0.62, "M")))
     item("moustache", 3, lambda c: (
-        c.rect(40-HRX*0.36, HC+HRY*0.34, 40+HRX*0.36, HC+HRY*0.46, "K"),
-        c.poly([(40-HRX*0.36, HC+HRY*0.34), (40-HRX*0.52, HC+HRY*0.46),
-                (40-HRX*0.36, HC+HRY*0.46)], "K"),
-        c.poly([(40+HRX*0.36, HC+HRY*0.34), (40+HRX*0.52, HC+HRY*0.46),
-                (40+HRX*0.36, HC+HRY*0.46)], "K")))
+        c.rect(40-HRX*0.32, HC+HRY*0.46, 40+HRX*0.32, HC+HRY*0.54, "K"),
+        c.poly([(40-HRX*0.32, HC+HRY*0.46), (40-HRX*0.50, HC+HRY*0.58),
+                (40-HRX*0.32, HC+HRY*0.56)], "K"),
+        c.poly([(40+HRX*0.32, HC+HRY*0.46), (40+HRX*0.50, HC+HRY*0.58),
+                (40+HRX*0.32, HC+HRY*0.56)], "K")))
     item("helmet", 4, lambda c: (
         c.disc(40, HC-2.5, HRX+2.2, HRY-0.8, "K", y1=HC-HRY*0.08),
         c.poly([(40-HRX-1, HC-HRY*0.22), (40+HRX+1, HC-HRY*0.22), (40+HRX+1.6, HC-HRY*0.06), (40-HRX-1.6, HC-HRY*0.06)], "K"),
