@@ -185,6 +185,12 @@ export function AvatarLocker({
   const askedItem = asking ? AVATAR_ITEM_BY_ID.get(asking) : undefined;
   const lane = laneFlag(AVATAR_ITEM_BY_ID.get(loadout.lane?.item ?? "")?.flag ?? "");
 
+  /** Things on the figure that he hasn't paid for — a fitting, not a fit. */
+  const tryingOn = SLOTS.filter((slot) => {
+    const worn = loadout[slot];
+    return worn && !owned.has(worn.item) && !AVATAR_ITEM_BY_ID.get(worn.item)?.earned;
+  }).length;
+
   const needle = query.trim().toLowerCase();
 
   /** What a shelf shows: everything, or just what matches the search. */
@@ -251,7 +257,9 @@ export function AvatarLocker({
           <img src="/tri-coin.png" alt="" aria-hidden className="h-4 w-4 shrink-0 object-contain" />
           <span className="stamp text-sm leading-none tabular-nums text-gold">{fmtCoins(balance)}</span>
           <span className="min-w-0 flex-1 truncate font-mono text-[0.625rem] text-ink-3">
-            {bill > 0 ? `${fmtCoins(bill)} to buy this fit` : "all yours"}
+            {tryingOn > 0
+              ? `trying on ${tryingOn} · ${fmtCoins(bill)} to keep`
+              : "all yours"}
           </span>
           <button
             onClick={save}
@@ -486,7 +494,7 @@ const ShopBox = memo(function ShopBox({
   const tier = TIER[item.tier];
   return (
     <button
-      onClick={() => (owned || item.earned ? onPick(slot, item.id) : onAsk(item.id))}
+      onClick={() => onPick(slot, item.id)}
       aria-pressed={worn}
       className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-colors ${
         worn ? "border-gold bg-gold/10" : `${tier.ring} bg-deck-2/40`
@@ -549,7 +557,26 @@ const ShopBox = memo(function ShopBox({
           ) : free ? (
             <span className="text-ink-3">yours</span>
           ) : (
-            <>
+            // Trying it on is a tap on the box; buying it is a tap on this.
+            // They're different decisions, so they're different targets.
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`Buy ${item.label} for ${item.price} coins`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAsk(item.id);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  onAsk(item.id);
+                }
+              }}
+              className={`flex w-full items-center justify-center gap-1 rounded border px-1 py-0.5 ${
+                affordable ? "border-gold/50 bg-gold/10 text-gold" : "border-line text-ink-3"
+              }`}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- one cached file, many boxes */}
               <img
                 src="/tri-coin.png"
@@ -557,8 +584,8 @@ const ShopBox = memo(function ShopBox({
                 aria-hidden
                 className={`h-3 w-3 object-contain ${affordable ? "" : "opacity-40"}`}
               />
-              <span className={affordable ? "text-gold" : "text-ink-3"}>{fmtCoins(item.price)}</span>
-            </>
+              {fmtCoins(item.price)}
+            </span>
           )}
         </span>
       </span>

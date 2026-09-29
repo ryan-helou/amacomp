@@ -90,11 +90,19 @@ export async function POST(req: Request) {
 
   if (body.wear && typeof body.wear === "object") {
     const loadout = body.wear as Record<string, { item?: unknown }>;
+    // You can try anything on in the shop; you can only SAVE what's yours.
+    // Otherwise the locker is a fitting room and the board is a lie.
+    const mine = new Set((await store.listPurchases()).filter((p) => p.athleteId === me.id).map((p) => p.itemId));
     const clean: Record<string, { item: string }> = {};
     for (const [slot, worn] of Object.entries(loadout)) {
       if (typeof worn?.item !== "string") continue;
-      if (!AVATAR_ITEM_BY_ID.has(worn.item)) continue;
-      clean[slot] = { item: worn.item };
+      const item = AVATAR_ITEM_BY_ID.get(worn.item);
+      if (!item) continue;
+      // Free kit is everyone's. A prize is nobody's until it's won, and
+      // winning isn't wired up yet, so it can't be saved either.
+      const owned = mine.has(item.id) || (item.price === 0 && !item.earned);
+      if (!owned) continue;
+      clean[slot] = { item: item.id };
     }
     await store.setLoadout(me.id, clean);
     return NextResponse.json(await readState());
