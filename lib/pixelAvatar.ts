@@ -187,7 +187,7 @@ export const BANNER_ITEMS: AvatarItem[] = Object.entries(DATA.flags).map(([id, f
   return {
     id: `banner.${id}`,
     slot: "banner" as const,
-    label: `${flag.label} banner`,
+    label: flag.label,
     price,
     tier: BANNER_TIER[id] ?? (price >= 600 ? "rare" : "common"),
     colour: flag.pal[0],
