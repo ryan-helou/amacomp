@@ -368,7 +368,7 @@ export function AppShell({
         {tab === "log" && <LogTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "week" && <WeekTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
-        {tab === "club" && <ClubTab state={state} refDay={refDay} />}
+        {tab === "club" && <ClubTab state={state} refDay={refDay} send={send} />}
         {tab === "records" && <RecordsAndFame state={state} refDay={refDay} />}
       </main>
 

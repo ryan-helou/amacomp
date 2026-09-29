@@ -358,6 +358,23 @@ export interface StepsLink {
   shortcutKey: string | null;
 }
 
+/** Coins handed out by hand — a test float, a prize, a bounty paid. */
+export interface CoinGrant {
+  id: string;
+  athleteId: string;
+  amount: number;
+  note: string;
+  day: string;
+}
+
+/** Something bought from the Club shop. Owned for good once it's paid for. */
+export interface Purchase {
+  athleteId: string;
+  itemId: string;
+  price: number;
+  day: string;
+}
+
 export interface AppState {
   me: Athlete | null;
   isAdmin: boolean;
@@ -371,6 +388,12 @@ export interface AppState {
   steps: StepDay[];
   /** The signed-in athlete's own step connection. */
   stepsLink: StepsLink;
+  /** Coins granted by hand, everyone's — they count toward a balance. */
+  coinGrants: CoinGrant[];
+  /** What everyone has bought, so a balance can have the spend taken off it. */
+  purchases: Purchase[];
+  /** The signed-in athlete's saved avatar, or null if they've never saved one. */
+  myLoadout: Record<string, { item: string }> | null;
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {

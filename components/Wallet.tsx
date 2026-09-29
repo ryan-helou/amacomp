@@ -14,6 +14,8 @@ const KIND_GLYPH: Record<CoinEntry["kind"], GlyphName> = {
   week: "trophy",
   month: "medal",
   season: "crown",
+  grant: "diamond",
+  spend: "trash",
 };
 
 /**
@@ -30,12 +32,14 @@ export function Wallet({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const meId = state.me?.id ?? "";
 
   const account = useMemo(
-    () => coinAccount(meId, state.athletes, state.activities, state.settings, refDay),
-    [meId, state.athletes, state.activities, state.settings, refDay],
+    () => coinAccount(meId, state.athletes, state.activities, state.settings, refDay,
+      state.coinGrants, state.purchases),
+    [meId, state.athletes, state.activities, state.settings, refDay, state.coinGrants, state.purchases],
   );
   const board = useMemo(
-    () => coinBoard(state.athletes, state.activities, state.settings, refDay),
-    [state.athletes, state.activities, state.settings, refDay],
+    () => coinBoard(state.athletes, state.activities, state.settings, refDay,
+      state.coinGrants, state.purchases),
+    [state.athletes, state.activities, state.settings, refDay, state.coinGrants, state.purchases],
   );
 
   const bonuses = account.entries.filter((e) => e.kind !== "points");
@@ -86,8 +90,13 @@ export function Wallet({ state, refDay }: { state: AppState; refDay: DayKey }) {
                 <span className="block truncate text-[0.8125rem] text-ink">{e.label}</span>
                 <span className="font-mono text-[0.625rem] text-ink-3">{e.detail}</span>
               </span>
-              <span className="stamp shrink-0 text-base tabular-nums text-gold">
-                +{fmtCoins(e.amount)}
+              <span
+                className={`stamp shrink-0 text-base tabular-nums ${
+                  e.amount < 0 ? "text-ink-3" : "text-gold"
+                }`}
+              >
+                {e.amount < 0 ? "−" : "+"}
+                {fmtCoins(Math.abs(e.amount))}
               </span>
             </li>
           ))}

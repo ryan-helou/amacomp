@@ -7,6 +7,7 @@ import { CLUB_LIVE, CLUB_ROOMS, canSeeClub, type ClubRoom } from "@/lib/club";
 import { Wallet } from "./Wallet";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
+import type { League } from "./useLeague";
 
 /**
  * The shop is its own chunk, fetched only when someone opens that room — so a
@@ -23,7 +24,15 @@ const AvatarLocker = dynamic(() => import("@/components/AvatarLocker").then((m) 
  * thing can be judged on a phone and shown to people — see `canSeeClub`, and
  * read the note there about what a name check is worth.
  */
-export function ClubTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
+export function ClubTab({
+  state,
+  refDay,
+  send,
+}: {
+  state: AppState;
+  refDay: DayKey;
+  send: League["send"];
+}) {
   const [room, setRoom] = useState<ClubRoom>("wallet");
 
   // The teaser is what the league gets until the Club opens properly.
@@ -54,7 +63,7 @@ export function ClubTab({ state, refDay }: { state: AppState; refDay: DayKey }) 
       {room === "wallet" ? (
         <Wallet state={state} refDay={refDay} />
       ) : room === "shop" ? (
-        <AvatarLocker state={state} refDay={refDay} />
+        <AvatarLocker state={state} refDay={refDay} send={send} />
       ) : (
         /* Bets and challenges land here as they're built. */
         <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
