@@ -306,7 +306,17 @@ function rasterise(
       const len = end - x + 1;
       if (len >= span * 2 + 1) {
         for (let k = 0; k < Math.max(1, Math.round(res)); k++) grid[y][x + k] = shift(c, 1.1);
-        for (let k = 0; k < span; k++) grid[y][end - k] = shift(c, 0.72 + 0.07 * k);
+        // The shaded edge runs dark at the rim and back to normal inside. In
+        // STEPS, not per cell: a per-cell ramp gave a fine sprite twelve
+        // distinct shades in a row, so no two rows ever merged (the aero
+        // helmet alone was 2,262 rectangles), and its inner end came out at
+        // 1.49x — brighter than the colour it was shading.
+        const steps = 4;
+        for (let k = 0; k < span; k++) {
+          const t = span === 1 ? 1 : k / (span - 1);
+          const q = Math.round(t * (steps - 1)) / (steps - 1);
+          grid[y][end - k] = shift(c, 0.72 + 0.28 * q);
+        }
       } else if (len >= Math.max(2, Math.round(1.5 * res))) {
         grid[y][end] = shift(c, 0.8);
       }
@@ -433,6 +443,24 @@ export function itemImage(itemId: string): string {
   return uri;
 }
 
+const BODY_CACHE = new Map<string, { upper: string; lower: string }>();
+
+/** The bare figure's two halves, drawn once per view and remembered. */
+function bodyChunks(
+  view: "front" | "back", src: string[], bustOnly: boolean,
+): { upper: string; lower: string } {
+  const key = `${view}${bustOnly ? ":bust" : ""}`;
+  const held = BODY_CACHE.get(key);
+  if (held) return held;
+  const SPLIT = 86; // the hips: above it breathes, below it stays planted
+  const made = {
+    upper: draw(rasterise(src.slice(0, SPLIT), 1, 0, 0, SKIN, SKIN_D, false, "upper")),
+    lower: bustOnly ? "" : draw(rasterise(src.slice(SPLIT), 1, 0, SPLIT, SKIN, SKIN_D, false, "lower")),
+  };
+  BODY_CACHE.set(key, made);
+  return made;
+}
+
 /**
  * The figure as an SVG string.
  *
@@ -468,11 +496,20 @@ export function avatarSvg(
       false, "behind", flown.palette, flown.flat);
   }
 
-  const SPLIT = 86; // the hips: above it breathes, below it stays planted
-  paint(src.slice(0, SPLIT), 1, 0, 0, SKIN, SKIN_D, false, "upper");
-  paint(src.slice(SPLIT), 1, 0, SPLIT, SKIN, SKIN_D, false, "lower");
+  /**
+   * A bust is a 36px window onto the head. Drawing his shoes into it cost
+   * 156KB of markup for a circle you could cover with a thumbnail, so the
+   * layers that cannot appear in the window are skipped. It is still the SAME
+   * drawing — every rectangle it emits is one the full figure emits too, which
+   * is what the test checks.
+   */
+  const IN_BUST: Set<Slot> = new Set(["banner", "torso", "head", "eyes"]);
+  const wanted = (slot: Slot) => crop !== "bust" || IN_BUST.has(slot);
+
+  const body = bodyChunks(view, src, crop === "bust");
 
   for (const slot of ORDER) {
+    if (!wanted(slot)) continue;
     const worn = loadout[slot];
     const item = worn ? AVATAR_ITEM_BY_ID.get(worn.item) : undefined;
     if (!item?.sprite) continue;
@@ -483,7 +520,7 @@ export function avatarSvg(
       view === "back", UPPER.has(slot) ? "upper" : "lower", item.palette);
   }
 
-  let behindOut = "", upperOut = "", lowerOut = "";
+  let behindOut = "", upperOut = body.upper, lowerOut = body.lower;
   for (const L of layers) {
     const chunk = draw(L);
     if (L.zone === "behind") behindOut += chunk;
