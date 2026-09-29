@@ -133,29 +133,48 @@ def build(P):
         [c.disc(40+dx, HC-HRY*0.62+dy, 4.6, 4.2, "K")
          for dx, dy in ((-11, 3.0), (-6, -1.2), (0, -3.0), (6, -1.2), (11, 3.0), (-13, 7.5), (13, 7.5))],
         c.rect(40-HRX+1.4, HC-HRY*0.52, 40+HRX-1.4, HC-HRY*0.34, "K")))
-    item("hair_long", 3, lambda c: (
-        c.disc(40, HC-1, HRX+0.8, HRY+0.2, "K", y1=HC-HRY*0.34),
-        c.poly([(40-HRX-0.8, HC-HRY*0.50), (40-HRX+3.2, HC-HRY*0.50),
-                (40-HRX+2.0, HC+HRY*0.95), (40-HRX-3.4, HC+HRY*0.86)], "K"),
-        c.poly([(40+HRX+0.8, HC-HRY*0.50), (40+HRX-3.2, HC-HRY*0.50),
-                (40+HRX-2.0, HC+HRY*0.95), (40+HRX+3.4, HC+HRY*0.86)], "K"),
-        c.rect(40-HRX+2, HC-HRY*0.5, 40+HRX-2, HC-HRY*0.35, "K")))
+    def hair_long(c):
+        """Cut the face out of a mass of hair, rather than leaning two slabs
+        against the head. The slabs met the fringe at a right angle and the
+        whole thing read as a bucket."""
+        HEM = HC + HRY*1.34
+        c.disc(40, HC-0.5, HRX+1.6, HRY+0.8, "K")
+        for k in range(161):                     # widening as it falls
+            t = k/160
+            y = HC - 0.5 + t*(HEM - HC + 0.5)
+            hw = HRX + 1.6 + 3.4*t*t
+            c.rect(40-hw, y, 40+hw, y+0.4, "K")
+        for sx in (-1, 1):                       # a rounded hem, not a cut edge
+            c.disc(40 + sx*(HRX+2.6), HEM-1.4, 2.4, 2.2, "K")
+        c.disc(40, HC+1.0, HRX-1.3, HRY-0.9, ".", y0=HC-HRY*0.34)
+        c.rect(40-HRX*0.56, HC+HRY*0.86, 40+HRX*0.56, HEM+3, ".")
+
+    item("hair_long", 3, hair_long)
     item("hair_bun", 3, lambda c: (
         c.disc(40, HC-1, HRX, HRY, "K", y1=HC-HRY*0.45),
         c.rect(40-HRX+2, HC-HRY*0.5, 40+HRX-2, HC-HRY*0.35, "K"),
-        c.disc(40, HC-HRY*1.02, 4.2, 3.8, "K")))
+        # The knot was a nub. It is the point of the style, so it is a knot.
+        c.disc(40, HC-HRY*1.06, 5.4, 4.8, "K")))
     item("hair_short_back", 3, lambda c: c.disc(40, HC, HRX, HRY, "K"))
     item("hair_buzz_back", 3, lambda c: c.disc(40, HC-0.3, HRX-0.3, HRY-0.5, "K"))
     item("hair_curly_back", 3, lambda c: (
         c.disc(40, HC, HRX, HRY, "K"),
         [c.disc(40+dx, HC-HRY*0.62+dy, 4.6, 4.2, "K")
          for dx, dy in ((-11, 3.0), (-6, -1.2), (0, -3.0), (6, -1.2), (11, 3.0), (-13, 7.5), (13, 7.5))]))
-    item("hair_long_back", 3, lambda c: (
-        c.disc(40, HC, HRX+0.8, HRY+0.2, "K"),
-        c.poly([(40-HRX-0.8, HC), (40+HRX+0.8, HC),
-                (40+HRX+3.4, HC+HRY*1.05), (40-HRX-3.4, HC+HRY*1.05)], "K")))
+    def hair_long_back(c):
+        HEM = HC + HRY*1.34
+        c.disc(40, HC-0.5, HRX+1.6, HRY+0.8, "K")
+        for k in range(161):
+            t = k/160
+            y = HC - 0.5 + t*(HEM - HC + 0.5)
+            hw = HRX + 1.6 + 3.4*t*t
+            c.rect(40-hw, y, 40+hw, y+0.4, "K")
+        for sx in (-1, 1):
+            c.disc(40 + sx*(HRX+2.6), HEM-1.4, 2.4, 2.2, "K")
+
+    item("hair_long_back", 3, hair_long_back)
     item("hair_bun_back", 3, lambda c: (
-        c.disc(40, HC, HRX, HRY, "K"), c.disc(40, HC-HRY*1.02, 4.2, 3.8, "K")))
+        c.disc(40, HC, HRX, HRY, "K"), c.disc(40, HC-HRY*1.06, 5.4, 4.8, "K")))
 
     item("beard_stubble", 3, lambda c: (
         c.disc(40, HC+HRY*0.48, HRX*0.88, HRY*0.60, "K", y0=HC+HRY*0.56),
@@ -169,12 +188,14 @@ def build(P):
         c.rect(40+HRX*0.74, HC+HRY*0.48, 40+HRX*0.96, HC+HRY*0.70, "K"),
         c.rect(40-HRX*0.34, HC+HRY*0.44, 40+HRX*0.34, HC+HRY*0.52, "K"),
         c.rect(40-HRX*0.22, HC+HRY*0.52, 40+HRX*0.22, HC+HRY*0.62, "M")))
-    item("moustache", 3, lambda c: (
-        c.rect(40-HRX*0.32, HC+HRY*0.46, 40+HRX*0.32, HC+HRY*0.54, "K"),
-        c.poly([(40-HRX*0.32, HC+HRY*0.46), (40-HRX*0.50, HC+HRY*0.58),
-                (40-HRX*0.32, HC+HRY*0.56)], "K"),
-        c.poly([(40+HRX*0.32, HC+HRY*0.46), (40+HRX*0.50, HC+HRY*0.58),
-                (40+HRX*0.32, HC+HRY*0.56)], "K")))
+    # It hung down over the top of the mouth, so the face read as a frown with
+    # hair on it. The mouth starts at HC+HRY*0.52; nothing here goes past 0.51.
+    item("moustache", 3, lambda c: c.poly([
+        (40-HRX*0.40, HC+HRY*0.51), (40-HRX*0.33, HC+HRY*0.42),
+        (40-HRX*0.11, HC+HRY*0.40), (40, HC+HRY*0.44),
+        (40+HRX*0.11, HC+HRY*0.40), (40+HRX*0.33, HC+HRY*0.42),
+        (40+HRX*0.40, HC+HRY*0.51), (40+HRX*0.30, HC+HRY*0.48),
+        (40, HC+HRY*0.50), (40-HRX*0.30, HC+HRY*0.48)], "K"))
     item("helmet", 4, lambda c: (
         c.disc(40, HC-2.5, HRX+2.2, HRY-0.8, "K", y1=HC-HRY*0.08),
         c.poly([(40-HRX-1, HC-HRY*0.22), (40+HRX+1, HC-HRY*0.22), (40+HRX+1.6, HC-HRY*0.06), (40-HRX-1.6, HC-HRY*0.06)], "K"),
@@ -183,13 +204,33 @@ def build(P):
         c.poly([(40-HRX-1.4, HC-HRY*0.14), (40+HRX+1.4, HC-HRY*0.14), (40+HRX+1.5, HC-HRY*0.07), (40-HRX-1.5, HC-HRY*0.07)], "W", only="K"),
         [c.poly([(sx, HC-HRY*0.1), (sx+1.4, HC-HRY*0.1), (sx+dx+1.6, HC+HRY*0.42), (sx+dx+0.4, HC+HRY*0.42)], "A")
          for sx, dx in ((40-HRX*0.88, 2.2), (40+HRX*0.8, -2.2))]))
-    item("aero", 4, lambda c: (
-        c.disc(40, HC-3, HRX+2.6, HRY+0.6, "K", y1=HC+HRY*0.12),
-        c.poly([(40-HRX*0.75, HC-HRY*0.80), (40+HRX*0.25, HC-HRY*0.98), (40+HRX*0.55, HC-HRY*0.82),
-                (40-HRX*0.55, HC-HRY*0.62)], "W"),
-        c.rect(40-HRX, HC-HRY*0.2, 40+HRX+2, HC+HRY*0.12, "K"),
-        c.disc(40, HC+HRY*0.16, HRX*1.06, HRY*0.42, "A"),
-        [c.rect(40-HRX*0.62+i*0.5, HC-HRY*0.02+i*0.5, 40-HRX*0.5+i*0.5, HC+HRY*0.06+i*0.5, "W") for i in range(14)]))
+    def aero(c):
+        """Shell, brow, visor.
+
+        The visor used to be an ellipse as wide and as deep as the whole face —
+        a gold dinner plate with a nose behind it. It is a band across the eyes
+        now: the shell comes down to the brow, the visor hangs off that brow,
+        and its bottom edge is darkened so the glass has a rim.
+        """
+        c.disc(40, HC-3.2, HRX+2.4, HRY+0.4, "K", y1=HC+HRY*0.06)
+        c.rect(40-HRX-1.4, HC-HRY*0.14, 40+HRX+2.2, HC+HRY*0.06, "K")
+        # Cheek pieces down each side. Without them the glass has nothing
+        # holding it and the whole thing reads as a bowl balanced on a chin.
+        for sx in (-1, 1):
+            c.poly([(40+sx*(HRX+1.5), HC-HRY*0.10), (40+sx*(HRX-2.2), HC-HRY*0.10),
+                    (40+sx*(HRX-3.6), HC+HRY*0.54), (40+sx*(HRX-0.2), HC+HRY*0.44)], "K")
+        VT, VB = HC + HRY*0.06, HC + HRY*0.36
+        c.poly([(40-HRX*0.88, VT+1.4), (40-HRX*0.78, VT), (40+HRX*0.78, VT),
+                (40+HRX*0.88, VT+1.4), (40+HRX*0.82, VB-1.2), (40+HRX*0.70, VB),
+                (40-HRX*0.70, VB), (40-HRX*0.82, VB-1.2)], "A")
+        c.rect(40-HRX*0.80, VB-1.3, 40+HRX*0.80, VB, "K")
+        # one long glint down the shell, one short one on the glass
+        c.poly([(40-HRX*0.72, HC-HRY*0.74), (40+HRX*0.22, HC-HRY*0.92),
+                (40+HRX*0.50, HC-HRY*0.76), (40-HRX*0.52, HC-HRY*0.56)], "W")
+        [c.rect(40-HRX*0.62+i*0.40, VT+0.9+i*0.40, 40-HRX*0.50+i*0.40, VT+3.1+i*0.40, "W")
+         for i in range(10)]
+
+    item("aero", 4, aero)
     item("aero_back", 4, lambda c: (
         c.disc(40, HC-3, HRX+2.6, HRY+0.6, "K", y1=HC+HRY*0.3),
         [c.rect(40-(HRX*0.75*(1-t)**0.75+1), HC+HRY*0.1+t*34, 40+(HRX*0.75*(1-t)**0.75+1), HC+HRY*0.1+t*34+1, "K")
@@ -262,19 +303,33 @@ def build(P):
     item("socks_short", 3, lambda c: socks(c, 0.72))
     item("socks_tall", 3, lambda c: socks(c, 0.42))
     def shoe(c, sole_h, kind):
+        """Five shoes off one last.
+
+        Seen from the front a shoe is a box, so four of these were the same
+        box in four colours. The marks on the upper are the only thing that
+        can tell them apart at the size the shop draws them, so each kind gets
+        one loud mark rather than three quiet ones.
+        """
         hw = LHW + 0.2
         for cx in (L, R):
             c.rect(cx-hw, FY, cx+hw, FY+7, "K")
             c.disc(cx, FY+1, hw, 3.0, "K"); c.disc(cx, FY+6.2, hw, 2.6, "K")
-            c.rect(cx-1.2, FY, cx+1.2, FY+1.6, "A")
             c.rect(cx-hw-0.3, FY+7-sole_h, cx+hw+0.3, FY+8.6, "A")
             if kind == "strap":
-                c.rect(cx-hw, FY+2.2, cx+hw, FY+3.3, "A"); c.rect(cx-hw, FY+4.4, cx+hw, FY+5.5, "A")
+                # two broad ratchet straps and a buckle on the outside
+                c.rect(cx-hw-0.2, FY+1.8, cx+hw+0.2, FY+3.4, "A")
+                c.rect(cx-hw-0.2, FY+4.4, cx+hw+0.2, FY+6.0, "A")
+                c.rect(cx+hw-1.4, FY+1.6, cx+hw+0.4, FY+3.6, "W")
             elif kind == "lace":
-                for dy in (2.0, 3.5, 5.0): c.rect(cx-2.6, FY+dy, cx+2.6, FY+dy+0.6, "A")
+                # a tongue with the laces crossing it, widening down the foot
+                c.rect(cx-1.3, FY, cx+1.3, FY+2.4, "A")
+                for i in range(3):
+                    y = FY + 2.2 + i*1.5
+                    c.rect(cx-1.8-i*0.7, y, cx+1.8+i*0.7, y+0.7, "A")
             else:
-                c.rect(cx-hw, FY+2.8, cx+hw, FY+4.0, "A")
-                c.rect(cx-hw-0.3, FY+7.8, cx+hw+0.3, FY+9.0, "W")
+                # the plate: a bright wafer sandwiched in a deep midsole
+                c.rect(cx-hw-0.4, FY+7-sole_h-1.0, cx+hw+0.4, FY+7-sole_h+0.2, "W")
+                c.rect(cx-1.2, FY, cx+1.2, FY+2.6, "A")
     item("bikeshoes", 3, lambda c: shoe(c, 1.4, "strap"))
     item("runshoes", 3, lambda c: shoe(c, 2.2, "lace"))
     item("carbon", 3, lambda c: shoe(c, 2.8, "plate"))
@@ -320,6 +375,7 @@ def build(P):
                 (R+LHW+0.9, LY0+(LY1-LY0)*0.14)], "."),
         c.rect(40-TH_+0.5, HIP-3.6, 40+TH_-0.5, HIP-2.2, "A")))
     item("trail", 3, lambda c: (shoe(c, 3.2, "lace"),
+        [c.rect(cx-LHW-0.4, FY+5.2, cx+LHW+0.4, FY+6.6, "A") for cx in (L, R)],
         [c.rect(cx-LHW-0.5+i*1.8, FY+7.4, cx-LHW+0.4+i*1.8, FY+8.4, ".") for cx in (L, R) for i in range(4)]))
     item("slides", 3, lambda c: [(
         c.rect(cx-LHW, FY-2, cx+LHW, FY+5.0, "S"),
@@ -334,11 +390,15 @@ def build(P):
         [c.rect(cx-LHW+0.1, LY0+(LY1-LY0)*0.42+2.4+i*2.6, cx+LHW-0.1, LY0+(LY1-LY0)*0.42+3.6+i*2.6, "A")
          for cx in (L, R) for i in range(4)]))
     # hands
+    # A black glove on a dark board was a missing hand. An outline round the
+    # whole mitt turned it into a bangle, so the marks go ON it instead: a
+    # broad cuff and three knuckles, which are enough to imply the shape.
     item("gloves", 3, lambda c: [(
         c.rect(cx-AHW-1.8, AY1-AHW-2.6, cx+AHW+1.8, AY1+1.6, "K"),
         c.disc(cx, AY1+1.4, AHW+1.8, AHW+1.6, "K"),
         c.rect(cx-AHW-1.9, AY1-AHW-3.6, cx+AHW+1.9, AY1-AHW-1.6, "A"),
         c.rect(cx-AHW-1.2, AY1-AHW+0.4, cx+AHW+1.2, AY1-AHW+1.4, "W"),
+        [c.rect(cx-AHW-1.2+i*2.0, AY1-1.4, cx-AHW+0.1+i*2.0, AY1-0.4, "A") for i in range(1, 4)],
         [c.rect(cx-AHW-0.9+i*1.9, AY1+1.8, cx-AHW+0.3+i*1.9, AY1+3.4, ".") for i in range(1, 3)]) for cx in (AX, 80-AX)])
     item("armwarmers", 2, lambda c: [(
         c.capsule(cx, AY0+(AY1-AY0)*0.42, AY1-1.5, AHW+0.5, "K"),
