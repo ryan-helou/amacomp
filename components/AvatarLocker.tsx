@@ -129,6 +129,9 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
     past: [],
   });
   const [query, setQuery] = useState("");
+  // Headwear, not Skin: you open the shop to dress, and your face is already
+  // sorted. The You shelves are a tap away on the same row.
+  const [tab, setTab] = useState<Slot>("head");
 
   // The last outfit comes back on reload — this thing gets opened a hundred times
   // in a row while the art is being judged. Per-browser only, and never required.
@@ -203,38 +206,17 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
 
   const needle = query.trim().toLowerCase();
 
-  /** What a shelf shows after the search box. */
+  /** What a shelf shows: everything, or just what matches the search. */
   function shown(slot: Slot): AvatarItem[] {
-    return rackFor(slot).filter((item) => {
-      if (loadout[slot]?.item === item.id) return true; // never hide what you're wearing
-      return !needle || item.label.toLowerCase().includes(needle);
-    });
+    if (!needle) return rackFor(slot);
+    return rackFor(slot).filter((item) => item.label.toLowerCase().includes(needle));
   }
 
   const shelves = SLOTS.map((slot) => ({ slot, items: shown(slot) })).filter((s) => s.items.length > 0);
-  const hits = shelves.reduce((n, s) => n + s.items.length, 0);
 
-  /**
-   * Jump to a shelf, leaving room for the bar pinned over it.
-   *
-   * Then keep checking until it stops moving. Shelves render as they come
-   * into view, so the page grows and shrinks under you mid-scroll and a single
-   * jump lands in the wrong place — Tops ended up 62px behind the bar, and
-   * jumping back UP to Hair overshot by 88.
-   */
-  function jump(slot: Slot) {
-    let tries = 0;
-    const settle = () => {
-      const el = document.getElementById(`shelf-${slot}`);
-      const bar = document.getElementById("locker-bar");
-      if (!el || !bar) return;
-      const off = el.getBoundingClientRect().top - bar.getBoundingClientRect().bottom - 12;
-      if (Math.abs(off) <= 2) return; // landed
-      window.scrollBy({ top: off, behavior: tries === 0 ? "smooth" : "auto" });
-      if (++tries < 12) window.setTimeout(settle, 140);
-    };
-    settle();
-  }
+  // Searching looks everywhere — you shouldn't have to guess which tab
+  // "canada" is on. Otherwise you see the tab you picked.
+  const showing = needle ? shelves : shelves.filter((sh) => sh.slot === tab);
 
   return (
     <section className="overflow-clip rounded-2xl pane border border-gold/40 bg-tile">
@@ -263,96 +245,61 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
             >
               <span
                 aria-hidden
-                className="pointer-events-none absolute inset-x-6 bottom-[1.35rem] h-2.5 rounded-[50%]"
+                className="pointer-events-none absolute inset-x-5 bottom-[1.1rem] h-2 rounded-[50%]"
                 style={{ background: "radial-gradient(50% 100% at 50% 50%, rgba(0,0,0,0.5), transparent 72%)" }}
               />
               <PixelAvatar
                 loadout={loadout}
                 view={view}
-                className="relative mx-auto w-full max-w-[9.5rem] px-2 pt-2"
+                className="relative mx-auto w-full max-w-[6.75rem] px-2 pt-1.5"
               />
-              <span className="eyebrow relative block pb-1.5 text-center text-[0.5625rem] text-ink-3">
+              <span className="eyebrow relative block pb-1 text-center text-[0.5rem] text-ink-3">
                 {view}
               </span>
             </div>
           ))}
         </div>
 
-        {/* The till: what he has, what the outfit runs to. */}
-        <div className="mt-3 flex items-stretch gap-2">
-          <div className="flex flex-1 items-center gap-2 rounded-xl border border-line bg-deck-2/50 px-3 py-2">
-            {/* eslint-disable-next-line @next/next/no-img-element -- one cached file */}
-            <img src="/tri-coin.png" alt="" aria-hidden className="h-5 w-5 object-contain" />
-            <span className="min-w-0">
-              <span className="eyebrow block text-[0.5625rem] text-ink-3">balance</span>
-              <span className="stamp block text-base leading-none tabular-nums text-gold">
-                {fmtCoins(balance)}
-              </span>
-            </span>
-          </div>
-          <div className="flex flex-1 flex-col justify-center rounded-xl border border-gold/40 bg-gold/10 px-3 py-2">
-            <span className="eyebrow text-[0.5625rem] text-ink-3">this outfit</span>
-            <span className="stamp text-base leading-none tabular-nums text-gold">
-              {fmtCoins(bill)}
-            </span>
-          </div>
+        {/* The till on one line: he opened the shop to shop, not to read. */}
+        <div className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-line bg-deck-2/50 px-3 py-1.5">
+          {/* eslint-disable-next-line @next/next/no-img-element -- one cached file */}
+          <img src="/tri-coin.png" alt="" aria-hidden className="h-4 w-4 shrink-0 object-contain" />
+          <span className="stamp text-sm leading-none tabular-nums text-gold">{fmtCoins(balance)}</span>
+          <span aria-hidden className="text-ink-3">·</span>
+          <span className="font-mono text-[0.6875rem] text-ink-3">
+            this outfit <span className="text-gold">{fmtCoins(bill)}</span>
+          </span>
         </div>
-
-        {/* Nothing is bought yet, so nothing is locked. The prices are what
-            these will cost once coins can be spent. */}
-        <p className="mt-2 text-center font-mono text-[0.625rem] text-ink-3">
-          everything unlocked · prices are what they&rsquo;ll cost, nothing is charged yet
+        <p className="mt-1 text-center font-mono text-[0.5625rem] text-ink-3">
+          everything unlocked · nothing is charged yet
         </p>
 
-        {/* What you've actually put on, and one tap to take it off again.
-            Without this, removing a hat means scrolling back to Headwear and
-            hunting for the word "None". */}
-        {worn.length > 0 && (
-          <div className="mt-2.5 grid grid-cols-2 gap-1">
-            {worn.map(({ slot, item }) => (
-              <button
-                key={slot}
-                onClick={() => {
-                  const bare = rackFor(slot).find((i) => i.price === 0 && !i.earned && !i.sprite)
-                    ?? rackFor(slot).find((i) => i.price === 0 && !i.earned);
-                  if (bare) wear({ ...loadout, [slot]: { item: bare.id } });
-                }}
-                aria-label={`Take off ${item.label}`}
-                className="flex items-center gap-1.5 rounded-lg border border-line bg-deck-2/40 px-2 py-1 text-left"
-              >
-                <span className="min-w-0 flex-1 truncate text-[0.625rem] text-ink-2">{item.label}</span>
-                <span aria-hidden className="shrink-0 text-[0.75rem] leading-none text-ink-3">×</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <div className="mt-2 -mx-3 flex gap-1.5 overflow-x-auto px-3 pb-0.5">
           {KITS.map((k) => (
             <button
               key={k.name}
               onClick={() => wear({ ...loadout, ...k.loadout })}
-              className="eyebrow rounded-full border border-line bg-deck-2/40 px-3 py-1.5 text-ink-2"
+              className="eyebrow shrink-0 rounded-full border border-line bg-deck-2/40 px-3 py-1.5 text-ink-2"
             >
               {k.name}
             </button>
           ))}
           <button
             onClick={surprise}
-            className="eyebrow rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
+            className="eyebrow shrink-0 rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
           >
             Random
           </button>
           <button
             onClick={() => wear({ ...DEFAULT_LOADOUT, ...Object.fromEntries(YOU.map((s2) => [s2, loadout[s2]])) })}
-            className="eyebrow rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
+            className="eyebrow shrink-0 rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
           >
             Reset
           </button>
           <button
             onClick={undo}
             disabled={past.length === 0}
-            className="eyebrow rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3 disabled:opacity-30"
+            className="eyebrow shrink-0 rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3 disabled:opacity-30"
           >
             Undo
           </button>
@@ -379,21 +326,51 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
             className="min-w-0 flex-1 rounded-lg border border-line bg-deck-2/60 px-2.5 py-1.5 text-[0.8125rem] text-ink placeholder:text-ink-3"
           />
         </div>
-        <div className="mt-1.5 -mx-2 flex gap-1 overflow-x-auto px-2 pb-0.5">
-          {shelves.map(({ slot, items }) => (
-            <button
-              key={slot}
-              onClick={() => jump(slot)}
-              className="eyebrow shrink-0 rounded-full border border-line bg-deck-2/40 px-2.5 py-1 text-[0.5625rem] text-ink-2"
-            >
-              {SHELF[slot]} <span className="text-ink-3">{items.length}</span>
-            </button>
-          ))}
+        {/* One tap per category, and the row stays put while you browse. The
+            shop used to be one scroll of a hundred and fifty boxes. */}
+        <div
+          role="tablist"
+          aria-label="Shop categories"
+          className="mt-1.5 -mx-2 flex gap-1 overflow-x-auto px-2 pb-0.5"
+        >
+          {SLOTS.map((slot) => {
+            const n = rackFor(slot).length;
+            const open = !needle && slot === tab;
+            return (
+              <button
+                key={slot}
+                role="tab"
+                aria-selected={open}
+                id={`tab-${slot}`}
+                onClick={(e) => {
+                  setTab(slot);
+                  setQuery("");
+                  // Thirteen tabs don't fit a phone, so the one you picked
+                  // walks itself into the middle of the row.
+                  const el = e.currentTarget;
+                  const row = el.parentElement;
+                  if (row) {
+                    row.scrollTo({
+                      left: el.offsetLeft - row.clientWidth / 2 + el.clientWidth / 2,
+                      behavior: "smooth",
+                    });
+                  }
+                }}
+                className={`eyebrow shrink-0 rounded-full border px-2.5 py-1 text-[0.5625rem] transition-colors ${
+                  open
+                    ? "border-gold bg-gold/15 text-gold"
+                    : "border-line bg-deck-2/40 text-ink-2"
+                }`}
+              >
+                {SHELF[slot]} <span className={open ? "text-gold/70" : "text-ink-3"}>{n}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="space-y-5 px-3 py-4">
-        {shelves.map(({ slot, items }) => {
+        {showing.map(({ slot, items }) => {
           // A visor IS the eyewear, so say so rather than leaving a shelf of
           // boxes that quietly do nothing.
           const hidden =
@@ -412,7 +389,9 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
               }}
             >
               <h4 className="flex items-center gap-2">
-                <span className="eyebrow shrink-0 text-ink-2">{SHELF[slot]}</span>
+                <span className="eyebrow shrink-0 text-ink-2">
+                  {SHELF[slot]} <span className="text-ink-3">{items.length}</span>
+                </span>
                 <span aria-hidden className="h-px flex-1 bg-line" />
                 {hidden && <span className="eyebrow shrink-0 text-ink-3">under the visor</span>}
                 <button
@@ -442,12 +421,35 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
           );
         })}
 
-        {hits === 0 && (
+        {showing.length === 0 && (
           <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-2">
             Nothing matches “{query}”.
           </p>
         )}
       </div>
+
+      {worn.length > 0 && (
+        <div className="border-t border-line px-3 py-3">
+          <h4 className="eyebrow text-ink-3">Wearing</h4>
+          <div className="mt-1.5 grid grid-cols-2 gap-1">
+            {worn.map(({ slot, item }) => (
+              <button
+                key={slot}
+                onClick={() => {
+                  const bare = rackFor(slot).find((i) => i.price === 0 && !i.earned && !i.sprite)
+                    ?? rackFor(slot).find((i) => i.price === 0 && !i.earned);
+                  if (bare) wear({ ...loadout, [slot]: { item: bare.id } });
+                }}
+                aria-label={`Take off ${item.label}`}
+                className="flex items-center gap-1.5 rounded-lg border border-line bg-deck-2/40 px-2 py-1 text-left"
+              >
+                <span className="min-w-0 flex-1 truncate text-[0.625rem] text-ink-2">{item.label}</span>
+                <span aria-hidden className="shrink-0 text-[0.75rem] leading-none text-ink-3">×</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 border-t border-line bg-deck-2/30 px-4 py-3">
         <span className="eyebrow text-ink-3">On the board</span>
