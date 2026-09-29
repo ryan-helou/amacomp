@@ -17,22 +17,19 @@ import type { DayKey } from "@/lib/dates";
 import type { League } from "./useLeague";
 import { PixelAvatar } from "./PixelAvatar";
 import { CountryFlag } from "./CountryFlag";
-import { flagInk, flagWash } from "@/lib/away";
-import { laneFlag } from "@/lib/flags";
+import { flagLane } from "@/lib/flags";
 
 // You first, then what you put on, then what flies behind you.
 const SLOTS: Slot[] = [
   "skin", "hair", "face",
-  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "prize", "flag", "lane",
+  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "flag",
 ];
 
 const SHELF: Record<Slot, string> = {
   skin: "Skin",
   hair: "Hair",
   face: "Face",
-  prize: "Prizes",
   flag: "Flags",
-  lane: "Lanes",
   head: "Headwear",
   eyes: "Eyewear",
   torso: "Tops",
@@ -177,18 +174,19 @@ export function AvatarLocker({
   // take-off strip lists.
   const worn = SLOTS.flatMap((slot) => {
     const item = AVATAR_ITEM_BY_ID.get(loadout[slot]?.item ?? "");
-    if (!item || (item.price === 0 && !item.earned)) return [];
+    if (!item || item.price === 0) return [];
     return [{ slot, item }];
   });
 
   const flying = AVATAR_ITEM_BY_ID.get(loadout.flag?.item ?? "");
   const askedItem = asking ? AVATAR_ITEM_BY_ID.get(asking) : undefined;
-  const lane = laneFlag(AVATAR_ITEM_BY_ID.get(loadout.lane?.item ?? "")?.flag ?? "");
+  // The flag you fly is also the lane behind your row: one country, one buy.
+  const lane = flagLane(flying?.flag ?? "");
 
   /** Things on the figure that he hasn't paid for — a fitting, not a fit. */
   const tryingOn = SLOTS.filter((slot) => {
     const worn = loadout[slot];
-    return worn && !owned.has(worn.item) && !AVATAR_ITEM_BY_ID.get(worn.item)?.earned;
+    return worn && !owned.has(worn.item);
   }).length;
 
   const needle = query.trim().toLowerCase();
@@ -273,7 +271,7 @@ export function AvatarLocker({
             same flagWash the app already uses for an away week. */}
         <div
           className="mt-2 flex items-center gap-2 overflow-hidden rounded-xl border border-line px-2.5 py-2"
-          style={{ ...(lane ? { ...flagWash(lane), ...flagInk(lane) } : { background: "var(--color-deck-2)" }) }}
+          style={lane ? (lane as React.CSSProperties) : { background: "var(--color-deck-2)" }}
         >
           <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-line bg-deck-2">
             <PixelAvatar loadout={loadout} bust flat className="h-full w-full" />
@@ -421,8 +419,8 @@ export function AvatarLocker({
               <button
                 key={slot}
                 onClick={() => {
-                  const bare = rackFor(slot).find((i) => i.price === 0 && !i.earned && !i.sprite)
-                    ?? rackFor(slot).find((i) => i.price === 0 && !i.earned);
+                  const bare = rackFor(slot).find((i) => i.price === 0 && !i.sprite)
+                    ?? rackFor(slot).find((i) => i.price === 0);
                   if (bare) wear({ ...loadout, [slot]: { item: bare.id } });
                 }}
                 aria-label={`Take off ${item.label}`}
@@ -511,9 +509,7 @@ const ShopBox = memo(function ShopBox({
           ].filter(Boolean).join(", "),
         }}
       >
-        {item.slot === "lane" ? (
-          <LaneSwatch flag={item.flag} />
-        ) : item.flag ? (
+        {item.flag ? (
           <CountryFlag id={item.flag} className="h-9 w-[3.375rem] shadow-sm" />
         ) : item.slot === "skin" ? (
           // A skin tone has no sprite to photograph — it IS the colour.
@@ -552,9 +548,7 @@ const ShopBox = memo(function ShopBox({
         )}
         <span className="text-[0.6875rem] leading-[1.15] text-ink">{item.label}</span>
         <span className="mt-auto flex items-center gap-1 pt-0.5 font-mono text-[0.625rem]">
-          {item.earned ? (
-            <span className="text-gold">{item.earned}</span>
-          ) : free ? (
+          {free ? (
             <span className="text-ink-3">yours</span>
           ) : (
             // Trying it on is a tap on the box; buying it is a tap on this.
@@ -592,21 +586,6 @@ const ShopBox = memo(function ShopBox({
     </button>
   );
 });
-
-/** A lane's picture: the wash it puts behind your row, in miniature. */
-function LaneSwatch({ flag }: { flag?: string }) {
-  const away = laneFlag(flag ?? "");
-  return (
-    <span
-      className="flex h-9 w-full items-center gap-1 overflow-hidden rounded-md border border-line px-1.5"
-      style={away ? { ...flagWash(away), ...flagInk(away) } : { background: "var(--color-deck-2)" }}
-      aria-hidden
-    >
-      <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-ink/20" />
-      <span className="h-1.5 flex-1 rounded-full bg-ink/25" />
-    </span>
-  );
-}
 
 /**
  * The till, as a sheet.
@@ -647,9 +626,7 @@ function BuySheet({
 
         <div className="flex items-center gap-3">
           <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-line bg-deck-2/60 p-2">
-            {item.slot === "lane" ? (
-              <LaneSwatch flag={item.flag} />
-            ) : item.flag ? (
+            {item.flag ? (
               <CountryFlag id={item.flag} className="h-8 w-12" />
             ) : item.slot === "skin" ? (
               <span
