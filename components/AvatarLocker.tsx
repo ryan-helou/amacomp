@@ -22,7 +22,7 @@ import { flagLane } from "@/lib/flags";
 // You first, then what you put on, then what flies behind you.
 const SLOTS: Slot[] = [
   "skin", "hair", "face",
-  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "flag",
+  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "prize", "flag",
 ];
 
 const SHELF: Record<Slot, string> = {
@@ -38,6 +38,7 @@ const SHELF: Record<Slot, string> = {
   feet: "Shoes",
   socks: "Socks",
   watch: "Watches",
+  prize: "Trophies",
 };
 
 /**
@@ -170,11 +171,12 @@ export function AvatarLocker({
     return sum + (AVATAR_ITEM_BY_ID.get(worn.item)?.price ?? 0);
   }, 0);
 
-  // Worn = anything that isn't the slot's free default, which is what the
-  // take-off strip lists.
+  // Worn = anything that isn't the slot's default, which is what the take-off
+  // strip lists. It can't be "anything that cost coins": a prize is free and
+  // certainly on, and a strip that can't list it can't take it off either.
   const worn = SLOTS.flatMap((slot) => {
     const item = AVATAR_ITEM_BY_ID.get(loadout[slot]?.item ?? "");
-    if (!item || item.price === 0) return [];
+    if (!item || item.id === DEFAULT_LOADOUT[slot]?.item) return [];
     return [{ slot, item }];
   });
 
@@ -186,7 +188,10 @@ export function AvatarLocker({
   /** Things on the figure that he hasn't paid for — a fitting, not a fit. */
   const tryingOn = SLOTS.filter((slot) => {
     const worn = loadout[slot];
-    return worn && !owned.has(worn.item);
+    if (!worn) return false;
+    const item = AVATAR_ITEM_BY_ID.get(worn.item);
+    // Free kit and prizes aren't a fitting — there's nothing left to pay.
+    return !!item && item.price > 0 && !owned.has(item.id);
   }).length;
 
   const needle = query.trim().toLowerCase();
@@ -548,7 +553,13 @@ const ShopBox = memo(function ShopBox({
         )}
         <span className="text-[0.6875rem] leading-[1.15] text-ink">{item.label}</span>
         <span className="mt-auto flex items-center gap-1 pt-0.5 font-mono text-[0.625rem]">
-          {free ? (
+          {item.earned ? (
+            // Not a button: there is no transaction to open. It says what the
+            // thing costs, and what it costs is a result.
+            <span className="flex w-full items-center justify-center gap-1 rounded border border-gold/40 bg-gold/5 px-1 py-0.5 text-[0.5625rem] text-gold/80">
+              {item.earned}
+            </span>
+          ) : free ? (
             <span className="text-ink-3">yours</span>
           ) : (
             // Trying it on is a tap on the box; buying it is a tap on this.

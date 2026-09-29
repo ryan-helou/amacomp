@@ -273,7 +273,9 @@ console.log("\nnothing on the face may cover the eyes");
   check("the body has eyes to protect", eyes.size > 10, true);
 
   for (const item of AVATAR_ITEMS) {
-    if (item.slot !== "face" && item.slot !== "hair") continue;
+    // The laurel is worn on the skull like hair, so it is held to the same
+    // rule — a wreath that grows down over the eyes is the beard bug again.
+    if (item.slot !== "face" && item.slot !== "hair" && item.slot !== "prize") continue;
     if (!item.sprite) continue;
     const sh = sheet.g[item.sprite];
     let hits = 0;
@@ -328,6 +330,21 @@ console.log("\none country, one purchase, one drawing");
   // No two countries may draw the same.
   const drawn = new Set(COUNTRY_FLAGS.map((f) => flagSvg(f.id)));
   check("every flag is its own picture", drawn.size, COUNTRY_FLAGS.length);
+}
+
+console.log("\na prize is not for sale");
+{
+  const prizes = AVATAR_ITEMS.filter((i) => i.slot === "prize" && i.sprite);
+  check("there are prizes on the shelf", prizes.length, 3);
+  // Free AND earned, both: free alone would let the till hand one out, and
+  // the shop would print "0 coins" where it should print what wins it.
+  for (const p of prizes) {
+    check(`${p.label} costs no coins`, p.price, 0);
+    check(`${p.label} says what wins it`, !!p.earned && p.earned.length > 0, true);
+  }
+  // And nothing you can pay for may claim to be won.
+  const confused = AVATAR_ITEMS.filter((i) => i.earned && i.price > 0);
+  check("nothing is both won and sold", confused.length, 0);
 }
 
 console.log(failures === 0 ? "\nAll avatar tests passed.\n" : `\n${failures} failing.\n`);
