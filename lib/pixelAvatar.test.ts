@@ -212,5 +212,37 @@ console.log("\na flag is not the wearer's to recolour");
   check("no two flags are the same drawing", drawn.size, banners.length);
 }
 
+console.log("\na figure wearing one of everything");
+{
+  // The crash this caught: nothing here ever rendered a figure WITH a banner,
+  // so a banner painted before the skin tone existed blew up only in the app.
+  const dressed: Loadout = {
+    skin: { item: "skin.deep" }, hair: { item: "hair.curly.black" }, face: { item: "face.beard" },
+    head: { item: "head.helmet.magenta" }, eyes: { item: "eyes.shades.black" },
+    torso: { item: "torso.jersey.gold" }, hands: { item: "hands.gloves.black" },
+    legs: { item: "legs.bibs.black" }, feet: { item: "feet.carbon.gold" },
+    socks: { item: "socks.tall.white" }, watch: { item: "watch.on.gold" },
+    banner: { item: "banner.ca" },
+  };
+  const svg = avatarSvg(dressed);
+  check("every slot at once still draws", svg.startsWith("<svg") && svg.length > 5000, true);
+  check("and from behind", avatarSvg(dressed, { view: "back" }).length > 5000, true);
+  check("and as a bust", avatarSvg(dressed, { crop: "bust" }).length > 2000, true);
+
+  // Skin is a choice, and it has to reach the body AND the skin inside an item
+  // (the foot in a sandal), not just one of them.
+  const pale = avatarSvg({ ...dressed, skin: { item: "skin.light" }, feet: { item: "feet.slides.cyan" } });
+  const dark = avatarSvg({ ...dressed, skin: { item: "skin.deep" }, feet: { item: "feet.slides.cyan" } });
+  check("changing skin changes the figure", pale !== dark, true);
+  check("the light tone is drawn", pale.includes("#f0c9a6"), true);
+  check("and the deep one isn't in it", pale.includes("#54301b"), false);
+
+  // A shaved head has nothing to draw from behind — it must not put the
+  // eyebrows on the back of his skull.
+  const baldBack = avatarSvg({ ...dressed, hair: { item: "hair.bald" }, head: { item: "head.none" } }, { view: "back" });
+  const hairBack = avatarSvg({ ...dressed, hair: { item: "hair.curly.black" }, head: { item: "head.none" } }, { view: "back" });
+  check("a shaved head is bare from behind", baldBack.length < hairBack.length, true);
+}
+
 console.log(failures === 0 ? "\nAll avatar tests passed.\n" : `\n${failures} failing.\n`);
 process.exit(failures === 0 ? 0 : 1);

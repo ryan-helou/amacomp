@@ -356,15 +356,11 @@ def build(P):
         c.rect(35, P["NECK_Y0"], 45, P["NECK_Y1"], "D")
         c.disc(40, HC, HRX, HRY, "S")
         if back:
-            c.disc(40, HC, HRX, HRY, "H")
+            pass
         else:
-            c.disc(40, HC-1, HRX, HRY, "H", y1=HC-HRY*0.45)
-            c.rect(40-HRX+2, HC-HRY*0.5, 40+HRX-2, HC-HRY*0.35, "H", only="S")
             for cx in (40-HRX*0.45, 40+HRX*0.45):
                 c.disc(cx, EYE_Y, HRX*0.19, HRY*0.21, "E")
                 c.rect(cx-HRX*0.06, EYE_Y-HRY*0.13, cx+HRX*0.06, EYE_Y-HRY*0.02, "W")
-            c.rect(40-HRX*0.55, HC-HRY*0.16, 40-HRX*0.15, HC-HRY*0.06, "H")
-            c.rect(40+HRX*0.15, HC-HRY*0.16, 40+HRX*0.55, HC-HRY*0.06, "H")
             c.rect(40-HRX*0.2, HC+HRY*0.52, 40+HRX*0.2, HC+HRY*0.62, "M")
             for y in (HC+HRY*0.2, HC+HRY*0.28):
                 c.rect(40, y, 41.2, y+0.1, "D", only="S")
@@ -374,9 +370,73 @@ def build(P):
         return ["".join(r) for r in c.g]
 
     def item(name, res, fn):
-        c = C(res); fn(c); G[name] = c.pack()
+        c = C(res); fn(c)
+        packed = c.pack()
+        if packed is not None:
+            G[name] = packed
 
     # head
+    # hair and faces — drawn in the item's own colour ("K"), which is how six
+    # athletes stop being the same person in different kit.
+    def brows(c):
+        c.rect(40-HRX*0.55, HC-HRY*0.16, 40-HRX*0.15, HC-HRY*0.06, "K")
+        c.rect(40+HRX*0.15, HC-HRY*0.16, 40+HRX*0.55, HC-HRY*0.06, "K")
+
+    # Brows go on with the hair, in the hair's colour, but they are not part of
+    # any one style — otherwise every wig in the shop is photographed with a
+    # pair of eyebrows floating under it.
+    item("brows", 3, brows)
+    item("hair_short", 3, lambda c: (
+        c.disc(40, HC-1, HRX, HRY, "K", y1=HC-HRY*0.45),
+        c.rect(40-HRX+2, HC-HRY*0.5, 40+HRX-2, HC-HRY*0.35, "K")))
+    item("hair_buzz", 3, lambda c: (
+        c.disc(40, HC-0.5, HRX-0.3, HRY-0.6, "K", y1=HC-HRY*0.58)))
+    item("hair_curly", 3, lambda c: (
+        [c.disc(40+dx, HC-HRY*0.62+dy, 4.6, 4.2, "K")
+         for dx, dy in ((-11, 3.0), (-6, -1.2), (0, -3.0), (6, -1.2), (11, 3.0), (-13, 7.5), (13, 7.5))],
+        c.rect(40-HRX+1.4, HC-HRY*0.52, 40+HRX-1.4, HC-HRY*0.34, "K")))
+    item("hair_long", 3, lambda c: (
+        c.disc(40, HC-1, HRX+0.8, HRY+0.2, "K", y1=HC-HRY*0.34),
+        c.poly([(40-HRX-0.8, HC-HRY*0.50), (40-HRX+3.2, HC-HRY*0.50),
+                (40-HRX+2.0, HC+HRY*0.95), (40-HRX-3.4, HC+HRY*0.86)], "K"),
+        c.poly([(40+HRX+0.8, HC-HRY*0.50), (40+HRX-3.2, HC-HRY*0.50),
+                (40+HRX-2.0, HC+HRY*0.95), (40+HRX+3.4, HC+HRY*0.86)], "K"),
+        c.rect(40-HRX+2, HC-HRY*0.5, 40+HRX-2, HC-HRY*0.35, "K")))
+    item("hair_bun", 3, lambda c: (
+        c.disc(40, HC-1, HRX, HRY, "K", y1=HC-HRY*0.45),
+        c.rect(40-HRX+2, HC-HRY*0.5, 40+HRX-2, HC-HRY*0.35, "K"),
+        c.disc(40, HC-HRY*1.02, 4.2, 3.8, "K")))
+    item("hair_short_back", 3, lambda c: c.disc(40, HC, HRX, HRY, "K"))
+    item("hair_buzz_back", 3, lambda c: c.disc(40, HC-0.3, HRX-0.3, HRY-0.5, "K"))
+    item("hair_curly_back", 3, lambda c: (
+        c.disc(40, HC, HRX, HRY, "K"),
+        [c.disc(40+dx, HC-HRY*0.62+dy, 4.6, 4.2, "K")
+         for dx, dy in ((-11, 3.0), (-6, -1.2), (0, -3.0), (6, -1.2), (11, 3.0), (-13, 7.5), (13, 7.5))]))
+    item("hair_long_back", 3, lambda c: (
+        c.disc(40, HC, HRX+0.8, HRY+0.2, "K"),
+        c.poly([(40-HRX-0.8, HC), (40+HRX+0.8, HC),
+                (40+HRX+3.4, HC+HRY*1.05), (40-HRX-3.4, HC+HRY*1.05)], "K")))
+    item("hair_bun_back", 3, lambda c: (
+        c.disc(40, HC, HRX, HRY, "K"), c.disc(40, HC-HRY*1.02, 4.2, 3.8, "K")))
+
+    item("beard_stubble", 3, lambda c: (
+        c.disc(40, HC+HRY*0.34, HRX*0.90, HRY*0.66, "K", y0=HC+HRY*0.46),
+        c.rect(40-HRX*0.90, HC+HRY*0.16, 40-HRX*0.66, HC+HRY*0.52, "K"),
+        c.rect(40+HRX*0.66, HC+HRY*0.16, 40+HRX*0.90, HC+HRY*0.52, "K"),
+        c.rect(40-HRX*0.30, HC+HRY*0.36, 40+HRX*0.30, HC+HRY*0.44, "K"),
+        c.rect(40-HRX*0.22, HC+HRY*0.52, 40+HRX*0.22, HC+HRY*0.62, "M")))
+    item("beard_full", 3, lambda c: (
+        c.disc(40, HC+HRY*0.30, HRX*0.94, HRY*0.74, "K", y0=HC+HRY*0.40),
+        c.rect(40-HRX*0.94, HC+HRY*0.02, 40-HRX*0.62, HC+HRY*0.54, "K"),
+        c.rect(40+HRX*0.62, HC+HRY*0.02, 40+HRX*0.94, HC+HRY*0.54, "K"),
+        c.rect(40-HRX*0.34, HC+HRY*0.34, 40+HRX*0.34, HC+HRY*0.44, "K"),
+        c.rect(40-HRX*0.22, HC+HRY*0.52, 40+HRX*0.22, HC+HRY*0.62, "M")))
+    item("moustache", 3, lambda c: (
+        c.rect(40-HRX*0.36, HC+HRY*0.34, 40+HRX*0.36, HC+HRY*0.46, "K"),
+        c.poly([(40-HRX*0.36, HC+HRY*0.34), (40-HRX*0.52, HC+HRY*0.46),
+                (40-HRX*0.36, HC+HRY*0.46)], "K"),
+        c.poly([(40+HRX*0.36, HC+HRY*0.34), (40+HRX*0.52, HC+HRY*0.46),
+                (40+HRX*0.36, HC+HRY*0.46)], "K")))
     item("helmet", 4, lambda c: (
         c.disc(40, HC-2.5, HRX+2.2, HRY-0.8, "K", y1=HC-HRY*0.08),
         c.poly([(40-HRX-1, HC-HRY*0.22), (40+HRX+1, HC-HRY*0.22), (40+HRX+1.6, HC-HRY*0.06), (40-HRX-1.6, HC-HRY*0.06)], "K"),

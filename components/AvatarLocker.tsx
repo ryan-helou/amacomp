@@ -16,7 +16,11 @@ import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { PixelAvatar } from "./PixelAvatar";
 
-const SLOTS: Slot[] = ["head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "banner"];
+// You first, then what you put on, then what flies behind you.
+const SLOTS: Slot[] = [
+  "skin", "hair", "face",
+  "head", "eyes", "torso", "hands", "legs", "feet", "socks", "watch", "banner",
+];
 
 const KITS: { name: string; loadout: Loadout }[] = [
   {
@@ -67,6 +71,9 @@ const KITS: { name: string; loadout: Loadout }[] = [
 ];
 
 const SHELF: Record<Slot, string> = {
+  skin: "Skin",
+  hair: "Hair",
+  face: "Face",
   banner: "Banners",
   head: "Headwear",
   eyes: "Eyewear",
@@ -159,13 +166,18 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
     setFit((f) => (f.past.length ? { loadout: f.past[0], past: f.past.slice(1) } : f));
   }, []);
 
+  const YOU: Slot[] = ["skin", "hair", "face"];
+
   function surprise() {
-    const next: Loadout = {};
-    for (const slot of SLOTS) {
-      const rack = rackFor(slot);
-      next[slot] = { item: rack[Math.floor(Math.random() * rack.length)].id };
-    }
-    wear(next);
+    setFit((f) => {
+      const next: Loadout = { ...f.loadout };
+      for (const slot of SLOTS) {
+        if (YOU.includes(slot)) continue;
+        const rack = rackFor(slot);
+        next[slot] = { item: rack[Math.floor(Math.random() * rack.length)].id };
+      }
+      return { loadout: next, past: [f.loadout, ...f.past].slice(0, 20) };
+    });
   }
 
   // What he could actually spend. A shop with a made-up balance is a mock.
@@ -307,7 +319,7 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
           {KITS.map((k) => (
             <button
               key={k.name}
-              onClick={() => wear(k.loadout)}
+              onClick={() => wear({ ...loadout, ...k.loadout })}
               className="eyebrow rounded-full border border-line bg-deck-2/40 px-3 py-1.5 text-ink-2"
             >
               {k.name}
@@ -320,7 +332,7 @@ export function AvatarLocker({ state, refDay }: { state: AppState; refDay: DayKe
             Random
           </button>
           <button
-            onClick={() => wear(DEFAULT_LOADOUT)}
+            onClick={() => wear({ ...DEFAULT_LOADOUT, ...Object.fromEntries(YOU.map((s2) => [s2, loadout[s2]])) })}
             className="eyebrow rounded-full border border-dashed border-line px-3 py-1.5 text-ink-3"
           >
             Reset
@@ -487,7 +499,14 @@ const ShopBox = memo(function ShopBox({
           ].filter(Boolean).join(", "),
         }}
       >
-        {src ? (
+        {item.slot === "skin" ? (
+          // A skin tone has no sprite to photograph — it IS the colour.
+          <span
+            aria-hidden
+            className="h-11 w-11 rounded-full border-2 border-line"
+            style={{ background: `linear-gradient(145deg, ${item.colour} 55%, ${item.accent} 100%)` }}
+          />
+        ) : src ? (
           // eslint-disable-next-line @next/next/no-img-element -- a generated data: URI, not a file
           <img
             src={src}
