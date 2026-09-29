@@ -1,4 +1,4 @@
-import type { Flag as AwayFlag } from "./away";
+import { MAPLE, MAPLE_BOX } from "./away";
 
 /**
  * The flags you can fly beside your name.
@@ -80,19 +80,195 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
 export const FLAG_BY_ID = new Map(COUNTRY_FLAGS.map((f) => [f.id, f]));
 
 /**
- * The same country in the shape lib/away.ts speaks, so a bought lane is washed
- * by exactly the code that already washes an away week's row — `flagWash` and
- * `flagInk`. Two ways of drawing the same flag would drift within a month.
+ * The flag itself, as SVG markup.
  *
- * Only `sun` and `leaf` get bespoke washes there; every other flag becomes the
- * three-band sweep, which is what Italy and Peru already look like on the Week
- * tab today.
+ * ONE drawing serves both places it appears: the little tag beside a name and
+ * the lane behind a whole row. Ryan's call, 2026-09-29 — a lane should be the
+ * country's flag, not an impression of it, and two drawings of Canada would
+ * disagree with each other by the end of the month.
  */
-export function laneFlag(id: string): AwayFlag | null {
-  const f = FLAG_BY_ID.get(id);
-  if (!f) return null;
-  const [from, mid, to] = f.lane ?? [f.bands[0], f.bands[1] ?? f.bands[0], f.bands[2] ?? f.bands[0]];
-  if (id === "jp") return { label: f.label, from: "#BC002D", mid: "#FFFFFF", to: "#BC002D", emblem: "sun" };
-  if (id === "ca") return { label: f.label, from: "#D52B1E", mid: "#FFFFFF", to: "#D52B1E", emblem: "leaf" };
-  return { label: f.label, from, mid, to };
+export function flagSvg(id: string): string {
+  const flag = FLAG_BY_ID.get(id);
+  if (!flag) return "";
+  const W = 30;
+  const H = 20;
+  const weights = flag.weights ?? [1, 1, 1];
+  const total = weights.reduce((a, b) => a + b, 0);
+  const span = flag.rows ? H : W;
+
+  let at = 0;
+  let out = "";
+  for (let i = 0; i < flag.bands.length; i++) {
+    const from = (at / total) * span;
+    at += weights[i] ?? 1;
+    const to = (at / total) * span;
+    out += flag.rows
+      ? `<rect x="0" y="${from}" width="${W}" height="${to - from}" fill="${flag.bands[i]}"/>`
+      : `<rect x="${from}" y="0" width="${to - from}" height="${H}" fill="${flag.bands[i]}"/>`;
+  }
+  if (flag.emblem) out += emblem(flag.emblem.kind, flag.emblem.colour, W, H);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${out}</svg>`;
+}
+
+function emblem(kind: Emblem, colour: string, w: number, h: number): string {
+  const cx = w / 2;
+  const cy = h / 2;
+  const star = (x: number, y: number, r: number, points = 5, inner = 0.42) =>
+    `<polygon fill="${colour}" points="${Array.from({ length: points * 2 }, (_, i) => {
+      const rad = i % 2 === 0 ? r : r * inner;
+      const a = -Math.PI / 2 + (i * Math.PI) / points;
+      return `${(x + rad * Math.cos(a)).toFixed(2)},${(y + rad * Math.sin(a)).toFixed(2)}`;
+    }).join(" ")}"/>`;
+
+  switch (kind) {
+    case "disc":
+      return `<circle cx="${cx}" cy="${cy}" r="${h * 0.3}" fill="${colour}"/>`;
+    case "maple":
+      // The real leaf, from the construction sheet the away tags use.
+      return (
+        `<svg x="${cx - h * 0.28}" y="${cy - h * 0.3}" width="${h * 0.56}" height="${h * 0.6}" ` +
+        `viewBox="${MAPLE_BOX}"><path fill="${colour}" d="${MAPLE}"/></svg>`
+      );
+    case "cedar":
+      return (
+        `<g fill="${colour}">` +
+        `<polygon points="${cx},${cy - h * 0.34} ${cx + w * 0.11},${cy - h * 0.06} ${cx - w * 0.11},${cy - h * 0.06}"/>` +
+        `<polygon points="${cx},${cy - h * 0.2} ${cx + w * 0.15},${cy + h * 0.12} ${cx - w * 0.15},${cy + h * 0.12}"/>` +
+        `<rect x="${cx - w * 0.018}" y="${cy + h * 0.1}" width="${w * 0.036}" height="${h * 0.2}"/></g>`
+      );
+    case "cross":
+      return (
+        `<g fill="${colour}">` +
+        `<rect x="${cx - w * 0.06}" y="${h * 0.1}" width="${w * 0.12}" height="${h * 0.8}"/>` +
+        `<rect x="${w * 0.22}" y="${cy - h * 0.09}" width="${w * 0.56}" height="${h * 0.18}"/></g>`
+      );
+    case "chevron":
+      return `<polygon points="0,0 ${w * 0.36},${cy} 0,${h}" fill="${colour}"/>`;
+    case "diamond":
+      // Brazil: the yellow lozenge AND the blue globe with its band — a bare
+      // diamond is a different flag.
+      return (
+        `<polygon points="${cx},${h * 0.12} ${w * 0.84},${cy} ${cx},${h * 0.88} ${w * 0.16},${cy}" fill="${colour}"/>` +
+        `<circle cx="${cx}" cy="${cy}" r="${h * 0.22}" fill="#012169"/>` +
+        `<path d="M${cx - h * 0.22},${cy - h * 0.04} Q${cx},${cy + h * 0.14} ${cx + h * 0.22},${cy - h * 0.04}` +
+        ` L${cx + h * 0.22},${cy + h * 0.02} Q${cx},${cy + h * 0.2} ${cx - h * 0.22},${cy + h * 0.02} Z" fill="#FFFFFF"/>`
+      );
+    case "star":
+      return star(cx, cy, h * 0.3);
+    case "union":
+      return (
+        `<g fill="none">` +
+        `<path d="M0,0 L${w},${h} M${w},0 L0,${h}" stroke="#FFFFFF" stroke-width="${h * 0.3}"/>` +
+        `<path d="M0,0 L${w},${h} M${w},0 L0,${h}" stroke="${colour}" stroke-width="${h * 0.14}"/>` +
+        `<path d="M${cx},0 V${h} M0,${cy} H${w}" stroke="#FFFFFF" stroke-width="${h * 0.34}"/>` +
+        `<path d="M${cx},0 V${h} M0,${cy} H${w}" stroke="${colour}" stroke-width="${h * 0.2}"/></g>`
+      );
+    case "unionCanton": {
+      const uw = w * 0.42;
+      const uh = h * 0.5;
+      return (
+        `<g fill="none">` +
+        `<path d="M0,0 L${uw},${uh} M${uw},0 L0,${uh}" stroke="${colour}" stroke-width="${uh * 0.26}"/>` +
+        `<path d="M${uw / 2},0 V${uh} M0,${uh / 2} H${uw}" stroke="${colour}" stroke-width="${uh * 0.3}"/></g>` +
+        star(uw / 2, uh + h * 0.22, h * 0.2, 7, 0.45) +
+        `<circle cx="${w * 0.78}" cy="${h * 0.3}" r="${h * 0.09}" fill="${colour}"/>` +
+        `<circle cx="${w * 0.7}" cy="${h * 0.62}" r="${h * 0.07}" fill="${colour}"/>` +
+        `<circle cx="${w * 0.88}" cy="${h * 0.66}" r="${h * 0.07}" fill="${colour}"/>`
+      );
+    }
+    case "saltire":
+      return (
+        `<polygon points="${cx},${cy} ${w * 0.16},0 ${w * 0.84},0" fill="#009B3A"/>` +
+        `<polygon points="${cx},${cy} ${w * 0.16},${h} ${w * 0.84},${h}" fill="#009B3A"/>` +
+        `<path d="M0,0 L${w},${h} M${w},0 L0,${h}" stroke="${colour}" stroke-width="${h * 0.22}" fill="none"/>`
+      );
+    default:
+      return "";
+  }
+}
+
+/** How light a colour is, 0 (black) to 1 (white). */
+function lum(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+}
+
+/** Where an emblem belongs once the flag is stretched into a wide lane. */
+const EMBLEM_PLACE: Record<Emblem, "center" | "left"> = {
+  disc: "center", maple: "center", cedar: "center", cross: "center",
+  star: "center", diamond: "center", chevron: "left",
+  union: "center", unionCanton: "center", saltire: "center",
+};
+
+/**
+ * The lane: the country's flag behind a whole row.
+ *
+ * The bands are a CSS gradient and the emblem is its own centred layer rather
+ * than one SVG stretched across the row. Stretch a 3:2 flag to the shape of a
+ * leaderboard row and Japan's sun becomes an ellipse and Canada's leaf goes
+ * flat — bands are the only part of a flag that can take that.
+ *
+ * A scrim sits over the lot, strongest at the ends where the name and the
+ * number are and lightest in the middle where the emblem is: you can read the
+ * row and still see the flag.
+ */
+export function flagLane(id: string): {
+  backgroundImage: string;
+  backgroundSize: string;
+  backgroundRepeat: string;
+  backgroundPosition: string;
+  "--ink"?: string;
+  "--ink-2"?: string;
+  "--ink-3"?: string;
+} | null {
+  const flag = FLAG_BY_ID.get(id);
+  if (!flag) return null;
+
+  const weights = flag.weights ?? [1, 1, 1];
+  const total = weights.reduce((a, b) => a + b, 0);
+  let at = 0;
+  const stops = flag.bands.map((colour, i) => {
+    const from = (at / total) * 100;
+    at += weights[i] ?? 1;
+    const to = (at / total) * 100;
+    return `${colour} ${from.toFixed(2)}% ${to.toFixed(2)}%`;
+  });
+  const bands = `linear-gradient(${flag.rows ? 180 : 90}deg, ${stops.join(", ")})`;
+
+  // The ink follows what's actually under the TEXT. On a horizontal flag that
+  // is the MIDDLE band, since the text runs across the middle of the row —
+  // averaging the three put light text on Jordan's white stripe. On a vertical
+  // one it's the first band, where the name sits.
+  const ends = flag.rows
+    ? lum(flag.bands[Math.floor(flag.bands.length / 2)])
+    : lum(flag.bands[0]);
+  const light = ends > 0.5;
+  const c = light ? "255,255,255" : "8,10,14";
+  const scrim =
+    `linear-gradient(90deg, rgba(${c},0.82) 0%, rgba(${c},0.72) 26%, rgba(${c},0.3) 50%,` +
+    ` rgba(${c},0.72) 74%, rgba(${c},0.82) 100%)`;
+
+  const layers = [scrim];
+  const sizes = ["100% 100%"];
+  const spots = ["0 0"];
+  if (flag.emblem) {
+    const svg = encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20">` +
+        `${emblem(flag.emblem.kind, flag.emblem.colour, 30, 20)}</svg>`,
+    );
+    layers.push(`url("data:image/svg+xml,${svg}")`);
+    sizes.push("auto 78%");
+    spots.push(EMBLEM_PLACE[flag.emblem.kind] === "left" ? "left center" : "center");
+  }
+  layers.push(bands);
+  sizes.push("100% 100%");
+  spots.push("0 0");
+
+  return {
+    backgroundImage: layers.join(", "),
+    backgroundSize: sizes.join(", "),
+    backgroundRepeat: layers.map(() => "no-repeat").join(", "),
+    backgroundPosition: spots.join(", "),
+    ...(light ? { "--ink": "#0b1f2d", "--ink-2": "#3f5f74", "--ink-3": "#4e6d80" } : {}),
+  };
 }

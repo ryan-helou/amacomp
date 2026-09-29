@@ -2,8 +2,7 @@ import {
   AVATAR_ITEMS, AVATAR_ITEM_BY_ID, DEFAULT_LOADOUT, STARTER_ITEMS,
   avatarSvg, itemImage, itemSvg, rackFor, type Loadout,
 } from "./pixelAvatar";
-import { COUNTRY_FLAGS, FLAG_BY_ID, laneFlag } from "./flags";
-import { flagWash } from "./away";
+import { COUNTRY_FLAGS, FLAG_BY_ID, flagLane, flagSvg } from "./flags";
 import sprites from "./avatar/sprites.json";
 
 /**
@@ -290,29 +289,45 @@ console.log("\nnothing on the face may cover the eyes");
   }
 }
 
-console.log("\nlanes are the wash the Week tab already knows how to draw");
+console.log("\none country, one purchase, one drawing");
 {
-  // Ryan saw Alberto's Peru and amaGoh's Italy on the Week tab and said sell
-  // those too. They must be drawn by the SAME code that draws an away week —
-  // a second implementation of "what Italy looks like" would drift in a month.
-  const lanes = AVATAR_ITEMS.filter((i) => i.slot === "lane" && i.id !== "lane.none");
-  check("one lane per country", lanes.length, COUNTRY_FLAGS.length);
-  check("none of them is a sprite either", lanes.filter((l) => l.sprite).length, 0);
+  // Ryan's call: flags and lanes were two things to buy for one country, and
+  // the lane was an impression of the flag rather than the flag. Now buying a
+  // country gives you the tag beside your name AND the lane behind your row,
+  // both painted from the same SVG.
+  const flags = AVATAR_ITEMS.filter((i) => i.slot === "flag" && i.id !== "flag.none");
+  check("one item per country", flags.length, COUNTRY_FLAGS.length);
+  check("and no separate lane to buy", AVATAR_ITEMS.some((i) => i.slot === ("lane" as string)), false);
 
-  for (const lane of lanes) {
-    const away = laneFlag(lane.flag ?? "");
-    check(`${lane.label} resolves to a flag`, !!away, true);
-    check(`${lane.label} paints something`, !!flagWash(away!).backgroundImage, true);
+  for (const f of COUNTRY_FLAGS) {
+    const svg = flagSvg(f.id);
+    // The drawing has to contain the country's own colours, or it's some
+    // other country.
+    const missing = f.bands.filter((b) => !svg.includes(b));
+    check(`${f.label} is drawn in its own colours`, missing, []);
+    check(`${f.label} makes a lane`, !!flagLane(f.id)?.backgroundImage, true);
   }
 
-  // The two the app draws specially must keep their emblems, or Japan becomes
-  // a red-white-red stripe and Canada loses its leaf.
-  check("Japan keeps its sun", laneFlag("jp")?.emblem, "sun");
-  check("Canada keeps its leaf", laneFlag("ca")?.emblem, "leaf");
+  // The lane is the flag: its bands are in the background, and its emblem is
+  // there as its own layer rather than stretched with them.
+  const lane = flagLane("ca")!;
+  for (const band of FLAG_BY_ID.get("ca")!.bands) {
+    check(`Canada's lane carries ${band}`, lane.backgroundImage.includes(band), true);
+  }
+  check("and its leaf rides as its own layer", lane.backgroundImage.includes("data:image/svg+xml"), true);
+  check("so the emblem keeps its shape", lane.backgroundSize.includes("auto"), true);
 
-  // And no two lanes may wash the same, or you're paying twice for one look.
-  const washes = new Set(lanes.map((l) => JSON.stringify(flagWash(laneFlag(l.flag ?? "")!))));
-  check("every lane looks different", washes.size, lanes.length);
+  // The ink has to follow what's under the TEXT, which for a horizontal flag
+  // is the middle band. Averaging the three put light text on the white
+  // stripe of Jordan's flag and you couldn't read the row.
+  check("a white field darkens the ink", !!flagLane("jp")?.["--ink"], true);
+  check("so does a white middle stripe", !!flagLane("jo")?.["--ink"], true);
+  check("a red field leaves it alone", flagLane("vn")?.["--ink"], undefined);
+  check("and so does a dark middle stripe", flagLane("de")?.["--ink"], undefined);
+
+  // No two countries may draw the same.
+  const drawn = new Set(COUNTRY_FLAGS.map((f) => flagSvg(f.id)));
+  check("every flag is its own picture", drawn.size, COUNTRY_FLAGS.length);
 }
 
 console.log(failures === 0 ? "\nAll avatar tests passed.\n" : `\n${failures} failing.\n`);

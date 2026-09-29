@@ -343,26 +343,6 @@ def build(P):
     item("armwarmers", 2, lambda c: [(
         c.capsule(cx, AY0+(AY1-AY0)*0.42, AY1-1.5, AHW+0.5, "K"),
         c.rect(cx-AHW-0.5, AY0+(AY1-AY0)*0.42, cx+AHW+0.5, AY0+(AY1-AY0)*0.50, "A")) for cx in (AX, 80-AX)])
-    # prizes — won, not sold
-    item("laurel", 4, lambda c: (
-        [c.disc(40 + (HRX + 1.7) * math.cos(a),
-                HC - 1 + (HRY + 1.3) * math.sin(a), 2.5, 2.1, "K")
-         for a in [(-0.93 + k * 0.078) * math.pi for k in range(12)]],
-        [c.disc(40 + (HRX - 0.8) * math.cos(a),
-                HC - 1 + (HRY - 0.6) * math.sin(a), 1.9, 1.6, "K")
-         for a in [(-0.90 + k * 0.086) * math.pi for k in range(11)]],
-        [c.disc(40 + sx * (HRX + 1.2), HC + HRY * 0.12, 2.0, 1.7, "A") for sx in (-1, 1)]))
-    item("medal", 4, lambda c: (
-        c.poly([(40-4.6, SH-4), (40-1.0, SH+7), (40+1.0, SH+7), (40-2.4, SH-4)], "A"),
-        c.poly([(40+4.6, SH-4), (40+1.0, SH+7), (40-1.0, SH+7), (40+2.4, SH-4)], "A"),
-        c.disc(40, SH+10.5, 4.4, 4.4, "K"),
-        c.disc(40, SH+10.5, 3.1, 3.1, "W"),
-        c.disc(40, SH+10.5, 2.2, 2.2, "K")))
-    item("sash", 2, lambda c: (
-        [c.rect(40-TT-1.5+t*0.70*TT, SH-5+t*28, 40-TT+6.5+t*0.70*TT, SH+1.0+t*28, "K")
-         for t in [k/60 for k in range(61)]],
-        [c.rect(40-TT-1.5+t*0.70*TT, SH-3.4+t*28, 40-TT+6.5+t*0.70*TT, SH-2.2+t*28, "A")
-         for t in [k/60 for k in range(61)]]))
     # watch
     def watch(c):
         cx, cy = AX, (AY0+AY1)/2 + 2

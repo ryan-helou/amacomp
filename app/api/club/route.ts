@@ -31,10 +31,6 @@ export async function POST(req: Request) {
   if (typeof body.buy === "string") {
     const item = AVATAR_ITEM_BY_ID.get(body.buy);
     if (!item) return NextResponse.json({ error: "No such item." }, { status: 400 });
-    if (item.earned) {
-      return NextResponse.json({ error: `${item.label} is won, not sold.` }, { status: 400 });
-    }
-
     // The price comes from the catalogue, never from the request — otherwise
     // the buyer names their own price.
     const [athletes, activities, settings, grants, purchases] = await Promise.all([
@@ -98,9 +94,8 @@ export async function POST(req: Request) {
       if (typeof worn?.item !== "string") continue;
       const item = AVATAR_ITEM_BY_ID.get(worn.item);
       if (!item) continue;
-      // Free kit is everyone's. A prize is nobody's until it's won, and
-      // winning isn't wired up yet, so it can't be saved either.
-      const owned = mine.has(item.id) || (item.price === 0 && !item.earned);
+      // Free kit is everyone's; everything else has to have been paid for.
+      const owned = mine.has(item.id) || item.price === 0;
       if (!owned) continue;
       clean[slot] = { item: item.id };
     }
