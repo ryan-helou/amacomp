@@ -104,8 +104,8 @@ console.log("\na colour is a different item, not a setting on one");
 
   // The starter kit is items, so the same shirt in another colour still costs.
   check("the starter shirt is yours", STARTER_ITEMS.has("torso.tee.magenta"), true);
-  check("the same shirt in mint is not", STARTER_ITEMS.has("torso.tee.mint"), false);
-  check("and it has a price", AVATAR_ITEM_BY_ID.get("torso.tee.mint")!.price > 0, true);
+  check("the same shirt in white is not", STARTER_ITEMS.has("torso.tee.white"), false);
+  check("and it has a price", AVATAR_ITEM_BY_ID.get("torso.tee.white")!.price > 0, true);
 }
 
 console.log("\nthe rack is shoppable");
