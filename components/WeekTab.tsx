@@ -389,7 +389,7 @@ export function WeekTab({
                     </>
                   )}
                   {figures ? (
-                    <Figure athlete={row.athlete} flag={null} className="relative w-11" />
+                    <Figure athlete={row.athlete} flag={null} className="relative w-10" />
                   ) : (
                     <Avatar athlete={row.athlete} me={isMe} className="relative h-8 w-8 text-[0.625rem]" />
                   )}

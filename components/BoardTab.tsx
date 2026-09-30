@@ -367,7 +367,7 @@ function Lane({
   return (
     <button
       onClick={onSelect}
-      className={`lane-enter relative block w-full overflow-hidden rounded-xl px-3 py-2.5 text-left transition-colors ${
+      className={`lane-enter relative block w-full overflow-hidden rounded-xl px-3 py-1 text-left transition-colors ${
         isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
       }`}
       style={{
@@ -425,7 +425,7 @@ function Lane({
         </div>
 
         {figures ? (
-          <Figure athlete={row.athlete} flag={null} className="w-12" />
+          <Figure athlete={row.athlete} flag={null} className="w-11" />
         ) : (
           <Avatar athlete={row.athlete} me={isMe} />
         )}
@@ -544,7 +544,7 @@ function SportLane({
   return (
     <button
       onClick={onSelect}
-      className={`lane-enter block w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
+      className={`lane-enter block w-full rounded-xl px-3 py-1 text-left transition-colors ${
         isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
       }`}
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
@@ -560,7 +560,7 @@ function SportLane({
         </div>
 
         {figures ? (
-          <Figure athlete={row.athlete} flag={null} className="w-12" />
+          <Figure athlete={row.athlete} flag={null} className="w-11" />
         ) : (
           <Avatar athlete={row.athlete} me={isMe} />
         )}
@@ -631,7 +631,7 @@ function ClimbLane({
   return (
     <button
       onClick={onSelect}
-      className={`lane-enter block w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
+      className={`lane-enter block w-full rounded-xl px-3 py-1 text-left transition-colors ${
         isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
       }`}
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
@@ -645,7 +645,7 @@ function ClimbLane({
         </div>
 
         {figures ? (
-          <Figure athlete={row.athlete} flag={null} className="w-12" />
+          <Figure athlete={row.athlete} flag={null} className="w-11" />
         ) : (
           <Avatar athlete={row.athlete} me={isMe} />
         )}
