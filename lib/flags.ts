@@ -14,16 +14,14 @@ import { MAPLE, MAPLE_BOX } from "./away";
  */
 
 export type Emblem =
-  | "disc" // Japan, Argentina's sun, Portugal's armillary
+  | "disc" // Japan
   | "maple" // Canada
   | "cedar" // Lebanon
-  | "cross" // Switzerland, Quebec
-  | "chevron" // Jordan
-  | "star" // Morocco, Vietnam
-  | "diamond" // Brazil
-  | "union" // Britain — a red cross alone is not a Union Jack
-  | "unionCanton" // Australia: the union small, in the corner, with a star
-  | "saltire"; // Jamaica
+  | "fleurdelise" // Quebec: the cross and all four fleurs-de-lis
+  | "chevron" // Jordan, with its seven-pointed star
+  | "star" // the house flag
+  | "diamond" // Brazil: the lozenge, the globe and its band
+  | "shield"; // Kenya: the Maasai shield and the crossed spears
 
 export interface CountryFlag {
   id: string;
@@ -35,45 +33,32 @@ export interface CountryFlag {
   /** Relative band widths — Canada is 1:2:1, not thirds. */
   weights?: number[];
   emblem?: { kind: Emblem; colour: string };
-  /**
-   * Colours for the LANE wash, when the tag's own field won't do. Britain and
-   * Australia are both a solid navy field with the design carried by the
-   * emblem, so their lanes washed identically — you'd be paying twice for one
-   * look. Britain's lane takes the union's three colours instead.
-   */
-  lane?: [string, string, string];
 }
 
 /**
- * Ryan asked for Italy, Lebanon, Canada, Quebec, Japan and Jordan by name.
- * The rest are the ones the league would actually claim — places the lads are
- * from, race in, or would fly for a laugh.
+ * Nine, chosen by Ryan on 2026-09-30, and no filler. The fifteen that went
+ * were mostly plain tricolours, which as a LANE all read the same — a left
+ * band, a pale middle and a red right — so you were paying four hundred coins
+ * for a row somebody else already had. What is left either carries an emblem
+ * or is a country somebody here is actually from.
+ *
+ * Each one is drawn to its real construction, not to an impression of it.
  */
 export const COUNTRY_FLAGS: CountryFlag[] = [
   { id: "ca", label: "Canada", bands: ["#D52B1E", "#FFFFFF", "#D52B1E"], weights: [1, 2, 1], emblem: { kind: "maple", colour: "#D52B1E" } },
-  { id: "qc", label: "Quebec", bands: ["#003DA5", "#003DA5", "#003DA5"], emblem: { kind: "cross", colour: "#FFFFFF" } },
+  // The Fleurdelisé is a white cross AND a fleur-de-lis in each quarter. With
+  // only the cross it was Finland in the wrong colours.
+  { id: "qc", label: "Quebec", bands: ["#003DA5"], weights: [1], emblem: { kind: "fleurdelise", colour: "#FFFFFF" } },
   { id: "lb", label: "Lebanon", bands: ["#ED1C24", "#FFFFFF", "#ED1C24"], rows: true, weights: [1, 2, 1], emblem: { kind: "cedar", colour: "#00A651" } },
   { id: "it", label: "Italy", bands: ["#008C45", "#F4F5F0", "#CD212A"] },
-  { id: "jp", label: "Japan", bands: ["#FFFFFF", "#FFFFFF", "#FFFFFF"], emblem: { kind: "disc", colour: "#BC002D" } },
+  // The disc is three fifths of the height, which is what makes it Japan and
+  // not a red dot on a white field.
+  { id: "jp", label: "Japan", bands: ["#FFFFFF"], weights: [1], emblem: { kind: "disc", colour: "#BC002D" } },
   { id: "jo", label: "Jordan", bands: ["#1A1A1A", "#FFFFFF", "#007A3D"], rows: true, emblem: { kind: "chevron", colour: "#CE1126" } },
-
-  { id: "fr", label: "France", bands: ["#0055A4", "#FFFFFF", "#EF4135"] },
-  { id: "es", label: "Spain", bands: ["#AA151B", "#F1BF00", "#AA151B"], rows: true, weights: [1, 2, 1] },
-  { id: "pt", label: "Portugal", bands: ["#046A38", "#DA291C", "#DA291C"], emblem: { kind: "disc", colour: "#FFE900" } },
-  { id: "gr", label: "Greece", bands: ["#0D5EAF", "#FFFFFF", "#0D5EAF"], rows: true },
-  { id: "ie", label: "Ireland", bands: ["#169B62", "#FFFFFF", "#FF883E"] },
-  { id: "de", label: "Germany", bands: ["#1A1A1A", "#DD0000", "#FFCE00"], rows: true },
-  { id: "nl", label: "Netherlands", bands: ["#AE1C28", "#FFFFFF", "#21468B"], rows: true },
-  { id: "ch", label: "Switzerland", bands: ["#D52B1E", "#D52B1E", "#D52B1E"], emblem: { kind: "cross", colour: "#FFFFFF" } },
-  { id: "br", label: "Brazil", bands: ["#009739", "#009739", "#009739"], emblem: { kind: "diamond", colour: "#FEDD00" } },
-  { id: "ar", label: "Argentina", bands: ["#74ACDF", "#FFFFFF", "#74ACDF"], rows: true, emblem: { kind: "disc", colour: "#F6B40E" } },
-  { id: "mx", label: "Mexico", bands: ["#006847", "#FFFFFF", "#CE1126"] },
-  { id: "ma", label: "Morocco", bands: ["#C1272D", "#C1272D", "#C1272D"], emblem: { kind: "star", colour: "#006233" } },
-  { id: "gb", label: "Britain", bands: ["#012169", "#012169", "#012169"], lane: ["#012169", "#FFFFFF", "#C8102E"], emblem: { kind: "union", colour: "#C8102E" } },
-  { id: "au", label: "Australia", bands: ["#012169", "#012169", "#012169"], emblem: { kind: "unionCanton", colour: "#FFFFFF" } },
-  { id: "ke", label: "Kenya", bands: ["#1A1A1A", "#BB0000", "#006600"], rows: true },
-  { id: "jm", label: "Jamaica", bands: ["#1A1A1A", "#1A1A1A", "#1A1A1A"], emblem: { kind: "saltire", colour: "#FED100" } },
-  { id: "vn", label: "Vietnam", bands: ["#DA251D", "#DA251D", "#DA251D"], emblem: { kind: "star", colour: "#FFFF00" } },
+  { id: "br", label: "Brazil", bands: ["#009739"], weights: [1], emblem: { kind: "diamond", colour: "#FEDD00" } },
+  // Five bands, not three: the white fimbriations are part of the flag, and
+  // the Maasai shield is the whole point of it.
+  { id: "ke", label: "Kenya", bands: ["#1A1A1A", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], emblem: { kind: "shield", colour: "#FFFFFF" } },
   { id: "ama", label: "AmaComp", bands: ["#D4147E", "#101215", "#16D39A"], emblem: { kind: "star", colour: "#C9A227" } },
 ];
 
@@ -113,15 +98,25 @@ export function flagSvg(id: string): string {
 function emblem(kind: Emblem, colour: string, w: number, h: number): string {
   const cx = w / 2;
   const cy = h / 2;
-  const star = (x: number, y: number, r: number, points = 5, inner = 0.42) =>
-    `<polygon fill="${colour}" points="${Array.from({ length: points * 2 }, (_, i) => {
+  const star = (x: number, y: number, r: number, points = 5, inner = 0.42, fill = colour) =>
+    `<polygon fill="${fill}" points="${Array.from({ length: points * 2 }, (_, i) => {
       const rad = i % 2 === 0 ? r : r * inner;
       const a = -Math.PI / 2 + (i * Math.PI) / points;
       return `${(x + rad * Math.cos(a)).toFixed(2)},${(y + rad * Math.sin(a)).toFixed(2)}`;
     }).join(" ")}"/>`;
 
+  /** A fleur-de-lis standing on (x, y), `s` tall. Quebec needs four of them. */
+  const fleur = (x: number, y: number, s: number) =>
+    `<g fill="${colour}" transform="translate(${x.toFixed(2)},${y.toFixed(2)}) scale(${(s / 10).toFixed(4)})">` +
+    `<path d="M0,-5 C-1.5,-2.2 -1.7,-0.6 0,1.4 C1.7,-0.6 1.5,-2.2 0,-5 Z"/>` +
+    `<path d="M-0.3,0.4 C-3.4,-2.2 -5.2,0.2 -3.6,2 C-2.7,3 -1.2,2.6 -0.3,1.6 Z"/>` +
+    `<path d="M0.3,0.4 C3.4,-2.2 5.2,0.2 3.6,2 C2.7,3 1.2,2.6 0.3,1.6 Z"/>` +
+    `<rect x="-2.6" y="1.9" width="5.2" height="1.3"/>` +
+    `<path d="M-1.6,3.2 C-1.2,4.4 1.2,4.4 1.6,3.2 Z"/></g>`;
+
   switch (kind) {
     case "disc":
+      // Three fifths of the height, per the Japanese specification.
       return `<circle cx="${cx}" cy="${cy}" r="${h * 0.3}" fill="${colour}"/>`;
     case "maple":
       // The real leaf, from the construction sheet the away tags use.
@@ -130,60 +125,77 @@ function emblem(kind: Emblem, colour: string, w: number, h: number): string {
         `viewBox="${MAPLE_BOX}"><path fill="${colour}" d="${MAPLE}"/></svg>`
       );
     case "cedar":
+      // Three tiers and a trunk, and each tier is WIDE. A cedar that gets
+      // narrow towards the bottom is a Christmas tree; this one spreads.
       return (
         `<g fill="${colour}">` +
-        `<polygon points="${cx},${cy - h * 0.34} ${cx + w * 0.11},${cy - h * 0.06} ${cx - w * 0.11},${cy - h * 0.06}"/>` +
-        `<polygon points="${cx},${cy - h * 0.2} ${cx + w * 0.15},${cy + h * 0.12} ${cx - w * 0.15},${cy + h * 0.12}"/>` +
-        `<rect x="${cx - w * 0.018}" y="${cy + h * 0.1}" width="${w * 0.036}" height="${h * 0.2}"/></g>`
+        `<polygon points="${cx},${cy - h * 0.40} ${cx + w * 0.105},${cy - h * 0.20} ${cx - w * 0.105},${cy - h * 0.20}"/>` +
+        `<polygon points="${cx},${cy - h * 0.30} ${cx + w * 0.165},${cy - h * 0.07} ${cx - w * 0.165},${cy - h * 0.07}"/>` +
+        `<polygon points="${cx},${cy - h * 0.17} ${cx + w * 0.225},${cy + h * 0.10} ${cx - w * 0.225},${cy + h * 0.10}"/>` +
+        `<rect x="${cx - w * 0.024}" y="${cy + h * 0.06}" width="${w * 0.048}" height="${h * 0.26}"/>` +
+        `<rect x="${cx - w * 0.07}" y="${cy + h * 0.29}" width="${w * 0.14}" height="${h * 0.05}"/></g>`
       );
-    case "cross":
+    case "fleurdelise": {
+      // The cross divides the field into quarters; a fleur stands in each.
+      const arm = h * 0.16;
+      const q = [
+        [w * 0.25, h * 0.27],
+        [w * 0.75, h * 0.27],
+        [w * 0.25, h * 0.73],
+        [w * 0.75, h * 0.73],
+      ] as const;
       return (
+        q.map(([x, y]) => fleur(x, y, h * 0.34)).join("") +
         `<g fill="${colour}">` +
-        `<rect x="${cx - w * 0.06}" y="${h * 0.1}" width="${w * 0.12}" height="${h * 0.8}"/>` +
-        `<rect x="${w * 0.22}" y="${cy - h * 0.09}" width="${w * 0.56}" height="${h * 0.18}"/></g>`
-      );
-    case "chevron":
-      return `<polygon points="0,0 ${w * 0.36},${cy} 0,${h}" fill="${colour}"/>`;
-    case "diamond":
-      // Brazil: the yellow lozenge AND the blue globe with its band — a bare
-      // diamond is a different flag.
-      return (
-        `<polygon points="${cx},${h * 0.12} ${w * 0.84},${cy} ${cx},${h * 0.88} ${w * 0.16},${cy}" fill="${colour}"/>` +
-        `<circle cx="${cx}" cy="${cy}" r="${h * 0.22}" fill="#012169"/>` +
-        `<path d="M${cx - h * 0.22},${cy - h * 0.04} Q${cx},${cy + h * 0.14} ${cx + h * 0.22},${cy - h * 0.04}` +
-        ` L${cx + h * 0.22},${cy + h * 0.02} Q${cx},${cy + h * 0.2} ${cx - h * 0.22},${cy + h * 0.02} Z" fill="#FFFFFF"/>`
-      );
-    case "star":
-      return star(cx, cy, h * 0.3);
-    case "union":
-      return (
-        `<g fill="none">` +
-        `<path d="M0,0 L${w},${h} M${w},0 L0,${h}" stroke="#FFFFFF" stroke-width="${h * 0.3}"/>` +
-        `<path d="M0,0 L${w},${h} M${w},0 L0,${h}" stroke="${colour}" stroke-width="${h * 0.14}"/>` +
-        `<path d="M${cx},0 V${h} M0,${cy} H${w}" stroke="#FFFFFF" stroke-width="${h * 0.34}"/>` +
-        `<path d="M${cx},0 V${h} M0,${cy} H${w}" stroke="${colour}" stroke-width="${h * 0.2}"/></g>`
-      );
-    case "unionCanton": {
-      const uw = w * 0.42;
-      const uh = h * 0.5;
-      return (
-        `<g fill="none">` +
-        `<path d="M0,0 L${uw},${uh} M${uw},0 L0,${uh}" stroke="${colour}" stroke-width="${uh * 0.26}"/>` +
-        `<path d="M${uw / 2},0 V${uh} M0,${uh / 2} H${uw}" stroke="${colour}" stroke-width="${uh * 0.3}"/></g>` +
-        star(uw / 2, uh + h * 0.22, h * 0.2, 7, 0.45) +
-        `<circle cx="${w * 0.78}" cy="${h * 0.3}" r="${h * 0.09}" fill="${colour}"/>` +
-        `<circle cx="${w * 0.7}" cy="${h * 0.62}" r="${h * 0.07}" fill="${colour}"/>` +
-        `<circle cx="${w * 0.88}" cy="${h * 0.66}" r="${h * 0.07}" fill="${colour}"/>`
+        `<rect x="${cx - arm / 2}" y="0" width="${arm}" height="${h}"/>` +
+        `<rect x="0" y="${cy - arm / 2}" width="${w}" height="${arm}"/></g>`
       );
     }
-    case "saltire":
+    case "chevron":
+      // A third of the length, with the seven-pointed star of the Hashemites.
       return (
-        `<polygon points="${cx},${cy} ${w * 0.16},0 ${w * 0.84},0" fill="#009B3A"/>` +
-        `<polygon points="${cx},${cy} ${w * 0.16},${h} ${w * 0.84},${h}" fill="#009B3A"/>` +
-        `<path d="M0,0 L${w},${h} M${w},0 L0,${h}" stroke="${colour}" stroke-width="${h * 0.22}" fill="none"/>`
+        `<polygon points="0,0 ${w / 3},${cy} 0,${h}" fill="${colour}"/>` +
+        star(w * 0.115, cy, h * 0.17, 7, 0.5, "#FFFFFF")
       );
-    default:
-      return "";
+    case "diamond": {
+      // The lozenge, the globe, its band, and enough stars to be a sky.
+      const r = h * 0.22;
+      // Small and scattered. Two big ones near the top became a pair of eyes
+      // and the band under them became a smile.
+      const sky = [
+        [-0.11, -0.12, 0.022], [0.05, -0.15, 0.019], [0.14, -0.04, 0.020],
+        [-0.16, -0.02, 0.018], [-0.02, -0.07, 0.026], [0.09, 0.05, 0.017],
+        [-0.07, 0.04, 0.016], [0.16, 0.08, 0.015], [-0.14, 0.10, 0.015],
+        [0.02, 0.13, 0.018], [-0.05, -0.16, 0.014],
+      ] as const;
+      return (
+        `<polygon points="${cx},${h * 0.1} ${w * 0.855},${cy} ${cx},${h * 0.9} ${w * 0.145},${cy}" fill="${colour}"/>` +
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#012169"/>` +
+        sky.map(([dx, dy, rr]) =>
+          `<circle cx="${(cx + dx * h).toFixed(2)}" cy="${(cy + dy * h).toFixed(2)}" r="${(rr * h).toFixed(2)}" fill="#FFFFFF"/>`).join("") +
+        `<path d="M${cx - r},${cy - h * 0.035} Q${cx},${cy + h * 0.145} ${cx + r},${cy - h * 0.035}` +
+        ` L${cx + r},${cy + h * 0.03} Q${cx},${cy + h * 0.21} ${cx - r},${cy + h * 0.03} Z" fill="#FFFFFF"/>`
+      );
+    }
+    case "star":
+      return star(cx, cy, h * 0.3);
+    case "shield": {
+      // Two spears crossed behind a Maasai shield: black and red, with white
+      // between. Without it Kenya is three stripes anyone could be.
+      const sh = h * 0.72;
+      const sw = w * 0.21;
+      return (
+        // The spears sit BEHIND the shield and barely out-reach it. Drawn any
+        // longer they stop being spears and become a cross through the flag.
+        `<g stroke="#FFFFFF" stroke-width="${h * 0.035}" stroke-linecap="round">` +
+        `<line x1="${cx - w * 0.075}" y1="${cy - sh * 0.60}" x2="${cx + w * 0.075}" y2="${cy + sh * 0.60}"/>` +
+        `<line x1="${cx + w * 0.075}" y1="${cy - sh * 0.60}" x2="${cx - w * 0.075}" y2="${cy + sh * 0.60}"/></g>` +
+        `<path d="M${cx},${cy - sh / 2} Q${cx + sw},${cy} ${cx},${cy + sh / 2} Q${cx - sw},${cy} ${cx},${cy - sh / 2} Z" fill="#FFFFFF"/>` +
+        `<path d="M${cx},${cy - sh * 0.42} Q${cx + sw * 0.72},${cy} ${cx},${cy + sh * 0.42} Q${cx - sw * 0.72},${cy} ${cx},${cy - sh * 0.42} Z" fill="#1A1A1A"/>` +
+        `<path d="M${cx},${cy - sh * 0.2} Q${cx + sw * 0.64},${cy} ${cx},${cy + sh * 0.2} Q${cx - sw * 0.64},${cy} ${cx},${cy - sh * 0.2} Z" fill="#BB0000"/>` +
+        `<rect x="${cx - sw * 0.1}" y="${cy - sh * 0.3}" width="${sw * 0.2}" height="${sh * 0.6}" fill="#FFFFFF"/>`
+      );
+    }
   }
 }
 
