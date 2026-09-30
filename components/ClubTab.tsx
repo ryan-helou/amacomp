@@ -3,8 +3,11 @@
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { CLUB_LIVE, CLUB_ROOMS, canSeeClub, type ClubRoom } from "@/lib/club";
+import { CLUB_LIVE, CLUB_ROOMS, canSeeClub, roomsOf, type ClubHouse, type ClubRoom } from "@/lib/club";
 import { Wallet } from "./Wallet";
+import { TurnAround } from "./AthleteFigure";
+import { CountryFlag } from "./CountryFlag";
+import { AVATAR_ITEM_BY_ID, lookFor } from "@/lib/pixelAvatar";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import type { League } from "./useLeague";
@@ -28,12 +31,16 @@ export function ClubTab({
   state,
   refDay,
   send,
+  house = "club",
 }: {
   state: AppState;
   refDay: DayKey;
   send: League["send"];
+  /** Which half: what you own, or what you are playing against someone else. */
+  house?: ClubHouse;
 }) {
-  const [room, setRoom] = useState<ClubRoom>("wallet");
+  const rooms = roomsOf(house);
+  const [room, setRoom] = useState<ClubRoom>(rooms[0].id);
 
   // The teaser is what the league gets until the Club opens properly.
   if (!CLUB_LIVE && !canSeeClub(state.me?.name)) return <ClubTeaser />;
@@ -42,10 +49,10 @@ export function ClubTab({
     <div className="space-y-4">
       <div
         role="tablist"
-        aria-label="Club"
+        aria-label={house === "club" ? "Club" : "Arena"}
         className="flex gap-1 rounded-xl pane border border-line bg-tile p-1"
       >
-        {CLUB_ROOMS.map((r) => (
+        {rooms.map((r) => (
           <button
             key={r.id}
             role="tab"
@@ -64,6 +71,8 @@ export function ClubTab({
         <Wallet state={state} refDay={refDay} />
       ) : room === "shop" ? (
         <AvatarLocker state={state} refDay={refDay} send={send} />
+      ) : room === "profile" ? (
+        <ClubProfile state={state} />
       ) : (
         /* Bets and challenges land here as they're built. */
         <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
@@ -161,6 +170,55 @@ function ClubTeaser() {
           Backdated to 3 August, so nothing you&rsquo;ve already done goes unpaid.
         </p>
       </section>
+    </div>
+  );
+}
+
+/**
+ * Your own figure, front and back, and the flag you fly.
+ *
+ * The shop shows you an item at a time; this shows the whole of what you have
+ * put together, which is the thing everyone else sees on the board.
+ */
+function ClubProfile({ state }: { state: AppState }) {
+  const me = state.me;
+  if (!me) return null;
+  const worn = lookFor(me, state.loadouts);
+  const flag = AVATAR_ITEM_BY_ID.get(worn.flag?.item ?? "");
+  const kit = ["head", "eyes", "torso", "legs", "feet", "socks", "prize"]
+    .map((slot) => AVATAR_ITEM_BY_ID.get(worn[slot]?.item ?? ""))
+    .filter((i): i is NonNullable<typeof i> => !!i && !!i.sprite);
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-2xl border border-line bg-tile">
+        <TurnAround athlete={me} loadouts={state.loadouts} className="w-24" />
+      </div>
+      <div className="rounded-2xl border border-line bg-tile px-4 py-3">
+        <p className="eyebrow text-ink-3">Flying</p>
+        <p className="mt-1 flex items-center gap-2 text-sm text-ink">
+          {flag?.flag ? (
+            <>
+              <CountryFlag id={flag.flag} />
+              {flag.label}
+            </>
+          ) : (
+            <span className="text-ink-2">No flag yet — the shop has nine.</span>
+          )}
+        </p>
+      </div>
+      <div className="rounded-2xl border border-line bg-tile px-4 py-3">
+        <p className="eyebrow text-ink-3">Wearing</p>
+        {kit.length === 0 ? (
+          <p className="mt-1 text-sm text-ink-2">Nothing but the starter kit.</p>
+        ) : (
+          <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs text-ink-2">
+            {kit.map((i) => (
+              <li key={i.id}>{i.label}</li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
