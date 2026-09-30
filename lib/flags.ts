@@ -1,4 +1,5 @@
 import { MAPLE, MAPLE_BOX } from "./away";
+import { CEDAR, CEDAR_BOX, FLEUR, FLEUR_BOX, QC_QUARTER } from "./flagArt";
 
 /**
  * The flags you can fly beside your name.
@@ -33,6 +34,14 @@ export interface CountryFlag {
   /** Relative band widths — Canada is 1:2:1, not thirds. */
   weights?: number[];
   emblem?: { kind: Emblem; colour: string };
+  /**
+   * The whole flag, exactly, as SVG innards in the 30x20 tag space.
+   *
+   * When a flag has real artwork this replaces bands + emblem for the TAG and
+   * the big view. The lane still works off `bands` and `emblem`, because a
+   * lane is a wide wash and stretching a whole flag across one distorts it.
+   */
+  art?: string;
 }
 
 /**
@@ -48,8 +57,26 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
   { id: "ca", label: "Canada", bands: ["#D52B1E", "#FFFFFF", "#D52B1E"], weights: [1, 2, 1], emblem: { kind: "maple", colour: "#D52B1E" } },
   // The Fleurdelisé is a white cross AND a fleur-de-lis in each quarter. With
   // only the cross it was Finland in the wrong colours.
-  { id: "qc", label: "Quebec", bands: ["#003DA5"], weights: [1], emblem: { kind: "fleurdelise", colour: "#FFFFFF" } },
-  { id: "lb", label: "Lebanon", bands: ["#ED1C24", "#FFFFFF", "#ED1C24"], rows: true, weights: [1, 2, 1], emblem: { kind: "cedar", colour: "#00A651" } },
+  {
+    id: "qc", label: "Quebec", bands: ["#003DA5"], weights: [1],
+    emblem: { kind: "fleurdelise", colour: "#FFFFFF" },
+    // Four quarters at the spacings the official file uses, each one the blue
+    // field with its fleur punched out; the white beneath shows through.
+    art:
+      `<rect width="30" height="20" fill="#FFFFFF"/><g transform="scale(0.003125)" fill="#003DA5">` +
+      [[0, 0], [5600, 0], [0, 4000], [5600, 4000]]
+        .map(([x, y]) => `<path transform="translate(${x},${y})" d="${QC_QUARTER}"/>`)
+        .join("") +
+      `</g>`,
+  },
+  {
+    id: "lb", label: "Lebanon", bands: ["#D31624", "#FFFFFF", "#D31624"], rows: true, weights: [1, 2, 1],
+    emblem: { kind: "cedar", colour: "#008C3E" },
+    art:
+      `<rect width="30" height="5" fill="#D31624"/><rect y="5" width="30" height="10" fill="#FFFFFF"/>` +
+      `<rect y="15" width="30" height="5" fill="#D31624"/>` +
+      `<g transform="scale(0.0104166667)"><path fill="#008C3E" d="${CEDAR}"/></g>`,
+  },
   { id: "it", label: "Italy", bands: ["#008C45", "#F4F5F0", "#CD212A"] },
   // The disc is three fifths of the height, which is what makes it Japan and
   // not a red dot on a white field.
@@ -77,6 +104,9 @@ export function flagSvg(id: string): string {
   if (!flag) return "";
   const W = 30;
   const H = 20;
+  if (flag.art) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${flag.art}</svg>`;
+  }
   const weights = flag.weights ?? [1, 1, 1];
   const total = weights.reduce((a, b) => a + b, 0);
   const span = flag.rows ? H : W;
@@ -105,22 +135,6 @@ function emblem(kind: Emblem, colour: string, w: number, h: number): string {
       return `${(x + rad * Math.cos(a)).toFixed(2)},${(y + rad * Math.sin(a)).toFixed(2)}`;
     }).join(" ")}"/>`;
 
-  /**
-   * A fleur-de-lis centred on (x, y), `s` tall. Quebec needs four of them.
-   *
-   * Drawn in a box two units across and two tall, then scaled — so the curves
-   * are readable numbers rather than a string of tiny decimals. Three petals,
-   * a band, and a foot below it: leave out the band and it stops being a
-   * fleur-de-lis and becomes a lily.
-   */
-  const fleur = (x: number, y: number, s: number) =>
-    `<g fill="${colour}" transform="translate(${x.toFixed(2)},${y.toFixed(2)}) scale(${(s / 2).toFixed(4)})">` +
-    `<path d="M0,-1 C-0.20,-0.46 -0.25,-0.12 0,0.30 C0.25,-0.12 0.20,-0.46 0,-1 Z"/>` +
-    `<path d="M0.04,0.30 C0.10,-0.08 0.44,-0.44 0.76,-0.24 C0.96,-0.10 0.88,0.20 0.52,0.31 Z"/>` +
-    `<path d="M-0.04,0.30 C-0.10,-0.08 -0.44,-0.44 -0.76,-0.24 C-0.96,-0.10 -0.88,0.20 -0.52,0.31 Z"/>` +
-    `<rect x="-0.60" y="0.30" width="1.20" height="0.19"/>` +
-    `<path d="M-0.30,0.49 C-0.26,0.86 0.26,0.86 0.30,0.49 Z"/></g>`;
-
   switch (kind) {
     case "disc":
       // Three fifths of the height, per the Japanese specification.
@@ -131,41 +145,21 @@ function emblem(kind: Emblem, colour: string, w: number, h: number): string {
         `<svg x="${cx - h * 0.28}" y="${cy - h * 0.3}" width="${h * 0.56}" height="${h * 0.6}" ` +
         `viewBox="${MAPLE_BOX}"><path fill="${colour}" d="${MAPLE}"/></svg>`
       );
-    case "cedar": {
-      // The cedar of Lebanon, as a silhouette rather than as stacked
-      // triangles: four tiers whose tips reach out further the lower they sit,
-      // each one notched underneath. Clean triangles make a Christmas tree —
-      // what makes it a cedar is that the branches are nearly horizontal and
-      // the whole thing is wider than it is tall.
-      const half = [
-        [0.00, -1.00], [0.10, -0.80], [0.32, -0.74], [0.14, -0.64],
-        [0.42, -0.58], [0.58, -0.51], [0.24, -0.42], [0.66, -0.34],
-        [0.84, -0.26], [0.34, -0.15], [0.86, -0.05], [1.00, 0.04],
-        [0.40, 0.16], [0.10, 0.22], [0.10, 0.72], [0.30, 0.78],
-        [0.30, 0.95],
-      ] as const;
-      const rx = w * 0.30;
-      const ry = h * 0.36;
-      const pt = ([px, py]: readonly [number, number], sign: number) =>
-        `${(cx + sign * px * rx).toFixed(2)},${(cy + py * ry).toFixed(2)}`;
-      const right = half.map((q) => pt(q, 1)).join(" ");
-      const left = [...half].reverse().map((q) => pt(q, -1)).join(" ");
-      return `<polygon fill="${colour}" points="${right} ${left}"/>`;
-    }
-    case "fleurdelise": {
-      // The cross divides the field into quarters; a fleur stands in each.
-      const arm = h * 0.175;
-      const q = [
-        [w * 0.25, h * 0.27],
-        [w * 0.75, h * 0.27],
-        [w * 0.25, h * 0.73],
-        [w * 0.75, h * 0.73],
-      ] as const;
+    case "cedar":
+      // The real cedar, square in its own box, same as Canada's leaf.
       return (
-        q.map(([x, y]) => fleur(x, y, h * 0.42)).join("") +
-        `<g fill="${colour}">` +
-        `<rect x="${cx - arm / 2}" y="0" width="${arm}" height="${h}"/>` +
-        `<rect x="0" y="${cy - arm / 2}" width="${w}" height="${arm}"/></g>`
+        `<svg x="${cx - h * 0.4}" y="${cy - h * 0.4}" width="${h * 0.8}" height="${h * 0.8}" ` +
+        `viewBox="${CEDAR_BOX}"><path fill="${colour}" d="${CEDAR}"/></svg>`
+      );
+    case "fleurdelise": {
+      // One fleur, not the whole flag. A lane is a wide wash; a cross drawn
+      // across it would have to reach the ends of the row, and the four
+      // quarters shrink to porridge at this size.
+      const fh = h * 0.86;
+      const fw = fh * (1172 / 1600);
+      return (
+        `<svg x="${cx - fw / 2}" y="${cy - fh / 2}" width="${fw}" height="${fh}" ` +
+        `viewBox="${FLEUR_BOX}"><path fill="${colour}" d="${FLEUR}"/></svg>`
       );
     }
     case "chevron":
