@@ -286,9 +286,13 @@ def build(P):
     def trisuit(c):
         END = LY0 + (LY1-LY0)*0.58
         c.trunk(SH+2, HIP+4, TT-1.2, TW_-0.6, TH_-0.4, "K")
+        # The straps have to land ON the shoulder. The body's shoulder is a disc
+        # centred at SH+2 with a half-height of 6.5, so above about SH-0.5
+        # there is nothing out there but the neck — a strap drawn to SH-2.4,
+        # as these were, hangs its top corner in mid-air.
         for sx in (-1, 1):
-            c.poly([(40+sx*(TT-0.8), SH+3.5), (40+sx*(TT-4.4), SH+3.5),
-                    (40+sx*(TT-5.4), SH-1.8), (40+sx*(TT-2.0), SH-2.4)], "K")
+            c.poly([(40+sx*(TT-1.5), SH+4.5), (40+sx*(TT-6.0), SH+4.5),
+                    (40+sx*(TT-6.5), SH-0.5), (40+sx*(TT-2.1), SH-0.5)], "K")
         c.capsule(L, LY0, END, LHW+0.5, "K"); c.capsule(R, LY0, END, LHW+0.5, "K")
         c.rect(40-TW_-0.9, SH+4, 40-TW_+1.9, END, "A", only="K")
         c.rect(40+TW_-1.9, SH+4, 40+TW_+0.9, END, "A", only="K")
@@ -376,8 +380,10 @@ def build(P):
             c.rect(cx-AHW-1.0, AY1-3.6, cx+AHW+1.0, AY1-2.2, "A")
         for cx in (L, R):
             c.rect(cx-LHW-0.8, END-2.0, cx+LHW+0.8, END-0.6, "A")
-        c.rect(40-TT+0.8, SH-5.8, 40+TT-0.8, SH-3.6, "A")
-        c.rect(39.4, SH-3.6, 40.6, SH+13, "A")
+        # A collar goes round the NECK. Drawn the width of the chest, as this
+        # was, most of it floated above the shoulders with nothing under it.
+        c.rect(35.4, SH-5.4, 44.6, SH-3.2, "A")
+        c.rect(39.4, SH-3.4, 40.6, SH+13, "A")
 
     item("wetsuit", 2, wetsuit)
     item("tights", 2, lambda c: (

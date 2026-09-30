@@ -2,12 +2,17 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CLUB_LIVE, CLUB_ROOMS, canSeeClub, roomsOf, type ClubHouse, type ClubRoom } from "@/lib/club";
 import { Wallet } from "./Wallet";
 import { TurnAround } from "./AthleteFigure";
 import { CountryFlag } from "./CountryFlag";
 import { AVATAR_ITEM_BY_ID, lookFor } from "@/lib/pixelAvatar";
+import { SPORT_ORDER, activityPoints, fmtKm, fmtPoints, totalPoints, unscoredGymIds } from "@/lib/scoring";
+import { championshipsByAthlete, streakFor } from "@/lib/achievements";
+import { SPORT_UI } from "@/lib/ui";
+import { SPORT_UNIT, isGrant, type Sport } from "@/lib/types";
+import { daysBetween, weekStart } from "@/lib/dates";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import type { League } from "./useLeague";
@@ -72,7 +77,7 @@ export function ClubTab({
       ) : room === "shop" ? (
         <AvatarLocker state={state} refDay={refDay} send={send} />
       ) : room === "profile" ? (
-        <ClubProfile state={state} />
+        <ClubProfile state={state} refDay={refDay} />
       ) : (
         /* Bets and challenges land here as they're built. */
         <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
@@ -180,45 +185,188 @@ function ClubTeaser() {
  * The shop shows you an item at a time; this shows the whole of what you have
  * put together, which is the thing everyone else sees on the board.
  */
-function ClubProfile({ state }: { state: AppState }) {
+function ClubProfile({
+  state,
+  refDay,
+}: {
+  state: AppState;
+  refDay: DayKey;
+}) {
   const me = state.me;
-  if (!me) return null;
+  const stats = useMemo(() => (me ? careerStats(me.id, state, refDay) : null), [me, state, refDay]);
+  if (!me || !stats) return null;
+
   const worn = lookFor(me, state.loadouts);
   const flag = AVATAR_ITEM_BY_ID.get(worn.flag?.item ?? "");
-  const kit = ["head", "eyes", "torso", "legs", "feet", "socks", "prize"]
-    .map((slot) => AVATAR_ITEM_BY_ID.get(worn[slot]?.item ?? ""))
-    .filter((i): i is NonNullable<typeof i> => !!i && !!i.sprite);
 
   return (
     <div className="space-y-3">
       <div className="overflow-hidden rounded-2xl border border-line bg-tile">
         <TurnAround athlete={me} loadouts={state.loadouts} className="w-24" />
-      </div>
-      <div className="rounded-2xl border border-line bg-tile px-4 py-3">
-        <p className="eyebrow text-ink-3">Flying</p>
-        <p className="mt-1 flex items-center gap-2 text-sm text-ink">
+        <p className="border-t border-line px-4 py-2.5 text-center text-sm text-ink-2">
           {flag?.flag ? (
-            <>
+            <span className="inline-flex items-center gap-2 text-ink">
               <CountryFlag id={flag.flag} />
-              {flag.label}
-            </>
+              Flying {flag.label}
+            </span>
           ) : (
-            <span className="text-ink-2">No flag yet — the shop has nine.</span>
+            "No flag yet — the shop has nine."
           )}
         </p>
       </div>
-      <div className="rounded-2xl border border-line bg-tile px-4 py-3">
-        <p className="eyebrow text-ink-3">Wearing</p>
-        {kit.length === 0 ? (
-          <p className="mt-1 text-sm text-ink-2">Nothing but the starter kit.</p>
-        ) : (
-          <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs text-ink-2">
-            {kit.map((i) => (
-              <li key={i.id}>{i.label}</li>
-            ))}
-          </ul>
-        )}
+
+      <div className="grid grid-cols-3 gap-2">
+        <Tile label="Points" value={fmtPoints(stats.points)} />
+        <Tile label="Sessions" value={String(stats.sessions)} />
+        <Tile label="Active days" value={String(stats.activeDays)} />
       </div>
+
+      <Panel title="Career distance">
+        <ul className="space-y-1.5">
+          {SPORT_ORDER.filter((sp) => SPORT_UNIT[sp] === "km").map((sp) => (
+            <li key={sp} className="flex items-baseline justify-between gap-3">
+              <span className={`eyebrow ${SPORT_UI[sp].text}`}>{SPORT_UI[sp].label}</span>
+              <span className="font-mono text-sm text-ink">{fmtKm(stats.km[sp])} km</span>
+            </li>
+          ))}
+          <li className="flex items-baseline justify-between gap-3">
+            <span className={`eyebrow ${SPORT_UI.gym.text}`}>Gym</span>
+            <span className="font-mono text-sm text-ink">{stats.gym} workouts</span>
+          </li>
+        </ul>
+      </Panel>
+
+      {/* The numbers above are true but they are not a feeling. These are the
+          same numbers held up against something a person can picture. */}
+      <Panel title="Which is to say">
+        <ul className="space-y-1.5 text-sm text-ink-2">
+          {stats.feats.map((f) => (
+            <li key={f.line}>
+              <span className="font-mono text-ink">{f.big}</span> {f.line}
+            </li>
+          ))}
+        </ul>
+      </Panel>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Tile label="Best week" value={fmtPoints(stats.bestWeek)} sub="pts" />
+        <Tile label="Best day" value={fmtPoints(stats.bestDay)} sub="pts" />
+        <Tile label="Longest session" value={fmtKm(stats.longest.km)} sub={stats.longest.label} />
+        <Tile label="Biggest climb" value={String(Math.round(stats.bigClimb))} sub="m in a session" />
+      </div>
+
+      <Panel title="Form">
+        <ul className="space-y-1.5 text-sm">
+          <Line label="Current streak" value={`${stats.streak.current} wk`} />
+          <Line label="Best streak" value={`${stats.streak.best} wk`} />
+          <Line label="Weeks won" value={String(stats.titles)} />
+          <Line label="Busiest day" value={stats.busiestDay} />
+          <Line label="Favourite" value={SPORT_UI[stats.favourite].label} />
+          <Line label="Since first session" value={`${stats.daysIn} days`} />
+        </ul>
+      </Panel>
     </div>
   );
+}
+
+function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-2xl border border-line bg-tile px-3 py-2.5">
+      <p className="stamp text-2xl leading-none text-ink">{value}</p>
+      <p className="eyebrow mt-1 text-ink-3">
+        {label}
+        {sub ? <span className="ml-1 normal-case text-ink-3">{sub}</span> : null}
+      </p>
+    </div>
+  );
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-line bg-tile px-4 py-3">
+      <p className="eyebrow text-ink-3">{title}</p>
+      <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+function Line({ label, value }: { label: string; value: string }) {
+  return (
+    <li className="flex items-baseline justify-between gap-3">
+      <span className="text-ink-2">{label}</span>
+      <span className="font-mono text-ink">{value}</span>
+    </li>
+  );
+}
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/**
+ * Everything the Profile shows, worked out in one pass.
+ *
+ * Grants are excluded from anything about EFFORT — a coin handed over is not a
+ * kilometre — but they still count toward points, because they are points.
+ */
+function careerStats(athleteId: string, state: AppState, refDay: DayKey) {
+  const { settings } = state;
+  const mine = state.activities.filter((a) => a.athleteId === athleteId);
+  const real = mine.filter((a) => !isGrant(a));
+  const unscored = unscoredGymIds(state.activities);
+
+  const km: Record<Sport, number> = { swim: 0, bike: 0, run: 0, gym: 0 };
+  const bySport: Record<Sport, number> = { swim: 0, bike: 0, run: 0, gym: 0 };
+  const byDay = new Map<string, number>();
+  const byWeek = new Map<string, number>();
+  const dow = [0, 0, 0, 0, 0, 0, 0];
+  let ascent = 0;
+  let gym = 0;
+  let bigClimb = 0;
+  let longest = { km: 0, label: "—" };
+
+  for (const a of mine) {
+    const pts = activityPoints(a, settings, unscored);
+    byDay.set(a.occurredOn, (byDay.get(a.occurredOn) ?? 0) + pts);
+    const wk = weekStart(a.occurredOn as DayKey);
+    byWeek.set(wk, (byWeek.get(wk) ?? 0) + pts);
+    if (isGrant(a)) continue;
+    bySport[a.sport] += pts;
+    dow[new Date(`${a.occurredOn}T12:00:00`).getDay()] += 1;
+    if (SPORT_UNIT[a.sport] === "km") {
+      km[a.sport] += a.km;
+      if (a.km > longest.km) longest = { km: a.km, label: SPORT_UI[a.sport].label.toLowerCase() };
+    } else {
+      gym += 1;
+    }
+    ascent += a.elevationM ?? 0;
+    if ((a.elevationM ?? 0) > bigClimb) bigClimb = a.elevationM ?? 0;
+  }
+
+  const days = [...byDay.keys()].sort();
+  const feats: { big: string; line: string }[] = [];
+  // Everest is 8,849 m from the sea, and the number people know.
+  if (ascent > 0) feats.push({ big: `${(ascent / 8849).toFixed(2)}×`, line: `up Everest — ${Math.round(ascent).toLocaleString()} m climbed` });
+  if (km.run > 0) feats.push({ big: `${(km.run / 42.195).toFixed(1)}`, line: "marathons, if the running were laid end to end" });
+  if (km.bike > 0) feats.push({ big: `${((km.bike / 40075) * 100).toFixed(2)}%`, line: "of the way around the world on the bike" });
+  if (km.swim > 0) feats.push({ big: `${Math.round((km.swim * 1000) / 25).toLocaleString()}`, line: "lengths of a 25 m pool" });
+  const total = km.swim + km.bike + km.run;
+  if (total > 0) feats.push({ big: `${fmtKm(total)} km`, line: "under your own power, all in" });
+
+  return {
+    points: totalPoints(mine, settings),
+    sessions: real.length,
+    activeDays: days.length,
+    km,
+    gym,
+    ascent,
+    bigClimb,
+    longest,
+    feats,
+    bestDay: Math.max(0, ...byDay.values()),
+    bestWeek: Math.max(0, ...byWeek.values()),
+    streak: streakFor(athleteId, state.activities, settings, refDay, state.me?.name),
+    titles: championshipsByAthlete(state.athletes, state.activities, settings, refDay).get(athleteId) ?? 0,
+    busiestDay: DAY_NAMES[dow.indexOf(Math.max(...dow))] ?? "—",
+    favourite: (SPORT_ORDER.reduce((best, sp) => (bySport[sp] > bySport[best] ? sp : best), "run" as Sport)),
+    daysIn: days.length === 0 ? 0 : daysBetween(days[0] as DayKey, refDay),
+  };
 }

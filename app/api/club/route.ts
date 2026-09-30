@@ -97,16 +97,34 @@ export async function POST(req: Request) {
     const loadout = body.wear as Record<string, { item?: unknown }>;
     // You can try anything on in the shop; you can only SAVE what's yours.
     // Otherwise the locker is a fitting room and the board is a lie.
+    //
+    // Except for Ryan, who has the run of the shelf while the Club is his
+    // alone — his call, 2026-09-26. Without that exception, saving QUIETLY
+    // DROPPED every slot he had not bought and stored four slots out of
+    // eleven, which is why his figure stood on the board with no clothes on:
+    // a missing slot draws nothing at all. Same door as everything else.
+    const all = canSeeClub(me.name);
     const mine = new Set((await store.listPurchases()).filter((p) => p.athleteId === me.id).map((p) => p.itemId));
     const clean: Record<string, { item: string }> = {};
+    const dropped: string[] = [];
     for (const [slot, worn] of Object.entries(loadout)) {
       if (typeof worn?.item !== "string") continue;
       const item = AVATAR_ITEM_BY_ID.get(worn.item);
       if (!item) continue;
       // Free kit is everyone's; everything else has to have been paid for.
-      const owned = mine.has(item.id) || item.price === 0;
-      if (!owned) continue;
+      if (!all && !mine.has(item.id) && item.price > 0) {
+        dropped.push(item.label);
+        continue;
+      }
       clean[slot] = { item: item.id };
+    }
+    // Say so rather than swallowing it. A save that silently keeps half of
+    // what you picked is worse than one that refuses.
+    if (dropped.length > 0) {
+      return NextResponse.json(
+        { error: `Not yours yet: ${dropped.join(", ")}.` },
+        { status: 402 },
+      );
     }
     await store.setLoadout(me.id, clean);
     return NextResponse.json(await readState());
