@@ -367,7 +367,7 @@ function Lane({
   return (
     <button
       onClick={onSelect}
-      className={`lane-enter relative block w-full overflow-hidden rounded-xl px-3 py-0.5 text-left transition-colors ${
+      className={`lane-enter relative block w-full overflow-hidden rounded-xl px-3 py-1 text-left transition-colors ${
         isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
       }`}
       style={{
@@ -425,7 +425,7 @@ function Lane({
         </div>
 
         {figures ? (
-          <Figure athlete={row.athlete} flag={null} className="w-10" />
+          <Figure athlete={row.athlete} flag={null} className="w-11" />
         ) : (
           <Avatar athlete={row.athlete} me={isMe} />
         )}
@@ -462,7 +462,7 @@ function Lane({
             </span>
           </div>
 
-          <div className="mt-1 flex h-2 w-full overflow-hidden rounded-full bg-deck-2">
+          <div className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-deck-2">
             {scored &&
               SPORT_ORDER.map((sport) => {
                 const share = row.bySport[sport] / row.points;
@@ -494,7 +494,7 @@ function Lane({
             )}
           </div>
 
-          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0 font-mono text-[0.6875rem] leading-tight text-ink-3">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[0.6875rem] leading-tight text-ink-3">
             {row.km > 0 && <span>{fmtKm(row.km)} km</span>}
             <span>
               {row.sessions} session{row.sessions === 1 ? "" : "s"}
@@ -544,7 +544,7 @@ function SportLane({
   return (
     <button
       onClick={onSelect}
-      className={`lane-enter block w-full rounded-xl px-3 py-0.5 text-left transition-colors ${
+      className={`lane-enter block w-full rounded-xl px-3 py-1 text-left transition-colors ${
         isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
       }`}
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
@@ -560,7 +560,7 @@ function SportLane({
         </div>
 
         {figures ? (
-          <Figure athlete={row.athlete} flag={null} className="w-10" />
+          <Figure athlete={row.athlete} flag={null} className="w-11" />
         ) : (
           <Avatar athlete={row.athlete} me={isMe} />
         )}
@@ -586,7 +586,7 @@ function SportLane({
             </span>
           </div>
 
-          <div className="mt-1 flex h-2 w-full overflow-hidden rounded-full bg-deck-2">
+          <div className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-deck-2">
             {has && <div className={ui.bg} style={{ width: `${width * 100}%` }} />}
           </div>
 
@@ -631,7 +631,7 @@ function ClimbLane({
   return (
     <button
       onClick={onSelect}
-      className={`lane-enter block w-full rounded-xl px-3 py-0.5 text-left transition-colors ${
+      className={`lane-enter block w-full rounded-xl px-3 py-1 text-left transition-colors ${
         isMe ? "bg-tile ring-2 ring-ink" : "hover:bg-tile/60"
       }`}
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
@@ -645,7 +645,7 @@ function ClimbLane({
         </div>
 
         {figures ? (
-          <Figure athlete={row.athlete} flag={null} className="w-10" />
+          <Figure athlete={row.athlete} flag={null} className="w-11" />
         ) : (
           <Avatar athlete={row.athlete} me={isMe} />
         )}
@@ -669,7 +669,7 @@ function ClimbLane({
             </span>
           </div>
 
-          <div className="mt-1 flex h-2 w-full overflow-hidden rounded-full bg-deck-2">
+          <div className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-deck-2">
             {has &&
               CLIMB_SPORTS.map((s) => {
                 const share = row.bySport[s] / row.total;
