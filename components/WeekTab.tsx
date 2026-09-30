@@ -26,6 +26,7 @@ import {
 import { PaceClock } from "./PaceClock";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
+import { Figure, useFigures } from "./AthleteFigure";
 import { SportMark } from "./SportMark";
 import { AthleteName, FlagName, FlagTag, useAwayIn, useReigningChampion } from "./ProfileContext";
 import type { League } from "./useLeague";
@@ -66,6 +67,7 @@ export function WeekTab({
   );
 
   const meId = state.me?.id ?? "";
+  const figures = useFigures();
   const mine = standings.find((s) => s.athlete.id === meId);
   // Your own quota, which isn't necessarily the league's — see `goalFor`. Every
   // lane below uses ITS athlete's goal, `row.goal`, for the same reason.
@@ -386,7 +388,11 @@ export function WeekTab({
                       />
                     </>
                   )}
-                  <Avatar athlete={row.athlete} me={isMe} className="relative h-8 w-8 text-[0.625rem]" />
+                  {figures ? (
+                    <Figure athlete={row.athlete} flag={null} className="relative w-11" />
+                  ) : (
+                    <Avatar athlete={row.athlete} me={isMe} className="relative h-8 w-8 text-[0.625rem]" />
+                  )}
                   <div className="relative min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <span

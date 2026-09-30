@@ -26,6 +26,7 @@ import { formatDay, weekStart, type DayKey } from "@/lib/dates";
 import { Glyph, type GlyphName } from "./Glyph";
 import { SportMark } from "./SportMark";
 import { Avatar } from "./Avatar";
+import { Face, TurnAround, useFigures } from "./AthleteFigure";
 import { TrendChart } from "./TrendChart";
 
 export function AthleteSheet({
@@ -44,6 +45,8 @@ export function AthleteSheet({
   onClose: () => void;
 }) {
   const [removing, setRemoving] = useState<string | null>(null);
+  // Above the early return: hooks run in the same order every render.
+  const figures = useFigures();
   const athlete = state.athletes.find((a) => a.id === athleteId);
   const isChampion = !!athlete && reigning === athlete.id;
 
@@ -156,6 +159,8 @@ export function AthleteSheet({
             >
               <Avatar athlete={athlete} me={isMe} className="h-14 w-14 text-base" />
             </button>
+          ) : figures ? (
+            <Face athlete={athlete} me={isMe} className="h-14 w-14" />
           ) : (
             <Avatar athlete={athlete} me={isMe} className="h-14 w-14 text-base" />
           )}
@@ -187,8 +192,24 @@ export function AthleteSheet({
           </button>
         </div>
 
+        {/* The figure, head to shoes, standing on the flag he flies.
+
+            Everywhere else in the app crops at the shoulders, so this is the
+            only place the shoes, the socks and the bottom half of a tri suit
+            can be seen at all. A champion is drawn in the crown whether or
+            not he saved it: the prize belongs to the season, not the shop. */}
+        {figures && (
+        <div className="mt-5 overflow-hidden rounded-2xl border border-line bg-tile">
+          <TurnAround
+            athlete={athlete}
+            prize={isChampion ? "prize.crown" : undefined}
+            className="w-24"
+          />
+        </div>
+        )}
+
         {/* Where they rank, across every timeframe */}
-        <div className="mt-5">
+        <div className="mt-4">
           <h3 className="eyebrow text-ink-2">Standings</h3>
           <div className="mt-2 grid grid-cols-3 gap-2">
             <RankTile label="This week" rank={data.week?.rank} points={data.week?.points ?? 0} />

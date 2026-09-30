@@ -11,9 +11,11 @@ import { teamTotals } from "@/lib/stats";
 import { AthleteName, useOpenProfile } from "./ProfileContext";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
+import { Figure, useFigures } from "./AthleteFigure";
 
 export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }) {
   const openProfile = useOpenProfile();
+  const figures = useFigures();
 
   const seasons = useMemo(
     () =>
@@ -101,7 +103,11 @@ export function TitlesTab({ state, refDay }: { state: AppState; refDay: DayKey }
                     >
                       {has ? row.rank : "—"}
                     </span>
-                    <Avatar athlete={row.athlete} me={isMe} />
+                    {figures ? (
+                      <Figure athlete={row.athlete} flag={null} className="w-10" />
+                    ) : (
+                      <Avatar athlete={row.athlete} me={isMe} />
+                    )}
                     <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold text-ink">
                       {row.athlete.name}
                       {isMe && <span className="ml-1.5 text-xs font-normal text-ink-2">you</span>}

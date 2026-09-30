@@ -394,6 +394,8 @@ export interface AppState {
   purchases: Purchase[];
   /** The signed-in athlete's saved avatar, or null if they've never saved one. */
   myLoadout: Record<string, { item: string }> | null;
+  /** Every saved avatar, keyed by athlete id. Missing = never saved one. */
+  loadouts: Record<string, Record<string, { item: string }>>;
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {

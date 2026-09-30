@@ -548,3 +548,58 @@ export function avatarSvg(
     `role="img" aria-label="Pixel avatar"><g class="avatar-breath">${upperOut}</g>${lowerOut}</svg>`
   );
 }
+
+/**
+ * A look for an athlete who has never opened the Club.
+ *
+ * Derived from the name and nothing else, so it is the same figure on every
+ * device, on every render, and after every deploy — an avatar that reshuffles
+ * itself is not a character, it's noise. Two names never land on the same
+ * figure by accident either, because the name is hashed whole: `Jona` and
+ * `Jonah` are different athletes and must not come out as the same person.
+ *
+ * It draws only from the COMMON shelf. If you see someone in a gold jersey or
+ * an aero helmet, they bought it — that is the whole point of the shop, and a
+ * generated look that helps itself to the legendary rack would empty it of
+ * meaning. The one exception is shoes: a board full of runners standing
+ * barefoot reads as a bug rather than as people who haven't been shopping, so
+ * the generated figure gets a plain pair.
+ */
+export function loadoutFor(name: string): Loadout {
+  // FNV-1a over the whole name, then a different slice of it per slot.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < name.length; i++) {
+    h ^= name.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  const pick = <T,>(pool: readonly T[], salt: number): T =>
+    pool[(Math.imul(h ^ (salt * 0x9e3779b1), 0x85ebca6b) >>> 8) % pool.length];
+
+  const commons = (slot: Slot) =>
+    AVATAR_ITEMS.filter((i) => i.slot === slot && i.tier === "common" && !!i.sprite);
+
+  return {
+    ...DEFAULT_LOADOUT,
+    skin: { item: pick(AVATAR_ITEMS.filter((i) => i.slot === "skin"), 1).id },
+    hair: { item: pick(commons("hair"), 2).id },
+    face: { item: pick([...commons("face"), AVATAR_ITEM_BY_ID.get("face.clean")!], 3).id },
+    torso: { item: pick(commons("torso"), 4).id },
+    legs: { item: pick(commons("legs"), 5).id },
+    socks: { item: pick(commons("socks"), 6).id },
+    feet: { item: pick(["feet.runshoes.white", "feet.runshoes.orange"], 7) },
+  };
+}
+
+/**
+ * What to draw for an athlete: what they saved, or a look from their name.
+ *
+ * Every screen that shows a figure goes through here, so a saved avatar and a
+ * generated one are never a different code path — the Board cannot end up
+ * drawing one athlete and a blank for the next.
+ */
+export function lookFor(
+  athlete: { id: string; name: string },
+  saved: Record<string, Record<string, { item: string }>> | undefined,
+): Loadout {
+  return saved?.[athlete.id] ?? loadoutFor(athlete.name);
+}
