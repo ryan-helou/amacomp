@@ -334,21 +334,36 @@ console.log("\none country, one purchase, one drawing");
     check(`${f.label} makes a lane`, !!flagLane(f.id)?.backgroundImage, true);
   }
 
-  // The lane is ONE LONG THING: the flag itself, stretched the length of the
-  // row, with a scrim over it so the text stays readable. Not a badge, not a
-  // banner, not a shape sitting inside the row — that was asked for three
-  // times and got built wrong three times, so it is pinned down here.
+  // The lane is ONE LONG THING in two layers: the bands stretched the whole
+  // row, and the emblem on top at its OWN proportions. Both halves are pinned
+  // down here because both have been got wrong.
   const lane = flagLane("ca")!;
-  check("the lane is the flag's own drawing", lane.backgroundImage.includes("data:image/svg+xml"), true);
-  // NOT decodeURIComponent on the whole value: it also holds a CSS gradient
-  // full of bare `%` signs, which is not valid escaping, and the decode throws
-  // — a throw that looked like a pass, because the run died before the failure
-  // count was printed. Match the encoded form instead.
-  check("and it carries Canada's red", lane.backgroundImage.includes("%23f00"), true);
-  check("it runs the whole row", lane.backgroundSize, "100% 100%, 100% 100%");
-  check("nothing is inset", lane.backgroundSize.includes("auto"), false);
-  check("nothing is parked in a corner", lane.backgroundPosition, "0 0, 0 0");
+  const size = lane.backgroundSize.split(", ");
+  const image = lane.backgroundImage.split('url("');
   check("a scrim rides over it", lane.backgroundImage.startsWith("linear-gradient"), true);
+  check("three layers: scrim, emblem, field", size.length, 3);
+  check("the field runs the whole row", size[2], "100% 100%");
+  // The emblem is `auto`, never a percentage. A percentage is a stretch.
+  check("the emblem keeps its own shape", size[1], "auto 100%");
+  check("and sits in the gap the scrim leaves", lane.backgroundPosition.split(", ")[1], "64% center");
+  check("the lane carries Canada's red", lane.backgroundImage.includes("%23FF0000"), true);
+
+  // THE BUG, twice over: `preserveAspectRatio="none"` strips an SVG of its
+  // intrinsic ratio, so `background-size: auto` has nothing to reason from
+  // and falls back to the full width of the row — which is the very stretch
+  // the emblem layer exists to undo. Japan's disc stayed an ellipse through
+  // two attempts before this was understood. The FIELD may say none; the
+  // emblem may never.
+  for (const f of COUNTRY_FLAGS) {
+    const parts = flagLane(f.id)!.backgroundImage.split('url("');
+    if (parts.length < 3) continue; // Italy is stripes; it has no emblem layer
+    const emblem = decodeURIComponent(parts[1]);
+    check(`${f.label}'s emblem keeps its ratio`, emblem.includes('preserveAspectRatio="none"'), false);
+    check(`${f.label}'s emblem declares a size`, /width="30" height="20"/.test(emblem), true);
+  }
+  check("Italy has no emblem layer — it is only stripes", image.length, 3);
+  check("and Italy really has none", flagLane("it")!.backgroundImage.split('url("').length, 2);
+
   // A pale flag needs dark ink; Japan is the one that proves it.
   check("a white flag flips the ink", !!flagLane("jp")?.["--ink"], true);
   // Brazil, not Jordan: Jordan's MIDDLE band is the white one, and the middle
