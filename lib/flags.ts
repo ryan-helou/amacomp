@@ -30,6 +30,17 @@ export interface CountryFlag {
    * AmaComp to copy.
    */
   art: string;
+  /**
+   * The same flag laid out for a LANE — a box five times as wide as it is
+   * tall, not three halves.
+   *
+   * A flag squashed into that shape is a distorted flag: Brazil's lozenge
+   * flattens into a smear and the globe becomes an ellipse. So a flag whose
+   * design cannot survive the stretch gets a second arrangement instead, on
+   * the same field, with the parts that must keep their shape drawn at their
+   * real one. Stripes stretch happily and need nothing here.
+   */
+  laneArt?: string;
 }
 
 /**
@@ -48,7 +59,16 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
   { id: "it", label: "Italy", bands: ["#009246", "#FFFFFF", "#CE2B37"], art: FLAG_ART.it },
   { id: "jp", label: "Japan", bands: ["#FFFFFF"], weights: [1], art: FLAG_ART.jp },
   { id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true, art: FLAG_ART.jo },
-  { id: "br", label: "Brazil", bands: ["#009440"], weights: [1], art: FLAG_ART.br },
+  {
+    id: "br", label: "Brazil", bands: ["#009440"], weights: [1], art: FLAG_ART.br,
+    // Green the whole length, and the real flag dropped in at its true 3:2 so
+    // the lozenge stays a lozenge. Its own green is the same green, so the
+    // seam does not show.
+    laneArt:
+      `<rect width="90" height="20" fill="#009440"/>` +
+      `<svg x="46" y="0" width="30" height="20" viewBox="0 0 30 20" ` +
+      `preserveAspectRatio="xMidYMid meet">${FLAG_ART.br}</svg>`,
+  },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
   // The one flag with nothing to copy. Magenta, black and mint are the app's
   // own colours and the star is the only shape here anybody drew.
@@ -124,9 +144,12 @@ export function flagLane(id: string): {
   // ONE LONG THING: the flag itself, stretched the whole length of the row.
   // No badge in the corner, no banner, nothing clipped out of it — Ryan asked
   // for a lane three times and I kept putting a small shape inside it instead.
+  // A lane-specific arrangement when the flag has one, otherwise the flag
+  // itself — stripes are the same stripes at any width.
+  const box = flag.laneArt ? "0 0 90 20" : "0 0 30 20";
   const lane = encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="0 0 30 20" ` +
-      `preserveAspectRatio="none">${flag.art}</svg>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="${box}" ` +
+      `preserveAspectRatio="none">${flag.laneArt ?? flag.art}</svg>`,
   );
 
   // The ink follows what is under the TEXT. On a horizontal flag that is the

@@ -577,5 +577,13 @@ export function lookFor(
   athlete: { id: string; name: string },
   saved: Record<string, Record<string, { item: string }>> | undefined,
 ): Loadout {
-  return saved?.[athlete.id] ?? loadoutFor(athlete.name);
+  // The saved choices go ON TOP of the generated look, never instead of it.
+  //
+  // A saved loadout is often PARTIAL: the till drops anything you haven't
+  // bought when you save (lib/../api/club), so a save can come back holding
+  // four slots out of eleven. Returned as-is that is not a person in some
+  // clothes — it is a person with no torso, no legs and no shoes, because a
+  // missing slot draws nothing at all. Ryan's own figure was bare on the board
+  // for exactly this reason. What he chose still wins every slot he chose.
+  return { ...loadoutFor(athlete.name), ...(saved?.[athlete.id] ?? {}) };
 }

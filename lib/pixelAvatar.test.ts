@@ -1,6 +1,6 @@
 import {
   AVATAR_ITEMS, AVATAR_ITEM_BY_ID, DEFAULT_LOADOUT, STARTER_ITEMS,
-  avatarSvg, itemImage, itemSvg, rackFor, type Loadout,
+  avatarSvg, itemImage, itemSvg, loadoutFor, lookFor, rackFor, type Loadout,
 } from "./pixelAvatar";
 import { COUNTRY_FLAGS, FLAG_BY_ID, flagLane, flagSvg } from "./flags";
 import sprites from "./avatar/sprites.json";
@@ -340,14 +340,20 @@ console.log("\none country, one purchase, one drawing");
   // times and got built wrong three times, so it is pinned down here.
   const lane = flagLane("ca")!;
   check("the lane is the flag's own drawing", lane.backgroundImage.includes("data:image/svg+xml"), true);
-  check("and it carries Canada's red", decodeURIComponent(lane.backgroundImage).includes("#f00"), true);
+  // NOT decodeURIComponent on the whole value: it also holds a CSS gradient
+  // full of bare `%` signs, which is not valid escaping, and the decode throws
+  // — a throw that looked like a pass, because the run died before the failure
+  // count was printed. Match the encoded form instead.
+  check("and it carries Canada's red", lane.backgroundImage.includes("%23f00"), true);
   check("it runs the whole row", lane.backgroundSize, "100% 100%, 100% 100%");
   check("nothing is inset", lane.backgroundSize.includes("auto"), false);
   check("nothing is parked in a corner", lane.backgroundPosition, "0 0, 0 0");
   check("a scrim rides over it", lane.backgroundImage.startsWith("linear-gradient"), true);
   // A pale flag needs dark ink; Japan is the one that proves it.
   check("a white flag flips the ink", !!flagLane("jp")?.["--ink"], true);
-  check("a dark one does not", flagLane("jo")?.["--ink"], undefined);
+  // Brazil, not Jordan: Jordan's MIDDLE band is the white one, and the middle
+  // is what the text sits on, so dark ink there is right.
+  check("a dark one does not", flagLane("br")?.["--ink"], undefined);
 
   // The ink has to follow what's under the TEXT, which for a horizontal flag
   // is the middle band. Averaging the three put light text on the white
@@ -360,6 +366,21 @@ console.log("\none country, one purchase, one drawing");
   // No two countries may draw the same.
   const drawn = new Set(COUNTRY_FLAGS.map((f) => flagSvg(f.id)));
   check("every flag is its own picture", drawn.size, COUNTRY_FLAGS.length);
+}
+
+console.log("\na saved look is topped up, never left bare");
+{
+  const me = { id: "a1", name: "Ryan" };
+  // What the till actually stores: only the slots he owns or that are free.
+  const partial = { a1: { hair: { item: "hair.bald" }, skin: { item: "skin.light" } } };
+  const look = lookFor(me, partial);
+  check("his own choices win", [look.hair.item, look.skin.item], ["hair.bald", "skin.light"]);
+  // The bug: these came back undefined and the figure drew with no clothes.
+  for (const slot of ["torso", "legs", "feet", "socks", "face"]) {
+    check(`${slot} is filled in, not left empty`, !!look[slot]?.item, true);
+  }
+  check("and it is still his own generated look", look.torso.item, loadoutFor("Ryan").torso.item);
+  check("no saved look at all is the generated one", lookFor(me, {}).torso.item, loadoutFor("Ryan").torso.item);
 }
 
 console.log("\na prize is not for sale");
