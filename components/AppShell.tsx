@@ -21,6 +21,8 @@ import { PointsChange } from "./PointsChange";
 import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
 import { ProfileProvider, AthleteName } from "./ProfileContext";
+import { LoadoutsProvider } from "./AthleteFigure";
+import { canSeeClub } from "@/lib/club";
 
 type Tab = "log" | "week" | "board" | "records" | "club";
 
@@ -276,6 +278,7 @@ export function AppShell({
 
   return (
     <ProfileProvider state={state} refDay={refDay} championId={championId} send={send}>
+    <LoadoutsProvider loadouts={state.loadouts} showFigures={canSeeClub(state.me?.name)}>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
       {/* The notch strip.
@@ -491,6 +494,7 @@ export function AppShell({
         />
       )}
     </div>
+    </LoadoutsProvider>
     </ProfileProvider>
   );
 }

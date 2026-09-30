@@ -18,6 +18,7 @@ import { firstSeason, seasonFor } from "@/lib/season";
 import { FlagName, FlagTag, useAwayIn, useOpenProfile, useReigningChampion } from "./ProfileContext";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
+import { Figure, useFigures, useLane } from "./AthleteFigure";
 import { SportMark } from "./SportMark";
 import { SeasonRace } from "./SeasonRace";
 import { CLIMB_SPORTS, climbLeader, climbStandings, fmtMetres, type ClimbRow } from "@/lib/climb";
@@ -356,6 +357,12 @@ function Lane({
 }) {
   const width = top > 0 ? Math.max(row.points / top, 0) : 0;
   const scored = row.points > 0;
+  // The country he bought flies behind the row. An AWAY flag beats it: that
+  // one is news — he is abroad this week — and the bought one is decoration,
+  // so they must never be painted over each other.
+  const figures = useFigures();
+  const lane = useLane(row.athlete);
+  const flying = awayFlag ? undefined : lane;
 
   return (
     <button
@@ -365,6 +372,7 @@ function Lane({
       }`}
       style={{
         animationDelay: `${Math.min(index, 8) * 45}ms`,
+        ...flying,
         ...(awayFlag ? { boxShadow: `inset 0 0 0 1px ${awayFlag.from}99`, ...flagInk(awayFlag) } : null),
       }}
     >
@@ -416,7 +424,11 @@ function Lane({
           )}
         </div>
 
-        <Avatar athlete={row.athlete} me={isMe} />
+        {figures ? (
+          <Figure athlete={row.athlete} flag={null} className="w-12" />
+        ) : (
+          <Avatar athlete={row.athlete} me={isMe} />
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
@@ -523,6 +535,7 @@ function SportLane({
   champion?: boolean;
   onSelect: () => void;
 }) {
+  const figures = useFigures();
   const ui = SPORT_UI[sport];
   const isFlat = SPORT_UNIT[sport] === "flat";
   const has = row.value > 0;
@@ -546,7 +559,11 @@ function SportLane({
           <span className="eyebrow text-[0.5rem] text-ink-3">lane</span>
         </div>
 
-        <Avatar athlete={row.athlete} me={isMe} />
+        {figures ? (
+          <Figure athlete={row.athlete} flag={null} className="w-12" />
+        ) : (
+          <Avatar athlete={row.athlete} me={isMe} />
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
@@ -607,6 +624,7 @@ function ClimbLane({
   champion?: boolean;
   onSelect: () => void;
 }) {
+  const figures = useFigures();
   const has = row.total > 0;
   const width = top > 0 ? Math.max(row.total / top, 0) : 0;
 
@@ -626,7 +644,11 @@ function ClimbLane({
           <span className="eyebrow text-[0.5rem] text-ink-3">lane</span>
         </div>
 
-        <Avatar athlete={row.athlete} me={isMe} />
+        {figures ? (
+          <Figure athlete={row.athlete} flag={null} className="w-12" />
+        ) : (
+          <Avatar athlete={row.athlete} me={isMe} />
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">

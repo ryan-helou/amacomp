@@ -74,5 +74,8 @@ export async function readState(): Promise<AppState> {
     coinGrants,
     purchases,
     myLoadout: me ? await store.getLoadout(me.id) : null,
+    // Everyone's, because the Board draws all six. An athlete with no row
+    // here gets a look generated from their name instead — see lookFor().
+    loadouts: await store.listLoadouts(),
   };
 }

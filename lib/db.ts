@@ -160,6 +160,9 @@ export interface Store {
   /** Buy once. Returns null if they already own it — buying twice is a bug. */
   addPurchase(athleteId: string, itemId: string, price: number): Promise<Purchase | null>;
   getLoadout(athleteId: string): Promise<Record<string, { item: string }> | null>;
+  /** Every saved loadout, keyed by athlete. One query, because the Board
+   *  draws all six figures on the first screen. */
+  listLoadouts(): Promise<Record<string, Record<string, { item: string }>>>;
   setLoadout(athleteId: string, loadout: Record<string, { item: string }>): Promise<void>;
 }
 
@@ -1126,6 +1129,14 @@ class PgStore implements Store {
     return r.rows[0] ? (r.rows[0].data as Record<string, { item: string }>) : null;
   }
 
+  async listLoadouts(): Promise<Record<string, Record<string, { item: string }>>> {
+    await this.init();
+    const r = await this.pool.query(`SELECT athlete_id, data FROM club_loadouts`);
+    const out: Record<string, Record<string, { item: string }>> = {};
+    for (const row of r.rows) out[row.athlete_id as string] = row.data;
+    return out;
+  }
+
   async setLoadout(athleteId: string, loadout: Record<string, { item: string }>): Promise<void> {
     await this.init();
     await this.pool.query(
@@ -1451,6 +1462,10 @@ class MemoryStore implements Store {
 
   async getLoadout(athleteId: string): Promise<Record<string, { item: string }> | null> {
     return this.loadouts.get(athleteId) ?? null;
+  }
+
+  async listLoadouts(): Promise<Record<string, Record<string, { item: string }>>> {
+    return Object.fromEntries(this.loadouts);
   }
 
   async setLoadout(athleteId: string, loadout: Record<string, { item: string }>): Promise<void> {

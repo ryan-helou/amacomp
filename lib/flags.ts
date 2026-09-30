@@ -193,13 +193,6 @@ function lum(hex: string): number {
   return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
 }
 
-/** Where an emblem belongs once the flag is stretched into a wide lane. */
-const EMBLEM_PLACE: Record<Emblem, "center" | "left"> = {
-  disc: "center", maple: "center", cedar: "center", cross: "center",
-  star: "center", diamond: "center", chevron: "left",
-  union: "center", unionCanton: "center", saltire: "center",
-};
-
 /**
  * The lane: the country's flag behind a whole row.
  *
@@ -244,9 +237,15 @@ export function flagLane(id: string): {
     : lum(flag.bands[0]);
   const light = ends > 0.5;
   const c = light ? "255,255,255" : "8,10,14";
+  // The scrim used to be a symmetric wash, thinnest in the middle at 0.3 —
+  // fine when the row was one short line of large type, wrong now the row
+  // carries a figure, a name and a line of small mono across that middle.
+  // So it is left-heavy: solid under everything that is read, thinning only
+  // over the right third, which is the one part of the row with nothing in
+  // it but the points, and those get their own patch at the end.
   const scrim =
-    `linear-gradient(90deg, rgba(${c},0.82) 0%, rgba(${c},0.72) 26%, rgba(${c},0.3) 50%,` +
-    ` rgba(${c},0.72) 74%, rgba(${c},0.82) 100%)`;
+    `linear-gradient(90deg, rgba(${c},0.90) 0%, rgba(${c},0.88) 56%,` +
+    ` rgba(${c},0.46) 70%, rgba(${c},0.34) 84%, rgba(${c},0.78) 100%)`;
 
   const layers = [scrim];
   const sizes = ["100% 100%"];
@@ -257,8 +256,14 @@ export function flagLane(id: string): {
         `${emblem(flag.emblem.kind, flag.emblem.colour, 30, 20)}</svg>`,
     );
     layers.push(`url("data:image/svg+xml,${svg}")`);
-    sizes.push("auto 78%");
-    spots.push(EMBLEM_PLACE[flag.emblem.kind] === "left" ? "left center" : "center");
+    sizes.push("auto 64%");
+    // Every emblem sits in the right third now. It used to follow the real
+    // flag's hoist, which put a cedar or a maple leaf directly behind the
+    // athlete's figure and his name; the right third is the only stretch of
+    // the row where it is visible AND in nobody's way.
+    // 74%, not further right: the wide emblems (a union canton, a saltire)
+    // are as broad as they are tall and would otherwise run under the points.
+    spots.push("74% center");
   }
   layers.push(bands);
   sizes.push("100% 100%");
