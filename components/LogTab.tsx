@@ -16,6 +16,7 @@ export function LogTab({
   league,
   refDay,
   logDay,
+  onSaved,
 }: {
   league: League;
   /** The real calendar day — the latest date a session may be filed under. */
@@ -23,6 +24,12 @@ export function LogTab({
   /** The day a session logged right now counts for. Inside a rollover window
    *  that is still yesterday, which is what a new log defaults to. */
   logDay: DayKey;
+  /**
+   * Called once a session is on the board. The tab leaves this out and stays
+   * put; the + sheet uses it to close itself, because the proof that it worked
+   * is the board behind it, not a form still open in front of it.
+   */
+  onSaved?: () => void;
 }) {
   const { state, busy, send } = league;
   const [draft, setDraft] = useState<ActivityDraft>(() => emptyDraft(logDay));
@@ -74,6 +81,7 @@ export function LogTab({
     );
     setSaved(`${points} pts added.`);
     setDraft({ ...emptyDraft(logDay), sport: draft.sport });
+    onSaved?.();
     setTimeout(() => setSaved(null), 2600);
   }
 
@@ -148,8 +156,10 @@ export function LogTab({
   return (
     <div className="space-y-8">
       <section>
-        <h2 className="eyebrow text-ink-2">Log a session</h2>
-        <div className="mt-3 rounded-2xl border border-line bg-deck-2/40 p-4">
+        {/* The sheet already says this above the form; the tab has nothing
+            else at the top, so it still needs the label. */}
+        {!onSaved && <h2 className="eyebrow text-ink-2">Log a session</h2>}
+        <div className={`rounded-2xl border border-line bg-deck-2/40 p-4 ${onSaved ? "" : "mt-3"}`}>
           <ActivityForm
             settings={state.settings}
             draft={draft}

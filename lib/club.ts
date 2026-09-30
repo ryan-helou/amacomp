@@ -38,28 +38,50 @@ export function canSeeClub(name: string | null | undefined): boolean {
 /** What a coin is called, singular and plural, in one place. */
 export const COIN = { one: "tri coin", many: "tri coins", short: "TC" } as const;
 
-/** The rooms of the Club. The wallet is first because it's the one you check. */
-export type ClubRoom = "wallet" | "shop" | "bets" | "bounties";
+/**
+ * The rooms of the Club, in two houses.
+ *
+ * Ryan, 2026-09-30: split the Club in two. Everything about YOU — what you
+ * have, what you buy, what you look like — is one tab; everything you do
+ * AGAINST somebody else is the other. Four rooms behind one label had the
+ * wallet and a head-to-head bet sharing a row of tabs, which is two different
+ * frames of mind.
+ */
+export type ClubRoom = "wallet" | "shop" | "profile" | "bets" | "bounties";
+export type ClubHouse = "club" | "arena";
 
-export const CLUB_ROOMS: { id: ClubRoom; label: string; blurb: string }[] = [
+export const CLUB_ROOMS: { id: ClubRoom; house: ClubHouse; label: string; blurb: string }[] = [
   {
     id: "wallet",
+    house: "club",
     label: "Wallet",
     blurb: "What you've earned, and where every coin came from.",
   },
   {
     id: "shop",
+    house: "club",
     label: "Shop",
     blurb: "Spend coins on frames, flags, lane colours and a title under your name.",
   },
   {
+    id: "profile",
+    house: "club",
+    label: "Profile",
+    blurb: "Your figure, front and back, and the flag you fly.",
+  },
+  {
     id: "bets",
+    house: "arena",
     label: "Bets",
     blurb: "Stake coins head to head. Both sides have to accept, and the app settles it.",
   },
   {
     id: "bounties",
+    house: "arena",
     label: "Bounties",
     blurb: "Tasks Ryan posts with coins attached. First to do it takes them.",
   },
 ];
+
+/** The rooms of one house, in order. */
+export const roomsOf = (house: ClubHouse) => CLUB_ROOMS.filter((r) => r.house === house);

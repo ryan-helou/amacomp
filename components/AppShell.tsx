@@ -24,7 +24,7 @@ import { ProfileProvider, AthleteName } from "./ProfileContext";
 import { LoadoutsProvider } from "./AthleteFigure";
 import { canSeeClub } from "@/lib/club";
 
-type Tab = "log" | "week" | "board" | "records" | "club";
+type Tab = "log" | "week" | "board" | "records" | "club" | "arena";
 
 const MONTHS_LONG = [
   "January", "February", "March", "April", "May", "June",
@@ -42,12 +42,31 @@ function formatKickoff(key: DayKey): string {
 // right Records — the record book, the Hall of Fame and the titles, behind one
 // toggle — and then the Club, where the coins live. Reading left to right the
 // nav goes from this week to all time to the side game.
+/**
+ * The bar, in two arrangements.
+ *
+ * Ryan, 2026-09-30: logging moves to a + at the top and the Club splits in
+ * two. That is his bar; the league keeps the one it knows until he says to
+ * send it to everyone. Same door as the figures — one name, one check.
+ *
+ * Logging earns a + rather than a tab because it is the one thing here you
+ * come to DO. The other four are things you come to look at, and a verb sat
+ * among four nouns.
+ */
 const TABS: { id: Tab; label: string }[] = [
   { id: "week", label: "Week" },
   { id: "board", label: "Board" },
   { id: "log", label: "Log" },
   { id: "records", label: "Records" },
   { id: "club", label: "Club" },
+];
+
+const RYAN_TABS: { id: Tab; label: string }[] = [
+  { id: "week", label: "Week" },
+  { id: "board", label: "Board" },
+  { id: "records", label: "Records" },
+  { id: "club", label: "Club" },
+  { id: "arena", label: "Bets" },
 ];
 
 export function AppShell({
@@ -66,6 +85,10 @@ export function AppShell({
   const league = useLeague(initial);
   const { state, busy, send } = league;
   const [tab, setTab] = useState<Tab>("week");
+  // The new shape is Ryan's until he sends it to the league.
+  const newShape = canSeeClub(state.me?.name);
+  const tabs = newShape ? RYAN_TABS : TABS;
+  const [logOpen, setLogOpen] = useState(false);
   const [scoringOpen, setScoringOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
 
@@ -335,6 +358,25 @@ export function AppShell({
               </div>
               <div className="eyebrow text-ink-3">this week</div>
             </div>
+            {newShape && (
+              <button
+                onClick={() => setLogOpen(true)}
+                aria-label="Log a session"
+                className="flex h-10 w-10 items-center justify-center rounded-full pane border border-gold/60 bg-gold/15 text-gold"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  className="h-5 w-5"
+                  aria-hidden
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={() => setScoringOpen(true)}
               aria-label="Settings"
@@ -368,10 +410,11 @@ export function AppShell({
       )}
 
       <main className="flex-1 px-5 pb-36 pt-5">
-        {tab === "log" && <LogTab league={league} refDay={refDay} logDay={logDay} />}
+        {tab === "log" && !newShape && <LogTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "week" && <WeekTab league={league} refDay={refDay} logDay={logDay} />}
         {tab === "board" && <BoardTab state={state} refDay={refDay} />}
-        {tab === "club" && <ClubTab state={state} refDay={refDay} send={send} />}
+        {tab === "club" && <ClubTab state={state} refDay={refDay} send={send} house="club" />}
+        {tab === "arena" && <ClubTab state={state} refDay={refDay} send={send} house="arena" />}
         {tab === "records" && <RecordsAndFame state={state} refDay={refDay} />}
       </main>
 
@@ -407,7 +450,7 @@ export function AppShell({
         className="pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md px-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)-0.5rem))]"
       >
         <div className="glass-island pointer-events-auto flex gap-1 rounded-[2rem] border border-line p-2">
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const on = tab === t.id;
             return (
               <button
@@ -452,6 +495,41 @@ export function AppShell({
               <Glyph name="trophy" className="h-5 w-5" />
             </span>
             {crownMsg}
+          </div>
+        </div>
+      )}
+
+      {/* The + opens the log as a sheet. It is the one thing in the app you
+          come to DO rather than to read, so it gets a door of its own rather
+          than a seat among the tabs — and it closes itself the moment a
+          session saves, because the answer to "did that work" is the board
+          behind it, not a form still sitting open. */}
+      {logOpen && newShape && (
+        <div className="fixed inset-0 z-50 flex flex-col">
+          <button
+            aria-label="Close"
+            onClick={() => setLogOpen(false)}
+            className="absolute inset-0 bg-scrim"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Log a session"
+            className="relative mt-auto max-h-[92dvh] overflow-y-auto glass-raised rounded-t-3xl border-t border-line-2 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4"
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-3" />
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="stamp text-xl text-ink">Log a session</h2>
+              <button onClick={() => setLogOpen(false)} className="eyebrow text-ink-2">
+                Close
+              </button>
+            </div>
+            <LogTab
+              league={league}
+              refDay={refDay}
+              logDay={logDay}
+              onSaved={() => setLogOpen(false)}
+            />
           </div>
         </div>
       )}
