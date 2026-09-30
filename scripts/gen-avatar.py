@@ -249,10 +249,6 @@ def build(P):
         c.disc(40, HC-1.5, HRX+0.9, HRY-0.4, "K", y1=HC-HRY*0.04),
         c.rect(40-HRX-0.6, HC-HRY*0.26, 40+HRX+0.6, HC-HRY*0.02, "A"),
         c.disc(40, HC-HRY*1.02, 2.6, 2.6, "A")))
-    item("headband", 4, lambda c: (
-        c.rect(40-HRX+0.1, HC-HRY*0.36, 40+HRX-0.1, HC-HRY*0.12, "K"),
-        c.rect(40-HRX+0.1, HC-HRY*0.30, 40+HRX-0.1, HC-HRY*0.26, "A"),
-        c.rect(40-HRX*0.7, HC-HRY*0.35, 40-HRX*0.35, HC-HRY*0.31, "W")))
     item("visor", 4, lambda c: (
         c.disc(40, HC-1.0, HRX+0.7, HRY-0.2, "K", y0=HC-HRY*0.46, y1=HC-HRY*0.14),
         c.poly([(40+HRX*0.75, HC-HRY*0.36), (40+HRX+7.5, HC-HRY*0.30), (40+HRX+9.5, HC-HRY*0.16),
@@ -388,15 +384,6 @@ def build(P):
         c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K"),
         c.capsule(L, LY0-2, FY-0.5, LHW+0.4, "K"), c.capsule(R, LY0-2, FY-0.5, LHW+0.4, "K"),
         c.rect(L-LHW-0.4, FY-3.5, L+LHW+0.4, FY-2.3, "A"), c.rect(R-LHW-0.4, FY-3.5, R+LHW+0.4, FY-2.3, "A")))
-    item("splitshorts", 2, lambda c: (
-        c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K"),
-        c.rect(L-LHW-0.8, HIP+1, R+LHW+0.8, LY0+(LY1-LY0)*0.30, "K"),
-        c.rect(40-2.0, HIP+3, 40+2.0, LY0+(LY1-LY0)*0.30, "."),
-        c.poly([(L-LHW-0.9, LY0+(LY1-LY0)*0.30), (L+LHW*0.2, LY0+(LY1-LY0)*0.30),
-                (L-LHW-0.9, LY0+(LY1-LY0)*0.14)], "."),
-        c.poly([(R+LHW+0.9, LY0+(LY1-LY0)*0.30), (R-LHW*0.2, LY0+(LY1-LY0)*0.30),
-                (R+LHW+0.9, LY0+(LY1-LY0)*0.14)], "."),
-        c.rect(40-TH_+0.5, HIP-3.6, 40+TH_-0.5, HIP-2.2, "A")))
     item("trail", 3, lambda c: (shoe(c, 3.2, "lace"),
         [c.rect(cx-LHW-0.4, FY+5.2, cx+LHW+0.4, FY+6.6, "A") for cx in (L, R)],
         [c.rect(cx-LHW-0.5+i*1.8, FY+7.4, cx-LHW+0.4+i*1.8, FY+8.4, ".") for cx in (L, R) for i in range(4)]))
