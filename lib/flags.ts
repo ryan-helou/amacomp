@@ -98,6 +98,38 @@ function lum(hex: string): number {
 }
 
 /**
+ * The flag as a BANNER rather than as a rectangle.
+ *
+ * Ryan, 2026-09-30: "i dont want a the rectangle flag, but i want it to be a
+ * banner but copy the flag dissect the flag". The drawing is still the
+ * official one, untouched — it is the SHAPE that changes. The flag is cut to a
+ * hanging banner: a bar across the top it hangs from, straight sides, and a
+ * swallowtail bitten out of the hem. Clipping rather than redrawing is the
+ * whole point; a banner drawn from scratch would be a hand-drawn flag again
+ * under another name.
+ */
+export function flagBanner(id: string): string {
+  const flag = FLAG_BY_ID.get(id);
+  if (!flag) return "";
+  const cut = `${flag.id}-cut`;
+  const hem = "M0,0 H30 V21 L15,27 L0,21 Z";
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="-1 -1.8 32 29.8">` +
+    `<defs><clipPath id="${cut}"><path d="${hem}"/></clipPath></defs>` +
+    `<g clip-path="url(#${cut})">` +
+    // The flag fills the banner, stretched down over the hem, so the
+    // swallowtail cuts through the flag's own colours and not through empty
+    // space beneath them.
+    `<svg width="30" height="27" viewBox="0 0 30 20" preserveAspectRatio="none">${flag.art}</svg>` +
+    // the fold: a shadow down the hoist, a lift along the top
+    `<rect width="4" height="27" fill="rgba(0,0,0,0.18)"/>` +
+    `<rect width="30" height="2.5" fill="rgba(255,255,255,0.22)"/></g>` +
+    `<path d="${hem}" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1"/>` +
+    `<rect x="-1" y="-1.6" width="32" height="2.2" rx="1.1" fill="rgba(0,0,0,0.5)"/></svg>`
+  );
+}
+
+/**
  * The lane: the country's flag behind a whole row.
  *
  * The bands are a CSS gradient and the emblem is its own centred layer rather
@@ -151,21 +183,13 @@ export function flagLane(id: string): {
     `linear-gradient(90deg, rgba(${c},0.90) 0%, rgba(${c},0.88) 56%,` +
     ` rgba(${c},0.46) 70%, rgba(${c},0.34) 84%, rgba(${c},0.78) 100%)`;
 
-  // The flag itself, small, in the right third — at its true 3:2 shape, not
-  // stretched like the tag, because this one is a badge sitting ON the wash
-  // rather than filling it. The right third is the only stretch of a row with
-  // nothing in it: put it centre and it sits behind the athlete's name. It
-  // goes ON TOP of the scrim, not under it: a badge is the same colours as
-  // the wash it lands on, so anything dimming it makes it disappear into its
-  // own flag. The hairline is what separates the two.
-  const badge = encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="-0.75 -0.75 31.5 21.5">` +
-      `${flag.art}<rect x="-0.375" y="-0.375" width="30.75" height="20.75" fill="none" ` +
-      `stroke="rgba(0,0,0,0.55)" stroke-width="0.75"/></svg>`,
-  );
-  const layers = [`url("data:image/svg+xml,${badge}")`, scrim, bands];
-  const sizes = ["auto 62%", "100% 100%", "100% 100%"];
-  const spots = ["74% center", "0 0", "0 0"];
+  // In the right third, the only stretch of a row with nothing in it, and ON
+  // TOP of the scrim: a banner is the same colours as the wash it lands on, so
+  // anything dimming it makes it disappear into its own flag.
+  const banner = encodeURIComponent(flagBanner(flag.id));
+  const layers = [`url("data:image/svg+xml,${banner}")`, scrim, bands];
+  const sizes = ["auto 82%", "100% 100%", "100% 100%"];
+  const spots = ["74% top", "0 0", "0 0"];
 
   return {
     backgroundImage: layers.join(", "),

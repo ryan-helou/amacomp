@@ -1,11 +1,11 @@
-import { flagSvg } from "@/lib/flags";
+import { flagBanner } from "@/lib/flags";
 
 /**
- * A flag as a small tag — the same look the Board gives an away week.
+ * A country as a small hanging banner.
  *
- * The drawing comes from `flagSvg`, which is also what paints the lane behind
- * a whole row, so the tag and the lane can never disagree about what a country
- * looks like.
+ * The drawing comes from `flagBanner`, which is also what flies in the lane
+ * behind a whole row — so the shop shows the thing you actually get, and the
+ * two can never disagree about what a country looks like.
  */
 export function CountryFlag({
   id,
@@ -14,11 +14,11 @@ export function CountryFlag({
   id: string;
   className?: string;
 }) {
-  const svg = flagSvg(id);
+  const svg = flagBanner(id);
   if (!svg) return null;
   return (
     <span
-      className={`inline-block shrink-0 overflow-hidden rounded-[3px] align-middle ring-1 ring-black/20 [&>svg]:h-full [&>svg]:w-full ${className}`}
+      className={`inline-block shrink-0 align-middle [&>svg]:h-full [&>svg]:w-full ${className}`}
       role="img"
       aria-label={id}
       // Generated from the catalogue in lib/flags.ts; no user input reaches it.
