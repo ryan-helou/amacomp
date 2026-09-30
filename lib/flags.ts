@@ -98,34 +98,30 @@ function lum(hex: string): number {
 }
 
 /**
- * The flag as a BANNER rather than as a rectangle.
+ * The flag hung as a banner.
  *
- * Ryan, 2026-09-30: "i dont want a the rectangle flag, but i want it to be a
- * banner but copy the flag dissect the flag". The drawing is still the
- * official one, untouched — it is the SHAPE that changes. The flag is cut to a
- * hanging banner: a bar across the top it hangs from, straight sides, and a
- * swallowtail bitten out of the hem. Clipping rather than redrawing is the
- * whole point; a banner drawn from scratch would be a hand-drawn flag again
- * under another name.
+ * Ryan, 2026-09-30, in order: not a bare rectangle, make it a banner, and then
+ * "no stop making the flag cutouts". So nothing is cut out of the flag any
+ * more — the swallowtail hem took a bite out of the country's own colours and
+ * that is what a cutout is. The flag is WHOLE. What makes it a banner is the
+ * furniture around it: the bar it hangs from, the two rings it hangs by, a
+ * shadow down the hoist and a lift along the top where the cloth turns.
  */
 export function flagBanner(id: string): string {
   const flag = FLAG_BY_ID.get(id);
   if (!flag) return "";
-  const cut = `${flag.id}-cut`;
-  const hem = "M0,0 H30 V21 L15,27 L0,21 Z";
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="-1 -1.8 32 29.8">` +
-    `<defs><clipPath id="${cut}"><path d="${hem}"/></clipPath></defs>` +
-    `<g clip-path="url(#${cut})">` +
-    // The flag fills the banner, stretched down over the hem, so the
-    // swallowtail cuts through the flag's own colours and not through empty
-    // space beneath them.
-    `<svg width="30" height="27" viewBox="0 0 30 20" preserveAspectRatio="none">${flag.art}</svg>` +
-    // the fold: a shadow down the hoist, a lift along the top
-    `<rect width="4" height="27" fill="rgba(0,0,0,0.18)"/>` +
-    `<rect width="30" height="2.5" fill="rgba(255,255,255,0.22)"/></g>` +
-    `<path d="${hem}" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1"/>` +
-    `<rect x="-1" y="-1.6" width="32" height="2.2" rx="1.1" fill="rgba(0,0,0,0.5)"/></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="-1.5 -4 33 26">` +
+    // the bar, and the rings it hangs by
+    `<rect x="-1.5" y="-3.6" width="33" height="2" rx="1" fill="rgba(0,0,0,0.55)"/>` +
+    `<rect x="5.5" y="-3.2" width="1.4" height="3.6" fill="rgba(0,0,0,0.45)"/>` +
+    `<rect x="23.1" y="-3.2" width="1.4" height="3.6" fill="rgba(0,0,0,0.45)"/>` +
+    // the flag itself, entire
+    `<svg width="30" height="20" viewBox="0 0 30 20" preserveAspectRatio="none">${flag.art}</svg>` +
+    // the fold
+    `<rect width="3.4" height="20" fill="rgba(0,0,0,0.16)"/>` +
+    `<rect width="30" height="2" fill="rgba(255,255,255,0.18)"/>` +
+    `<rect width="30" height="20" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="0.9"/></svg>`
   );
 }
 
