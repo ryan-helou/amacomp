@@ -334,14 +334,20 @@ console.log("\none country, one purchase, one drawing");
     check(`${f.label} makes a lane`, !!flagLane(f.id)?.backgroundImage, true);
   }
 
-  // The lane is the flag: its bands are in the background, and its emblem is
-  // there as its own layer rather than stretched with them.
+  // The lane is ONE LONG THING: the flag itself, stretched the length of the
+  // row, with a scrim over it so the text stays readable. Not a badge, not a
+  // banner, not a shape sitting inside the row — that was asked for three
+  // times and got built wrong three times, so it is pinned down here.
   const lane = flagLane("ca")!;
-  for (const band of FLAG_BY_ID.get("ca")!.bands) {
-    check(`Canada's lane carries ${band}`, lane.backgroundImage.includes(band), true);
-  }
-  check("and its leaf rides as its own layer", lane.backgroundImage.includes("data:image/svg+xml"), true);
-  check("so the emblem keeps its shape", lane.backgroundSize.includes("auto"), true);
+  check("the lane is the flag's own drawing", lane.backgroundImage.includes("data:image/svg+xml"), true);
+  check("and it carries Canada's red", decodeURIComponent(lane.backgroundImage).includes("#f00"), true);
+  check("it runs the whole row", lane.backgroundSize, "100% 100%, 100% 100%");
+  check("nothing is inset", lane.backgroundSize.includes("auto"), false);
+  check("nothing is parked in a corner", lane.backgroundPosition, "0 0, 0 0");
+  check("a scrim rides over it", lane.backgroundImage.startsWith("linear-gradient"), true);
+  // A pale flag needs dark ink; Japan is the one that proves it.
+  check("a white flag flips the ink", !!flagLane("jp")?.["--ink"], true);
+  check("a dark one does not", flagLane("jo")?.["--ink"], undefined);
 
   // The ink has to follow what's under the TEXT, which for a horizontal flag
   // is the middle band. Averaging the three put light text on the white

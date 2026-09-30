@@ -98,34 +98,6 @@ function lum(hex: string): number {
 }
 
 /**
- * The flag hung as a banner.
- *
- * Ryan, 2026-09-30, in order: not a bare rectangle, make it a banner, and then
- * "no stop making the flag cutouts". So nothing is cut out of the flag any
- * more — the swallowtail hem took a bite out of the country's own colours and
- * that is what a cutout is. The flag is WHOLE. What makes it a banner is the
- * furniture around it: the bar it hangs from, the two rings it hangs by, a
- * shadow down the hoist and a lift along the top where the cloth turns.
- */
-export function flagBanner(id: string): string {
-  const flag = FLAG_BY_ID.get(id);
-  if (!flag) return "";
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="-1.5 -4 33 26">` +
-    // the bar, and the rings it hangs by
-    `<rect x="-1.5" y="-3.6" width="33" height="2" rx="1" fill="rgba(0,0,0,0.55)"/>` +
-    `<rect x="5.5" y="-3.2" width="1.4" height="3.6" fill="rgba(0,0,0,0.45)"/>` +
-    `<rect x="23.1" y="-3.2" width="1.4" height="3.6" fill="rgba(0,0,0,0.45)"/>` +
-    // the flag itself, entire
-    `<svg width="30" height="20" viewBox="0 0 30 20" preserveAspectRatio="none">${flag.art}</svg>` +
-    // the fold
-    `<rect width="3.4" height="20" fill="rgba(0,0,0,0.16)"/>` +
-    `<rect width="30" height="2" fill="rgba(255,255,255,0.18)"/>` +
-    `<rect width="30" height="20" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="0.9"/></svg>`
-  );
-}
-
-/**
  * The lane: the country's flag behind a whole row.
  *
  * The bands are a CSS gradient and the emblem is its own centred layer rather
@@ -149,49 +121,34 @@ export function flagLane(id: string): {
   const flag = FLAG_BY_ID.get(id);
   if (!flag) return null;
 
-  const weights = flag.weights ?? [1, 1, 1];
-  const total = weights.reduce((a, b) => a + b, 0);
-  let at = 0;
-  const stops = flag.bands.map((colour, i) => {
-    const from = (at / total) * 100;
-    at += weights[i] ?? 1;
-    const to = (at / total) * 100;
-    return `${colour} ${from.toFixed(2)}% ${to.toFixed(2)}%`;
-  });
-  const bands = `linear-gradient(${flag.rows ? 180 : 90}deg, ${stops.join(", ")})`;
+  // ONE LONG THING: the flag itself, stretched the whole length of the row.
+  // No badge in the corner, no banner, nothing clipped out of it — Ryan asked
+  // for a lane three times and I kept putting a small shape inside it instead.
+  const lane = encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="0 0 30 20" ` +
+      `preserveAspectRatio="none">${flag.art}</svg>`,
+  );
 
-  // The ink follows what's actually under the TEXT. On a horizontal flag that
-  // is the MIDDLE band, since the text runs across the middle of the row —
-  // averaging the three put light text on Jordan's white stripe. On a vertical
-  // one it's the first band, where the name sits.
+  // The ink follows what is under the TEXT. On a horizontal flag that is the
+  // MIDDLE band, since the text runs across the middle of the row; on a
+  // vertical one it is the first band, where the name sits.
   const ends = flag.rows
     ? lum(flag.bands[Math.floor(flag.bands.length / 2)])
     : lum(flag.bands[0]);
   const light = ends > 0.5;
   const c = light ? "255,255,255" : "8,10,14";
-  // The scrim used to be a symmetric wash, thinnest in the middle at 0.3 —
-  // fine when the row was one short line of large type, wrong now the row
-  // carries a figure, a name and a line of small mono across that middle.
-  // So it is left-heavy: solid under everything that is read, thinning only
-  // over the right third, which is the one part of the row with nothing in
-  // it but the points, and those get their own patch at the end.
+  // Left-heavy: solid under the figure, the name and the detail line, thinning
+  // only over the right third, which is the one stretch of the row with
+  // nothing in it, then firming up again under the points.
   const scrim =
     `linear-gradient(90deg, rgba(${c},0.90) 0%, rgba(${c},0.88) 56%,` +
     ` rgba(${c},0.46) 70%, rgba(${c},0.34) 84%, rgba(${c},0.78) 100%)`;
 
-  // In the right third, the only stretch of a row with nothing in it, and ON
-  // TOP of the scrim: a banner is the same colours as the wash it lands on, so
-  // anything dimming it makes it disappear into its own flag.
-  const banner = encodeURIComponent(flagBanner(flag.id));
-  const layers = [`url("data:image/svg+xml,${banner}")`, scrim, bands];
-  const sizes = ["auto 82%", "100% 100%", "100% 100%"];
-  const spots = ["74% top", "0 0", "0 0"];
-
   return {
-    backgroundImage: layers.join(", "),
-    backgroundSize: sizes.join(", "),
-    backgroundRepeat: layers.map(() => "no-repeat").join(", "),
-    backgroundPosition: spots.join(", "),
+    backgroundImage: `${scrim}, url("data:image/svg+xml,${lane}")`,
+    backgroundSize: "100% 100%, 100% 100%",
+    backgroundRepeat: "no-repeat, no-repeat",
+    backgroundPosition: "0 0, 0 0",
     ...(light ? { "--ink": "#0b1f2d", "--ink-2": "#3f5f74", "--ink-3": "#4e6d80" } : {}),
   };
 }
