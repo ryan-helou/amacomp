@@ -1,3 +1,4 @@
+import { MAPLE, MAPLE_BOX } from "./away";
 import { FLAG_ART } from "./flagArt";
 
 /**
@@ -31,16 +32,25 @@ export interface CountryFlag {
    */
   art: string;
   /**
-   * The same flag laid out for a LANE — a box five times as wide as it is
-   * tall, not three halves.
+   * Where the flag's true-shape copy sits in the lane, as a fraction of the
+   * row. `null` means it has no shape to save — Italy is three stripes, and a
+   * stripe stretched is still a stripe.
    *
-   * A flag squashed into that shape is a distorted flag: Brazil's lozenge
-   * flattens into a smear and the globe becomes an ellipse. So a flag whose
-   * design cannot survive the stretch gets a second arrangement instead, on
-   * the same field, with the parts that must keep their shape drawn at their
-   * real one. Stripes stretch happily and need nothing here.
+   * Default 0.76: the gap between the end of the detail line and the start of
+   * the points.
    */
-  laneArt?: string;
+  laneAt?: number | null;
+  /**
+   * What to draw at that spot instead of the whole flag, in the same 30x20
+   * box, for flags whose BANDS ARE VERTICAL.
+   *
+   * The lane paints its bands stretched, which is honest for a stripe. A
+   * flag with horizontal bands looks identical stretched or not, so its whole
+   * drawing can go on top and the seam cannot be seen. Canada's cannot: drop
+   * the whole flag on and you get its red-white-red inside the stretched
+   * red-white-red, at the wrong scale. So Canada contributes its leaf alone.
+   */
+  laneMotif?: string;
 }
 
 /**
@@ -52,25 +62,29 @@ export interface CountryFlag {
  *
  * Each one is drawn to its real construction, not to an impression of it.
  */
+/** The house flag's star, the one shape in this file anybody drew. */
+const STAR =
+  `<polygon fill="#C9A227" points="15,3.5 16.76,8.91 22.45,8.91 17.85,12.25 19.61,17.66 ` +
+  `15,14.32 10.39,17.66 12.15,12.25 7.55,8.91 13.24,8.91"/>`;
+
 export const COUNTRY_FLAGS: CountryFlag[] = [
-  { id: "ca", label: "Canada", bands: ["#FF0000", "#FFFFFF", "#FF0000"], weights: [1, 2, 1], art: FLAG_ART.ca },
+  {
+    id: "ca", label: "Canada", bands: ["#FF0000", "#FFFFFF", "#FF0000"], weights: [1, 2, 1], art: FLAG_ART.ca,
+    // 0.64, not 0.76: Canada's white band ends at three quarters of the row,
+    // and a red leaf on the red band is no leaf at all.
+    laneAt: 0.64,
+    laneMotif: `<svg x="9.4" y="4" width="11.2" height="12" viewBox="${MAPLE_BOX}"><path fill="#FF0000" d="${MAPLE}"/></svg>`,
+  },
   { id: "qc", label: "Quebec", bands: ["#003DA5"], weights: [1], art: FLAG_ART.qc },
   { id: "lb", label: "Lebanon", bands: ["#D31624", "#FFFFFF", "#D31624"], rows: true, weights: [1, 2, 1], art: FLAG_ART.lb },
-  { id: "it", label: "Italy", bands: ["#009246", "#FFFFFF", "#CE2B37"], art: FLAG_ART.it },
+  { id: "it", label: "Italy", bands: ["#009246", "#FFFFFF", "#CE2B37"], art: FLAG_ART.it, laneAt: null },
   { id: "jp", label: "Japan", bands: ["#FFFFFF"], weights: [1], art: FLAG_ART.jp },
+  // The chevron belongs at the hoist on a flag, but the hoist of a LANE is
+  // under the rank, the figure and the name, with the scrim at its heaviest.
+  // Put it where it can be seen; the bands are horizontal, so they line up
+  // wherever the copy lands and only the chevron appears.
   { id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true, art: FLAG_ART.jo },
-  {
-    id: "br", label: "Brazil", bands: ["#009440"], weights: [1], art: FLAG_ART.br,
-    // Green the whole length, and the real flag dropped in at its true 3:2 so
-    // the lozenge stays a lozenge. Its own green is the same green, so the
-    // seam does not show.
-    laneArt:
-      `<rect width="90" height="20" fill="#009440"/>` +
-      // Centred at about 76% of the row: clear of the detail line, which runs
-      // out at roughly 62%, and clear of the points, which start near 88%.
-      `<svg x="53" y="0" width="30" height="20" viewBox="0 0 30 20" ` +
-      `preserveAspectRatio="xMidYMid meet">${FLAG_ART.br}</svg>`,
-  },
+  { id: "br", label: "Brazil", bands: ["#009440"], weights: [1], art: FLAG_ART.br },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
   // The one flag with nothing to copy. Magenta, black and mint are the app's
   // own colours and the star is the only shape here anybody drew.
@@ -79,7 +93,8 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
     art:
       `<rect width="10" height="20" fill="#D4147E"/><rect x="10" width="10" height="20" fill="#101215"/>` +
       `<rect x="20" width="10" height="20" fill="#16D39A"/>` +
-      `<polygon fill="#C9A227" points="15,3.5 16.76,8.91 22.45,8.91 17.85,12.25 19.61,17.66 15,14.32 10.39,17.66 12.15,12.25 7.55,8.91 13.24,8.91"/>`,
+      STAR,
+    laneMotif: STAR,
   },
 ];
 
@@ -146,13 +161,60 @@ export function flagLane(id: string): {
   // ONE LONG THING: the flag itself, stretched the whole length of the row.
   // No badge in the corner, no banner, nothing clipped out of it — Ryan asked
   // for a lane three times and I kept putting a small shape inside it instead.
-  // A lane-specific arrangement when the flag has one, otherwise the flag
-  // itself — stripes are the same stripes at any width.
-  const box = flag.laneArt ? "0 0 90 20" : "0 0 30 20";
-  const lane = encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="${box}" ` +
-      `preserveAspectRatio="none">${flag.laneArt ?? flag.art}</svg>`,
+  // ONE LONG THING, in two layers that do not fight.
+  //
+  // The BANDS are painted stretched across the row, which is honest: a stripe
+  // is the same stripe at any width. Anything with a SHAPE — a leaf, a disc,
+  // a cedar, a lozenge — is a SECOND background layer, sized `auto` so the
+  // browser keeps its proportions, dropped in the gap the scrim leaves clear.
+  //
+  // It has to be CSS that holds the aspect, not SVG. A nested <svg> with
+  // preserveAspectRatio inside a parent drawn with preserveAspectRatio="none"
+  // is measured in the parent's user units, and those units are already
+  // squashed — so the nested copy came out exactly as stretched as the thing
+  // it was meant to fix. Japan's disc stayed an ellipse through two goes at
+  // it. `background-size: auto` is measured in pixels, and pixels are square.
+  const weights = flag.weights ?? [1, 1, 1];
+  const whole = weights.reduce((a, b) => a + b, 0);
+  let at = 0;
+  const field = flag.bands
+    .map((colour, i) => {
+      const from = (at / whole) * 100;
+      at += weights[i] ?? 1;
+      const to = (at / whole) * 100;
+      return flag.rows
+        ? `<rect y="${from}" width="100" height="${to - from}" fill="${colour}"/>`
+        : `<rect x="${from}" width="${to - from}" height="100" fill="${colour}"/>`;
+    })
+    .join("");
+  const url = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+
+  // The field is told to fill the row and does not care: stripes stretch.
+  const fieldUrl = url(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" ` +
+      `preserveAspectRatio="none">${field}</svg>`,
   );
+  // The motif must NOT say preserveAspectRatio="none". That is what took two
+  // goes to find: `none` strips an SVG of its intrinsic ratio, so
+  // `background-size: auto 100%` had nothing to reason from and fell back to
+  // the full width of the row — the exact stretch this exists to undo. With
+  // width and height on the root and the default fitting, the image is 3:2
+  // and `auto` keeps it that way in PIXELS, which is the only space where a
+  // circle is round.
+  const motifUrl = url(
+    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} width="30" height="20" ` +
+      `viewBox="0 0 30 20">${flag.laneMotif ?? flag.art}</svg>`,
+  );
+
+  const layers = [fieldUrl];
+  const sizes = ["100% 100%"];
+  const spots = ["0 0"];
+  const spot = flag.laneAt === undefined ? 0.76 : flag.laneAt;
+  if (spot !== null) {
+    layers.push(motifUrl);
+    sizes.push("auto 100%");
+    spots.push(`${(spot * 100).toFixed(0)}% center`);
+  }
 
   // The ink follows what is under the TEXT. On a horizontal flag that is the
   // MIDDLE band, since the text runs across the middle of the row; on a
@@ -169,11 +231,13 @@ export function flagLane(id: string): {
     `linear-gradient(90deg, rgba(${c},0.90) 0%, rgba(${c},0.88) 56%,` +
     ` rgba(${c},0.46) 70%, rgba(${c},0.34) 84%, rgba(${c},0.78) 100%)`;
 
+  // The scrim goes on top of both, so the text is legible over whichever of
+  // them happens to be under it.
   return {
-    backgroundImage: `${scrim}, url("data:image/svg+xml,${lane}")`,
-    backgroundSize: "100% 100%, 100% 100%",
-    backgroundRepeat: "no-repeat, no-repeat",
-    backgroundPosition: "0 0, 0 0",
+    backgroundImage: [scrim, ...layers.slice().reverse()].join(", "),
+    backgroundSize: ["100% 100%", ...sizes.slice().reverse()].join(", "),
+    backgroundRepeat: layers.map(() => "no-repeat").concat("no-repeat").join(", "),
+    backgroundPosition: ["0 0", ...spots.slice().reverse()].join(", "),
     ...(light ? { "--ink": "#0b1f2d", "--ink-2": "#3f5f74", "--ink-3": "#4e6d80" } : {}),
   };
 }
