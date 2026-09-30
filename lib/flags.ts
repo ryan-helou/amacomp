@@ -66,7 +66,9 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
     // seam does not show.
     laneArt:
       `<rect width="90" height="20" fill="#009440"/>` +
-      `<svg x="46" y="0" width="30" height="20" viewBox="0 0 30 20" ` +
+      // Centred at about 76% of the row: clear of the detail line, which runs
+      // out at roughly 62%, and clear of the points, which start near 88%.
+      `<svg x="53" y="0" width="30" height="20" viewBox="0 0 30 20" ` +
       `preserveAspectRatio="xMidYMid meet">${FLAG_ART.br}</svg>`,
   },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
