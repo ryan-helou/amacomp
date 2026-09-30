@@ -14,3 +14,4 @@ tsconfig.tsbuildinfo
 .vercel
 __pycache__/
 tricoins*.jpeg
+.flag-cache/

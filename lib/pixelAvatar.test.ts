@@ -209,9 +209,27 @@ console.log("\nflags are tags, not cloth hung behind him");
   const flown = avatarSvg({ ...DEFAULT_LOADOUT, flag: { item: "flag.ca" } });
   check("flying one leaves the figure alone", bare, flown);
 
-  // Two countries must not be the same tag.
-  const drawn = new Set(COUNTRY_FLAGS.map((f) => JSON.stringify([f.bands, f.rows, f.weights, f.emblem])));
+  // Two countries must not be the same tag. Compare the DRAWING, not the
+  // fields it is built from: the art is now copied wholesale from the official
+  // files, so a duplicated copy-paste is the failure this has to catch.
+  const drawn = new Set(COUNTRY_FLAGS.map((f) => flagSvg(f.id)));
   check("no two flags are drawn the same", drawn.size, COUNTRY_FLAGS.length);
+  check("every flag has a drawing", COUNTRY_FLAGS.every((f) => f.art.length > 60), true);
+
+  // The bug this catches: Quebec, Brazil and Kenya use `xlink:href`, and the
+  // lane embeds the same markup in a data: URI, which is parsed as strict XML.
+  // An undeclared prefix throws out the WHOLE image, so all three flags
+  // silently disappeared from every lane while still drawing fine inline —
+  // HTML parsing is lenient and had been covering for it.
+  const needXlink = COUNTRY_FLAGS.filter((f) => f.art.includes("xlink:"));
+  check("some flags use xlink", needXlink.length > 0, true);
+  const undeclared = needXlink.filter((f) => !flagSvg(f.id).includes("xmlns:xlink"));
+  check("every flag that uses xlink declares it", undeclared.map((f) => f.id), []);
+  const laneMissing = COUNTRY_FLAGS.filter((f) => {
+    const bg = flagLane(f.id)?.backgroundImage ?? "";
+    return f.art.includes("xlink:") && !bg.includes("xmlns%3Axlink");
+  });
+  check("and declares it in the lane too", laneMissing.map((f) => f.id), []);
   check("every band is a colour", COUNTRY_FLAGS.every((f) => f.bands.every((b) => /^#[0-9A-Fa-f]{6}$/.test(b))), true);
 }
 
@@ -305,7 +323,13 @@ console.log("\none country, one purchase, one drawing");
     const svg = flagSvg(f.id);
     // The drawing has to contain the country's own colours, or it's some
     // other country.
-    const missing = f.bands.filter((b) => !svg.includes(b));
+    // The official files write colours however they like — `#f00`, `#060`,
+    // lowercase — so both sides are normalised before they are compared.
+    const wide = (c: string) =>
+      (c.length === 4 ? `#${c[1]}${c[1]}${c[2]}${c[2]}${c[3]}${c[3]}` : c).toLowerCase();
+    const inArt = new Set((svg.match(/#[0-9a-fA-F]{3,6}\b/g) ?? []).map(wide));
+    // Black is the default fill, so a flag may use it without naming it.
+    const missing = f.bands.filter((b) => wide(b) !== "#000000" && !inArt.has(wide(b)));
     check(`${f.label} is drawn in its own colours`, missing, []);
     check(`${f.label} makes a lane`, !!flagLane(f.id)?.backgroundImage, true);
   }
