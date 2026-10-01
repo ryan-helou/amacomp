@@ -57,3 +57,21 @@ npm run typecheck && npx eslint lib components app scripts && npm test && npm ru
 
 A test must be load-bearing: verify it fails against the unfixed code before you
 claim it covers anything.
+
+## And for anything with a button, drive the UI
+
+```bash
+npx next build
+DATABASE_URL= SESSION_SECRET=qa NEXT_PUBLIC_CLUB_LIVE=1 npx next start -p 3177 &
+python3 scripts/qa.py
+```
+
+`scripts/qa.py` walks every screen in both palettes, as the admin and as a
+regular athlete, then presses everything that writes and checks the number
+actually moved. It seeds its own league and refuses to run against the live app.
+
+It exists because of the gift bug (0cb04e1): the screen rendered perfectly and
+blanked the app the moment anybody tapped the button, because the route
+answered with a partial payload. Every endpoint called through `useLeague`'s
+`send` MUST return `readState()` — the whole state, never `{ ok: true }` — and
+a feature exercised only through its API is not a feature that has been tested.
