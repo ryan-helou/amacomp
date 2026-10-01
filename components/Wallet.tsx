@@ -16,6 +16,8 @@ const KIND_GLYPH: Record<CoinEntry["kind"], GlyphName> = {
   season: "crown",
   grant: "diamond",
   spend: "trash",
+  bet: "trio",
+  bounty: "target",
 };
 
 /**
@@ -33,13 +35,15 @@ export function Wallet({ state, refDay }: { state: AppState; refDay: DayKey }) {
 
   const account = useMemo(
     () => coinAccount(meId, state.athletes, state.activities, state.settings, refDay,
-      state.coinGrants, state.purchases),
-    [meId, state.athletes, state.activities, state.settings, refDay, state.coinGrants, state.purchases],
+      state.coinGrants, state.purchases, state.bets, state.bounties),
+    [meId, state.athletes, state.activities, state.settings, refDay, state.coinGrants,
+     state.purchases, state.bets, state.bounties],
   );
   const board = useMemo(
     () => coinBoard(state.athletes, state.activities, state.settings, refDay,
-      state.coinGrants, state.purchases),
-    [state.athletes, state.activities, state.settings, refDay, state.coinGrants, state.purchases],
+      state.coinGrants, state.purchases, state.bets, state.bounties),
+    [state.athletes, state.activities, state.settings, refDay, state.coinGrants,
+     state.purchases, state.bets, state.bounties],
   );
 
   const bonuses = account.entries.filter((e) => e.kind !== "points");

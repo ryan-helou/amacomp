@@ -1,4 +1,6 @@
 import type { Pool as PgPool } from "pg";
+import type { Bet, BetState } from "./bets";
+import type { Bounty, BountyState } from "./bounties";
 import {
   DEFAULT_SETTINGS,
   SPORTS,
@@ -164,6 +166,18 @@ export interface Store {
    *  draws all six figures on the first screen. */
   listLoadouts(): Promise<Record<string, Record<string, { item: string }>>>;
   setLoadout(athleteId: string, loadout: Record<string, { item: string }>): Promise<void>;
+
+  // The Arena: head-to-head bets and posted bounties.
+  listBets(): Promise<Bet[]>;
+  addBet(bet: Omit<Bet, "id" | "createdAt" | "decidedAt" | "state">): Promise<Bet>;
+  /** Move a bet along. Returns null when the move was not legal from where it
+   *  was — which is how two taps on "accept" stay one acceptance. */
+  setBetState(id: string, from: BetState[], to: BetState): Promise<Bet | null>;
+  listBounties(): Promise<Bounty[]>;
+  addBounty(b: Omit<Bounty, "id" | "createdAt" | "state" | "claimedBy" | "claimedAt">): Promise<Bounty>;
+  /** Claim it, if it is still open. Null means somebody got there first. */
+  claimBounty(id: string, athleteId: string): Promise<Bounty | null>;
+  setBountyState(id: string, from: BountyState[], to: BountyState): Promise<Bounty | null>;
 }
 
 function newId(): string {
@@ -619,6 +633,33 @@ class PgStore implements Store {
             athlete_id TEXT PRIMARY KEY REFERENCES athletes(id) ON DELETE CASCADE,
             data JSONB NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )`);
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS club_bets (
+            id TEXT PRIMARY KEY,
+            from_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            to_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            metric TEXT NOT NULL,
+            period TEXT NOT NULL,
+            starts_on DATE NOT NULL,
+            stake INTEGER NOT NULL,
+            state TEXT NOT NULL DEFAULT 'open',
+            note TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            decided_at TIMESTAMPTZ
+          )`);
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS club_bounties (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            detail TEXT NOT NULL DEFAULT '',
+            coins INTEGER NOT NULL,
+            state TEXT NOT NULL DEFAULT 'open',
+            posted_by TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            claimed_by TEXT REFERENCES athletes(id) ON DELETE SET NULL,
+            claimed_at TIMESTAMPTZ,
+            expires_on DATE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS step_days (
@@ -1146,6 +1187,138 @@ class PgStore implements Store {
     );
   }
 
+
+  // --- The Arena ---------------------------------------------------------
+
+  private betRow(x: Record<string, unknown>): Bet {
+    return {
+      id: x.id as string,
+      fromId: x.from_id as string,
+      toId: x.to_id as string,
+      metric: x.metric as Bet["metric"],
+      period: x.period as Bet["period"],
+      startsOn: x.starts_on as string,
+      stake: Number(x.stake),
+      state: x.state as BetState,
+      note: (x.note as string) ?? "",
+      createdAt: x.created_at as string,
+      decidedAt: (x.decided_at as string) ?? null,
+    };
+  }
+
+  async listBets(): Promise<Bet[]> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT id, from_id, to_id, metric, period,
+              to_char(starts_on, 'YYYY-MM-DD') AS starts_on,
+              stake, state, note,
+              to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at,
+              to_char(decided_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS decided_at
+         FROM club_bets ORDER BY created_at DESC`,
+    );
+    return r.rows.map((x) => this.betRow(x));
+  }
+
+  async addBet(bet: Omit<Bet, "id" | "createdAt" | "decidedAt" | "state">): Promise<Bet> {
+    await this.init();
+    const r = await this.pool.query(
+      `INSERT INTO club_bets (id, from_id, to_id, metric, period, starts_on, stake, note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       RETURNING id, from_id, to_id, metric, period,
+                 to_char(starts_on, 'YYYY-MM-DD') AS starts_on,
+                 stake, state, note,
+                 to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at,
+                 to_char(decided_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS decided_at`,
+      [newId(), bet.fromId, bet.toId, bet.metric, bet.period, bet.startsOn,
+       Math.round(bet.stake), bet.note],
+    );
+    return this.betRow(r.rows[0]);
+  }
+
+  async setBetState(id: string, from: BetState[], to: BetState): Promise<Bet | null> {
+    await this.init();
+    // The WHERE clause carries the old state, so two taps on "accept" are one
+    // acceptance: the second updates nothing and gets null back. Checking in
+    // JavaScript and then writing would be a race with a man's coins in it.
+    const r = await this.pool.query(
+      `UPDATE club_bets SET state = $3, decided_at = now()
+        WHERE id = $1 AND state = ANY($2::text[])
+       RETURNING id, from_id, to_id, metric, period,
+                 to_char(starts_on, 'YYYY-MM-DD') AS starts_on,
+                 stake, state, note,
+                 to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at,
+                 to_char(decided_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS decided_at`,
+      [id, from, to],
+    );
+    return r.rows[0] ? this.betRow(r.rows[0]) : null;
+  }
+
+  private bountyRow(x: Record<string, unknown>): Bounty {
+    return {
+      id: x.id as string,
+      title: x.title as string,
+      detail: (x.detail as string) ?? "",
+      coins: Number(x.coins),
+      state: x.state as BountyState,
+      postedBy: x.posted_by as string,
+      claimedBy: (x.claimed_by as string) ?? null,
+      claimedAt: (x.claimed_at as string) ?? null,
+      expiresOn: (x.expires_on as string) ?? null,
+      createdAt: x.created_at as string,
+    };
+  }
+
+  private static readonly BOUNTY_COLS = `id, title, detail, coins, state, posted_by, claimed_by,
+            to_char(claimed_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS claimed_at,
+            to_char(expires_on, 'YYYY-MM-DD') AS expires_on,
+            to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at`;
+
+  async listBounties(): Promise<Bounty[]> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT ${PgStore.BOUNTY_COLS} FROM club_bounties ORDER BY created_at DESC`,
+    );
+    return r.rows.map((x) => this.bountyRow(x));
+  }
+
+  async addBounty(
+    b: Omit<Bounty, "id" | "createdAt" | "state" | "claimedBy" | "claimedAt">,
+  ): Promise<Bounty> {
+    await this.init();
+    const r = await this.pool.query(
+      `INSERT INTO club_bounties (id, title, detail, coins, posted_by, expires_on)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${PgStore.BOUNTY_COLS}`,
+      [newId(), b.title, b.detail, Math.round(b.coins), b.postedBy, b.expiresOn],
+    );
+    return this.bountyRow(r.rows[0]);
+  }
+
+  async claimBounty(id: string, athleteId: string): Promise<Bounty | null> {
+    await this.init();
+    // "First to do it takes them" is this one statement. The state check is in
+    // the WHERE, so the second man to tap gets null rather than a second claim.
+    const r = await this.pool.query(
+      `UPDATE club_bounties SET state = 'claimed', claimed_by = $2, claimed_at = now()
+        WHERE id = $1 AND state = 'open' RETURNING ${PgStore.BOUNTY_COLS}`,
+      [id, athleteId],
+    );
+    return r.rows[0] ? this.bountyRow(r.rows[0]) : null;
+  }
+
+  async setBountyState(id: string, from: BountyState[], to: BountyState): Promise<Bounty | null> {
+    await this.init();
+    // Sending one back to the board clears the claim, or the man who claimed it
+    // stays named on a bounty that is open again.
+    const r = await this.pool.query(
+      `UPDATE club_bounties
+          SET state = $3,
+              claimed_by = CASE WHEN $3 = 'open' THEN NULL ELSE claimed_by END,
+              claimed_at = CASE WHEN $3 = 'open' THEN NULL ELSE claimed_at END
+        WHERE id = $1 AND state = ANY($2::text[]) RETURNING ${PgStore.BOUNTY_COLS}`,
+      [id, from, to],
+    );
+    return r.rows[0] ? this.bountyRow(r.rows[0]) : null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1470,6 +1643,64 @@ class MemoryStore implements Store {
 
   async setLoadout(athleteId: string, loadout: Record<string, { item: string }>): Promise<void> {
     this.loadouts.set(athleteId, loadout);
+  }
+
+  // --- The Arena ---------------------------------------------------------
+
+  private bets: Bet[] = [];
+  private bounties: Bounty[] = [];
+
+  async listBets(): Promise<Bet[]> {
+    return [...this.bets].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  async addBet(bet: Omit<Bet, "id" | "createdAt" | "decidedAt" | "state">): Promise<Bet> {
+    const made: Bet = {
+      ...bet, stake: Math.round(bet.stake), id: newId(), state: "open",
+      createdAt: new Date().toISOString(), decidedAt: null,
+    };
+    this.bets.push(made);
+    return made;
+  }
+
+  async setBetState(id: string, from: BetState[], to: BetState): Promise<Bet | null> {
+    const b = this.bets.find((x) => x.id === id);
+    if (!b || !from.includes(b.state)) return null;
+    b.state = to;
+    b.decidedAt = new Date().toISOString();
+    return { ...b };
+  }
+
+  async listBounties(): Promise<Bounty[]> {
+    return [...this.bounties].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  async addBounty(
+    b: Omit<Bounty, "id" | "createdAt" | "state" | "claimedBy" | "claimedAt">,
+  ): Promise<Bounty> {
+    const made: Bounty = {
+      ...b, coins: Math.round(b.coins), id: newId(), state: "open",
+      claimedBy: null, claimedAt: null, createdAt: new Date().toISOString(),
+    };
+    this.bounties.push(made);
+    return made;
+  }
+
+  async claimBounty(id: string, athleteId: string): Promise<Bounty | null> {
+    const b = this.bounties.find((x) => x.id === id);
+    if (!b || b.state !== "open") return null;
+    b.state = "claimed";
+    b.claimedBy = athleteId;
+    b.claimedAt = new Date().toISOString();
+    return { ...b };
+  }
+
+  async setBountyState(id: string, from: BountyState[], to: BountyState): Promise<Bounty | null> {
+    const b = this.bounties.find((x) => x.id === id);
+    if (!b || !from.includes(b.state)) return null;
+    b.state = to;
+    if (to === "open") { b.claimedBy = null; b.claimedAt = null; }
+    return { ...b };
   }
 }
 

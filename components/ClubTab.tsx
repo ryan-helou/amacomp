@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { CLUB_LIVE, CLUB_ROOMS, canSeeClub, roomsOf, type ClubHouse, type ClubRoom } from "@/lib/club";
 import { Wallet } from "./Wallet";
+import { ArenaBets } from "./ArenaBets";
+import { ArenaBounties } from "./ArenaBounties";
 import { TurnAround } from "./AthleteFigure";
 import { CountryFlag } from "./CountryFlag";
 import { AVATAR_ITEM_BY_ID, lookFor } from "@/lib/pixelAvatar";
@@ -78,13 +80,10 @@ export function ClubTab({
         <AvatarLocker state={state} refDay={refDay} send={send} />
       ) : room === "profile" ? (
         <ClubProfile state={state} refDay={refDay} />
+      ) : room === "bets" ? (
+        <ArenaBets state={state} refDay={refDay} send={send} />
       ) : (
-        /* Bets and challenges land here as they're built. */
-        <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
-          {CLUB_ROOMS.find((r) => r.id === room)?.blurb}
-          <br />
-          <span className="text-ink-3">Being built.</span>
-        </p>
+        <ArenaBounties state={state} refDay={refDay} send={send} />
       )}
     </div>
   );

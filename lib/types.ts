@@ -1,3 +1,5 @@
+import type { Bet } from "./bets";
+import type { Bounty } from "./bounties";
 import type { DayKey } from "./dates";
 
 export const SPORTS = ["swim", "bike", "run", "gym"] as const;
@@ -396,6 +398,10 @@ export interface AppState {
   myLoadout: Record<string, { item: string }> | null;
   /** Every saved avatar, keyed by athlete id. Missing = never saved one. */
   loadouts: Record<string, Record<string, { item: string }>>;
+  /** Head-to-head bets, everyone's — a bet has two sides. */
+  bets: Bet[];
+  /** Posted bounties, everyone's. */
+  bounties: Bounty[];
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {

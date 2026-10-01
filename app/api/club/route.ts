@@ -42,19 +42,25 @@ export async function POST(req: Request) {
     }
     // The price comes from the catalogue, never from the request — otherwise
     // the buyer names their own price.
-    const [athletes, activities, settings, grants, purchases] = await Promise.all([
+    // Bets and bounties are in here too: a man who lost a hundred coins on
+    // Sunday must not be able to spend them on Monday because the till was
+    // only counting sessions and the shop.
+    const [athletes, activities, settings, grants, purchases, bets, bounties] = await Promise.all([
       store.listAthletes(),
       store.listActivities(),
       store.getSettings(),
       store.listCoinGrants(),
       store.listPurchases(),
+      store.listBets(),
+      store.listBounties(),
     ]);
 
     if (purchases.some((p) => p.athleteId === me.id && p.itemId === item.id)) {
       return NextResponse.json({ error: `You already own ${item.label}.` }, { status: 409 });
     }
 
-    const { balance } = coinAccount(me.id, athletes, activities, settings, undefined, grants, purchases);
+    const { balance } = coinAccount(me.id, athletes, activities, settings, undefined,
+      grants, purchases, bets, bounties);
     if (item.price > balance) {
       return NextResponse.json(
         { error: `${item.label} costs ${item.price}. You have ${balance}.` },
