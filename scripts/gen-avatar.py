@@ -451,11 +451,48 @@ def build(P):
         c.rect(40-HRX+3, HC-HRY*0.62, 40+HRX-3, HC-HRY*0.16, "K"),
         c.disc(40, HC-HRY*0.14, HRX+7.5, 2.4, "K"),
         c.rect(40-HRX+2.4, HC-HRY*0.34, 40+HRX-2.4, HC-HRY*0.24, "A", only="K")))
-    item("santa", 4, lambda c: (
-        c.poly([(40-HRX-1, HC-HRY*0.30), (40+HRX*0.2, HC-HRY*1.5),
-                (40+HRX*0.95, HC-HRY*1.2), (40+HRX+1, HC-HRY*0.30)], "K"),
-        c.disc(40+HRX*0.72, HC-HRY*1.30, 3.4, 3.2, "A"),
-        c.rect(40-HRX-1.4, HC-HRY*0.36, 40+HRX+1.4, HC-HRY*0.1, "A")))
+    def santa(c):
+        """A Santa hat that is actually in the picture.
+
+        The old one put its apex at HC - HRY*1.5, which is y = -5 — above the
+        top of the drawing, let alone above the bust window, which starts at
+        y = 2. So the cone was sliced off flat and the pom-pom with it, and
+        what was left read as a red beanie with a white stripe.
+
+        A Santa hat is a cone that FLOPS. Drawn here as a tapering band along
+        a centre line that rises off the brow, bends over at the crown and
+        hangs down past the ear, with the bobble at the end of the droop where
+        it can be seen rather than somewhere off the top of the page.
+        """
+        def taper(path, ch):
+            """A band of falling width along a path: quad per segment, each
+            one square to the direction of travel, so the hat narrows evenly
+            instead of pinching at the bends."""
+            for (x0, y0, w0), (x1, y1, w1) in zip(path, path[1:]):
+                dx, dy = x1 - x0, y1 - y0
+                n = math.hypot(dx, dy) or 1.0
+                px, py = -dy / n, dx / n
+                c.poly([(x0 + px*w0, y0 + py*w0), (x1 + px*w1, y1 + py*w1),
+                        (x1 - px*w1, y1 - py*w1), (x0 - px*w0, y0 - py*w0)], ch)
+
+        brim = HC - HRY*0.30
+        # The cap first, as a dome on the skull. The cone alone left the hair
+        # showing through on the side it leaned away from, and the quads that
+        # made the bend notched its silhouette; a dome under them hides both.
+        c.disc(40, HC - 2.0, HRX + 0.8, HRY - 0.5, "K", y1=brim + 1.2)
+        # then the droop, off the crown and down past the ear
+        taper([(40 - 2.0, 7.0, HRX*0.52),
+               (40 + 6.0, 5.0, HRX*0.38),
+               (40 + HRX*0.92, 7.6, HRX*0.22),
+               (40 + HRX + 3.0, 12.4, HRX*0.11)], "K")
+        # the fur brim, hugging the skull rather than ruled straight across
+        c.disc(40, brim - 1.0, HRX + 1.8, 5.2, "A", y0=brim - 2.6, y1=brim + 2.2)
+        c.rect(40 - HRX - 1.2, brim - 2.2, 40 + HRX + 1.2, brim + 1.6, "A")
+        # and the bobble, at the end of the droop where it can be seen
+        c.disc(40 + HRX + 3.4, 12.8, 3.2, 3.0, "A")
+        c.disc(40 + HRX + 2.4, 11.8, 1.1, 1.0, "W")
+
+    item("santa", 4, santa)
 
     def durag(c, back=False):
         """A durag: the cap flat to the skull, the band across the brow, and
