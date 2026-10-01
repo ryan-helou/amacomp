@@ -339,11 +339,18 @@ console.log("\none country, one purchase, one drawing");
   // proportions, centred. Every part of that has been got wrong once.
   const lane = flagLane("ca")!;
   const size = lane.backgroundSize.split(", ");
-  check("no scrim over it", lane.backgroundImage.includes("linear-gradient"), false);
+  // The fade lives INSIDE the field SVG, as a mask, not as a CSS gradient
+  // layer stacked on top — so the flag thins where the name runs instead of
+  // having something grey laid over it.
+  check("no gradient layer over the flag", lane.backgroundImage.includes("linear-gradient("), false);
+  check("the field fades with a mask", decodeURIComponent(lane.backgroundImage.split('url("')[2]).includes("<mask"), true);
   check("two layers: emblem, field", size.length, 2);
   check("the field runs the whole row", size[1], "100% 100%");
   // The emblem is `auto`, never a percentage. A percentage is a stretch.
-  check("the emblem keeps its own shape", size[0], "auto 100%");
+  // `auto`, never a percentage: a percentage is a stretch. Fitted to 76% of
+  // the row, the way lib/away.ts has always sized its leaf, so the emblem
+  // sits IN the row rather than filling it edge to edge.
+  check("the emblem keeps its own shape", size[0], "auto 76%");
   check("and every flag is centred", lane.backgroundPosition.split(", ")[0], "50% center");
   check("Brazil too", flagLane("br")!.backgroundPosition.split(", ")[0], "50% center");
   check("the lane carries Canada's red", lane.backgroundImage.includes("%23FF0000"), true);
