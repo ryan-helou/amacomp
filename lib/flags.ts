@@ -44,10 +44,24 @@ export interface CountryFlag {
   /**
    * How tall the emblem is drawn, as a fraction of the row. 0.76 by default,
    * the way lib/away.ts has always sized its leaf, so an emblem sits IN the
-   * row rather than filling it. A chevron is not that kind of emblem: it is
-   * cut from edge to edge of the flag, so it takes the whole height.
+   * row rather than filling it.
+   *
+   * A chevron is not that kind of emblem: it is cut from edge to edge of the
+   * flag, so it takes the whole height — 1, exactly, and no more. Over 1 it
+   * overruns the row and gets clipped, and a clipped triangle is a hexagon
+   * with the star cropped off the top.
    */
   laneFit?: number;
+  /**
+   * Widen the emblem without making it taller.
+   *
+   * A triangle that already fills the height can only reach further across
+   * the row by getting wider, and growing it to do that clips its corners.
+   * So the box widens and the drawing is stretched into it. Only safe where
+   * the emblem has no circles in it to go oval: a chevron can take it, a
+   * disc could not.
+   */
+  laneStretchX?: number;
   /**
    * Band widths for the LANE only, when the flag's own would put the text
    * across a boundary.
@@ -108,7 +122,7 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
   // is no scrim any more, so there is nothing keeping it there.
   {
     id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true,
-    art: FLAG_ART.jo, laneWeights: [1, 2, 1], laneAt: 0, laneFit: 1,
+    art: FLAG_ART.jo, laneWeights: [1, 2, 1], laneAt: 0, laneFit: 1, laneStretchX: 1.4,
   },
   { id: "br", label: "Brazil", bands: ["#009440"], weights: [1], art: FLAG_ART.br },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
@@ -216,21 +230,21 @@ export function flagLane(id: string): {
     })
     .join("");
 
-  // The ink follows the band that actually lands under the writing: the
-  // MIDDLE one on a horizontal flag, since the text runs across the middle of
-  // the row, and the first on a vertical one, where the name sits.
-  const light =
-    (flag.rows
-      ? lum(flag.bands[Math.floor(flag.bands.length / 2)])
-      : lum(flag.bands[0])) > 0.5;
+  // The ink follows the band the NAME sits on, and with a flat wash that is
+  // the middle band whichever way the flag runs — across, because the text
+  // is vertically centred; down, because the name sits around the middle of
+  // the row's width. It used to read the FIRST band on a vertical flag,
+  // which was right only while the middle faded away to the deck: with the
+  // fade gone that put white text on Canada's white stripe.
+  const light = lum(flag.bands[Math.floor(flag.bands.length / 2)]) > 0.5;
 
   const fid = `${flag.id}-fade`;
   // A mask rather than a stack of gradients: the bands are one drawing and
   // the dip is one shape over them, so a flag with five bands fades exactly
   // like a flag with one.
-  const stops = light
-    ? [[0, 0.95], [1, 0.95]]
-    : [[0, 0.97], [0.16, 0.86], [0.42, 0.22], [0.58, 0.22], [0.84, 0.86], [1, 0.97]];
+  // Ryan, 2026-09-30: no middle shading. The wash is FLAT — the flag is the
+  // same strength across the whole row, with no dip under the name.
+  const stops = [[0, 0.95], [1, 0.95]];
   const fade =
     `<defs><linearGradient id="${fid}" x1="0" y1="0" x2="1" y2="0">` +
     stops.map(([o, a2]) => `<stop offset="${o}" stop-color="#fff" stop-opacity="${a2}"/>`).join("") +
@@ -244,9 +258,11 @@ export function flagLane(id: string): {
   // The emblem is held back too — it sits under the name, and a full-strength
   // leaf there is a blob with writing on it. Still `auto`, because
   // preserveAspectRatio="none" would strip the ratio and stretch it flat.
+  const sx = flag.laneStretchX ?? 1;
   const motifUrl = url(
-    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} width="30" height="20" ` +
-      `viewBox="0 0 30 20"><g opacity="0.6">${flag.laneMotif ?? FLAG_MOTIF[flag.id] ?? ""}</g></svg>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} width="${30 * sx}" height="20" ` +
+      `viewBox="0 0 ${30 * sx} 20"><g opacity="0.6" transform="scale(${sx},1)">` +
+      `${flag.laneMotif ?? FLAG_MOTIF[flag.id] ?? ""}</g></svg>`,
   );
 
   const layers = [fieldUrl];
