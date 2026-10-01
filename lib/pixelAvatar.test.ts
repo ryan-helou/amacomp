@@ -136,13 +136,14 @@ console.log("\nthe shop has a photo of everything it sells");
   const shots = new Set(AVATAR_ITEMS.filter((i) => i.id.startsWith("torso.jersey.")).map((i) => itemSvg(i.id)));
   check("each colour photographs differently", shots.size, 3);
 
-  // Cropped to what it fills: a sock shouldn't arrive as a mostly-empty box.
-  const sock = itemSvg("socks.short.white").match(/viewBox="([^"]+)"/)![1].split(" ").map(Number);
-  check("the shot is cropped to the item", sock[2] < 40 && sock[3] < 40, true);
+  // Cropped to what it fills: a pair of slides shouldn't arrive as a
+  // mostly-empty box the height of a whole figure.
+  const small = itemSvg("feet.slides.cyan").match(/viewBox="([^"]+)"/)![1].split(" ").map(Number);
+  check("the shot is cropped to the item", small[2] < 40 && small[3] < 40, true);
 
   // And it must be servable as an image, since that is how a shelf of forty
   // boxes stays one node each.
-  check("it comes as an image source", itemImage("socks.short.white").startsWith("data:image/svg+xml"), true);
+  check("it comes as an image source", itemImage("feet.slides.cyan").startsWith("data:image/svg+xml"), true);
   check("nothing has no image", itemImage("head.none"), "");
 }
 
@@ -155,7 +156,7 @@ console.log("\nmerging rectangles mustn't change which pixels are covered");
   const RIM = "#4a5f7a"; // the cool edge sits on EMPTY cells, so it isn't sprite area
   const sheets = (sprites as unknown as { g: Record<string, { res: number; x0: number; y0: number; rows: string[] }> }).g;
 
-  for (const id of ["torso.jersey.magenta", "socks.short.white", "feet.carbon.gold", "head.aero.gold"]) {
+  for (const id of ["torso.jersey.magenta", "legs.shorts.lime", "feet.carbon.gold", "head.aero.gold"]) {
     const item = AVATAR_ITEM_BY_ID.get(id)!;
     const sheet = sheets[item.sprite!];
     const res = sheet.res, ox = sheet.x0 / res, oy = sheet.y0 / res;
@@ -241,8 +242,7 @@ console.log("\na figure wearing one of everything");
     skin: { item: "skin.deep" }, hair: { item: "hair.curly.black" }, face: { item: "face.beard" },
     head: { item: "head.helmet.magenta" }, eyes: { item: "eyes.shades.black" },
     torso: { item: "torso.jersey.gold" }, hands: { item: "hands.gloves.black" },
-    legs: { item: "legs.bibs.black" }, feet: { item: "feet.carbon.gold" },
-    socks: { item: "socks.tall.white" },
+    legs: { item: "legs.shorts.magenta" }, feet: { item: "feet.carbon.gold" },
     banner: { item: "banner.ca" },
   };
   const svg = avatarSvg(dressed);
@@ -417,7 +417,7 @@ console.log("\na saved look is topped up, never left bare");
   const look = lookFor(me, partial);
   check("his own choices win", [look.hair.item, look.skin.item], ["hair.bald", "skin.light"]);
   // The bug: these came back undefined and the figure drew with no clothes.
-  for (const slot of ["torso", "legs", "feet", "socks", "face"]) {
+  for (const slot of ["torso", "legs", "feet", "face"]) {
     check(`${slot} is filled in, not left empty`, !!look[slot]?.item, true);
   }
   check("and it is still his own generated look", look.torso.item, loadoutFor("Ryan").torso.item);
@@ -427,7 +427,7 @@ console.log("\na saved look is topped up, never left bare");
 console.log("\na prize is not for sale");
 {
   const prizes = AVATAR_ITEMS.filter((i) => i.slot === "prize" && i.sprite);
-  check("there are prizes on the shelf", prizes.length, 3);
+  check("there are prizes on the shelf", prizes.length, 5);
   // Free AND earned, both: free alone would let the till hand one out, and
   // the shop would print "0 coins" where it should print what wins it.
   for (const p of prizes) {

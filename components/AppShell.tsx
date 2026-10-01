@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, logToday, parseDayKey, today, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, goalFor, standingsFor } from "@/lib/scoring";
-import { reigningChampionId, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
+import { reigningChampionId, reigningPodium, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
 import type { AppState } from "@/lib/types";
 import { announcementIsDue, rateAnnouncementFor, type RateAnnouncement } from "@/lib/announce";
 import { useLeague } from "./useLeague";
@@ -245,6 +245,12 @@ export function AppShell({
     () => reigningChampionId(state.athletes, state.activities, state.settings, refDay),
     [state.athletes, state.activities, state.settings, refDay],
   );
+  // Second and third of the last finished season wear a circlet. Computed
+  // here beside the champion so both come off the same reference day.
+  const podium = useMemo(
+    () => reigningPodium(state.athletes, state.activities, state.settings, refDay),
+    [state.athletes, state.activities, state.settings, refDay],
+  );
   const crownedRef = useRef(false);
   const [crownMsg, setCrownMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -300,7 +306,7 @@ export function AppShell({
   }
 
   return (
-    <ProfileProvider state={state} refDay={refDay} championId={championId} send={send}>
+    <ProfileProvider state={state} refDay={refDay} championId={championId} podium={podium} send={send}>
     <LoadoutsProvider loadouts={state.loadouts} showFigures={canSeeClub(state.me?.name)}>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />

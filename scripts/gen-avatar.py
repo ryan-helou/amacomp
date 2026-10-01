@@ -257,20 +257,63 @@ def build(P):
         c.disc(40, HC-1.0, HRX+0.7, HRY-0.2, "A", y0=HC-HRY*0.30, y1=HC-HRY*0.22),
         c.rect(40-HRX*0.7, HC-HRY*0.42, 40-HRX*0.3, HC-HRY*0.38, "W")))
     # eyes
-    item("shades", 4, lambda c: (
-        c.disc(40-HRX*0.45, EYE_Y, HRX*0.36, HRY*0.23, "K"), c.disc(40+HRX*0.45, EYE_Y, HRX*0.36, HRY*0.23, "K"),
-        c.rect(40-HRX*0.1, EYE_Y-0.8, 40+HRX*0.1, EYE_Y+0.8, "K"),
-        c.rect(40-HRX-0.5, EYE_Y-1.4, 40-HRX*0.72, EYE_Y-0.2, "K"),
-        c.rect(40+HRX*0.72, EYE_Y-1.4, 40+HRX+0.5, EYE_Y-0.2, "K"),
-        c.rect(40-HRX*0.7, EYE_Y-1.6, 40-HRX*0.5, EYE_Y-0.6, "W")))
-    item("goggles_back", 4, lambda c: (
-        c.rect(40-HRX-1, EYE_Y-1.6, 40+HRX+1, EYE_Y+1.6, "K"),
-        c.rect(40-HRX*0.5, EYE_Y-1.6, 40-HRX*0.2, EYE_Y+1.6, "W")))
-    item("goggles", 4, lambda c: (
-        c.rect(40-HRX-1, EYE_Y-1.6, 40+HRX+1, EYE_Y+1.6, "K"),
-        c.disc(40-HRX*0.45, EYE_Y, HRX*0.4, HRY*0.3, "K"), c.disc(40+HRX*0.45, EYE_Y, HRX*0.4, HRY*0.3, "K"),
-        c.disc(40-HRX*0.45, EYE_Y, HRX*0.29, HRY*0.21, "A"), c.disc(40+HRX*0.45, EYE_Y, HRX*0.29, HRY*0.21, "A"),
-        c.rect(40-HRX*0.62, EYE_Y-HRY*0.15, 40-HRX*0.44, EYE_Y-HRY*0.04, "W")))
+    def shades(c):
+        """A wayfarer.
+
+        Two things make the shape, and the first pass had neither working. The
+        BROW is one heavy rail straight across both lenses, thicker than any
+        other part of the frame. And the lens has to be a different colour
+        from the frame, or the whole pair is one dark blob the width of the
+        face: the frame is the item's colour, the glass is its accent.
+
+        It also has to sit ON the eyes. The first pass hung off the brow and
+        covered the cheeks, which read as a welding mask.
+        """
+        top, bot = EYE_Y - HRY*0.155, EYE_Y + HRY*0.115
+        out, inn = HRX*0.88, 2.0
+        for sx in (-1, 1):
+            xo, xi = 40 + sx*out, 40 + sx*inn
+            lo, hi = min(xo, xi), max(xo, xi)
+            # the glass, wider at the brow and tucked in at the bottom
+            c.poly([(xi, top), (xo, top - 1.0), (xo - sx*0.8, bot - 0.9),
+                    (xi + sx*0.8, bot)], "A")
+            # rim down the outer edge and along the bottom, thin
+            c.poly([(xo, top - 1.0), (xo - sx*1.0, top - 0.8),
+                    (xo - sx*1.6, bot - 0.8), (xo - sx*0.8, bot - 0.9)], "K")
+            c.rect(lo + 0.6, bot - 1.0, hi - 0.6, bot + 0.1, "K")
+            # the heavy brow rail, proud of the glass all the way out
+            c.rect(lo, top - 2.2, hi, top - 0.1, "K")
+            # the arm, back toward the ear
+            c.rect(40 + sx*(out - 0.4), top - 2.0, 40 + sx*(HRX + 0.8), top - 0.2, "K")
+        # the bridge: on a wayfarer it is part of the brow, not a wire
+        c.rect(40 - inn - 0.4, top - 2.2, 40 + inn + 0.4, top + 0.9, "K")
+        # one hard reflection across the left lens
+        [c.rect(40 - out + 1.2 + i*0.30, top + 0.4 + i*0.30,
+                40 - out + 3.0 + i*0.30, top + 1.9 + i*0.30, "W") for i in range(6)]
+
+    item("shades", 4, shades)
+
+    def viper(c):
+        """A one-piece shield, the way a sprint pair is built: no bridge, no
+        rims, just a single lens from temple to temple with a blade of frame
+        along the top and a notch cut for the nose."""
+        top, bot = EYE_Y - HRY*0.155, EYE_Y + HRY*0.16
+        out = HRX*0.94
+        c.poly([(40 - out, top - 0.2), (40, top - 1.4), (40 + out, top - 0.2),
+                (40 + out - 0.8, bot - 1.4), (40 + HRX*0.50, bot),
+                (40 - HRX*0.50, bot), (40 - out + 0.8, bot - 1.4)], "A")
+        # the blade of frame along the brow, and the arms off its ends
+        c.poly([(40 - out, top - 0.2), (40, top - 1.4), (40 + out, top - 0.2),
+                (40 + out, top + 1.0), (40, top - 0.2), (40 - out, top + 1.0)], "K")
+        for sx in (-1, 1):
+            c.rect(40 + sx*(out - 0.6), top - 0.4, 40 + sx*(HRX + 0.8), top + 1.4, "K")
+        # the notch over the nose
+        c.poly([(40 - 2.2, bot + 0.2), (40 + 2.2, bot + 0.2), (40, bot - 2.2)], ".")
+        # the sweep of light a curved shield carries, corner to corner
+        [c.rect(40 - out + 1.4 + i*0.40, top + 0.9 + i*0.26,
+                40 - out + 3.2 + i*0.40, top + 2.5 + i*0.26, "W") for i in range(9)]
+
+    item("viper", 4, viper)
     # torso
     def torso(c, hem, sleeve, stripe=True, band=None):
         c.trunk(SH, hem, TT, TW_, TH_, "K")
@@ -300,20 +343,20 @@ def build(P):
 
     item("trisuit", 2, trisuit)
     # legs
-    def shorts(c, frac):
+    def shorts(c):
+        """ONE pair of shorts, Ryan's call: the bibs, the jammers and the
+        tights were four lengths of the same box and told you nothing apart
+        at board size. What is left is a running short with a waistband and a
+        split up each outside seam, and colour does the rest."""
         c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K")
-        end = LY0 + (LY1-LY0)*frac
-        c.capsule(L, LY0-2, end, LHW+0.5, "K"); c.capsule(R, LY0-2, end, LHW+0.5, "K")
-    item("bibs", 2, lambda c: shorts(c, 0.62))
-    item("runshorts", 2, lambda c: shorts(c, 0.42))
-    item("jammers", 2, lambda c: shorts(c, 0.78))
-    # socks and shoes
-    def socks(c, top_frac):
-        top = LY0 + (LY1-LY0)*top_frac
-        for cx in (L, R):
-            c.capsule(cx, top, FY-1.5, LHW-0.1, "K"); c.rect(cx-LHW+0.1, top, cx+LHW-0.1, top+1, "A")
-    item("socks_short", 3, lambda c: socks(c, 0.72))
-    item("socks_tall", 3, lambda c: socks(c, 0.42))
+        end = LY0 + (LY1-LY0)*0.46
+        c.capsule(L, LY0-2, end, LHW+0.7, "K"); c.capsule(R, LY0-2, end, LHW+0.7, "K")
+        c.rect(40-TH_, HIP-4, 40+TH_, HIP-2.2, "A")          # waistband
+        for cx, sx in ((L, -1), (R, 1)):                      # the side split
+            c.rect(cx + sx*(LHW-0.1), end-4.6, cx + sx*(LHW+0.8), end-0.6, "A", only="K")
+
+    item("shorts", 2, shorts)
+    # shoes
     def shoe(c, sole_h, kind):
         """Five shoes off one last.
 
@@ -386,10 +429,6 @@ def build(P):
         c.rect(39.4, SH-3.4, 40.6, SH+13, "A")
 
     item("wetsuit", 2, wetsuit)
-    item("tights", 2, lambda c: (
-        c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K"),
-        c.capsule(L, LY0-2, FY-0.5, LHW+0.4, "K"), c.capsule(R, LY0-2, FY-0.5, LHW+0.4, "K"),
-        c.rect(L-LHW-0.4, FY-3.5, L+LHW+0.4, FY-2.3, "A"), c.rect(R-LHW-0.4, FY-3.5, R+LHW+0.4, FY-2.3, "A")))
     item("trail", 3, lambda c: (shoe(c, 3.2, "lace"),
         [c.rect(cx-LHW-0.4, FY+5.2, cx+LHW+0.4, FY+6.6, "A") for cx in (L, R)],
         [c.rect(cx-LHW-0.5+i*1.8, FY+7.4, cx-LHW+0.4+i*1.8, FY+8.4, ".") for cx in (L, R) for i in range(4)]))
@@ -402,9 +441,6 @@ def build(P):
         c.rect(cx-LHW-0.9, FY+8.6, cx+LHW+0.9, FY+9.6, "A"),
         c.rect(cx-LHW-0.3, FY+1.6, cx+LHW+0.3, FY+3.6, "K"),
         c.rect(cx-LHW-0.3, FY+2.0, cx+LHW+0.3, FY+2.6, "A")) for cx in (L, R)])
-    item("socks_stripe", 3, lambda c: (socks(c, 0.42),
-        [c.rect(cx-LHW+0.1, LY0+(LY1-LY0)*0.42+2.4+i*2.6, cx+LHW-0.1, LY0+(LY1-LY0)*0.42+3.6+i*2.6, "A")
-         for cx in (L, R) for i in range(4)]))
     # The four Ryan kept from the ideas sheet, plus the durag he asked for.
     item("bucket", 4, lambda c: (
         c.disc(40, HC-1, HRX-0.6, HRY-2.0, "K", y1=HC-HRY*0.05),
@@ -585,32 +621,66 @@ def build(P):
         c.poly(pts, ch)
 
     def crown(c):
-        """A band round the skull with five points on it.
+        """A crown with a CAP in it.
 
-        Everything is measured off the head ellipse rather than picked: the
-        band's bottom edge sits just inside the widest the skull gets at that
-        height, and the top edge just inside where the hair reaches, so the
-        crown rests ON him at every angle instead of hovering at the corners.
+        The last one was a rim: five gold points standing on a gold band with
+        the hair showing through between them, which from a few feet away is a
+        comb. What makes a crown read as one object is the velvet filling the
+        space the points enclose — so that is drawn first, the points stand on
+        it, and a row of pearls runs the top edge of the band to stop the two
+        halves reading as separate pieces of jewellery.
+
+        Everything is still measured off the head ellipse rather than picked:
+        the band's bottom edge sits just inside the widest the skull gets at
+        that height, and the top edge just inside where the hair reaches, so
+        the crown rests ON him at every angle instead of hovering at corners.
         """
-        YB0, YB1 = 7.0, 14.0           # band, top and bottom
+        YB0, YB1 = 7.4, 14.6           # band, top and bottom
         HW0, HW1 = 12.4, 15.8          # its half-width at each
-        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW0, YB0), (40-HW0, YB0)], "K")
+        # The velvet cap: a dome sitting in the mouth of the crown, drawn
+        # before anything else so every piece of gold lands on top of it.
+        c.disc(40, YB0 + 0.4, HW0 - 0.6, 7.4, "A", y1=YB0 + 0.9)
         # Five points, tallest in the middle, each finished with a pearl. The
-        # bases meet, so the points read as one rim and not five spikes.
-        for x, top in ((0.0, 0.9), (-5.2, 2.2), (5.2, 2.2), (-10.3, 3.7), (10.3, 3.7)):
-            c.poly([(40+x-2.2, YB0+0.6), (40+x+2.2, YB0+0.6), (40+x, top)], "K")
-            c.disc(40+x, top + 0.5, 1.15, 1.15, "W")
-        # Jewels set in the band, each with a glint in the upper left — the
-        # same light that shades the rest of the figure.
-        for x in (-7.4, 0.0, 7.4):
-            c.disc(40+x, YB1-3.0, 1.9, 2.0, "A")
-            c.disc(40+x-0.6, YB1-3.7, 0.6, 0.6, "W")
+        # bases overlap, so the points read as one rim and not five spikes.
+        for x, top in ((0.0, -1.4), (-6.0, 0.6), (6.0, 0.6), (-11.0, 2.8), (11.0, 2.8)):
+            c.poly([(40+x-2.9, YB0+1.0), (40+x+2.9, YB0+1.0), (40+x, top)], "K")
+            c.disc(40+x, top + 0.7, 1.3, 1.3, "W")
+        # the band itself, over the feet of the points
+        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW0, YB0), (40-HW0, YB0)], "K")
+        # Jewels set in it, each with a glint in the upper left — the same
+        # light that shades the rest of the figure.
+        for x in (-8.0, 0.0, 8.0):
+            c.disc(40+x, YB1-3.4, 2.1, 2.2, "A")
+            c.disc(40+x-0.7, YB1-4.2, 0.7, 0.7, "W")
+        # A row of pearls along the top edge, which is the join between the
+        # band and the points and the thing that makes it one piece.
+        for i in range(-6, 7):
+            c.disc(40 + i*2.1, YB0 + 0.5, 0.75, 0.75, "W")
         # A lit top edge and a shadowed lower lip: without them the band is a
         # flat gold rectangle with dots on it.
-        c.poly([(40-HW0, YB0), (40+HW0, YB0), (40+HW0-0.5, YB0+0.8), (40-HW0+0.5, YB0+0.8)], "W")
-        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW1-0.5, YB1-1.1), (40-HW1+0.5, YB1-1.1)], "A")
+        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW1-0.6, YB1-1.2), (40-HW1+0.6, YB1-1.2)], "A")
 
     item("crown", 4, crown)
+
+    def circlet(c):
+        """The podium's other two places.
+
+        A circlet, not a crown: the same band sitting in the same place, but
+        thinner, with three short points and no cap and no pearls. Second and
+        third are the same drawing in silver and in bronze — a podium is told
+        apart by its metal, which is the whole idea of the thing.
+        """
+        YB0, YB1 = 9.6, 14.6
+        HW0, HW1 = 13.6, 15.8
+        for x, top in ((0.0, 2.6), (-8.2, 4.4), (8.2, 4.4)):
+            c.poly([(40+x-2.6, YB0+0.8), (40+x+2.6, YB0+0.8), (40+x, top)], "K")
+            c.disc(40+x, top + 0.7, 1.2, 1.2, "A")
+        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW0, YB0), (40-HW0, YB0)], "K")
+        c.disc(40, YB1-2.4, 1.8, 1.8, "A")
+        c.poly([(40-HW0, YB0), (40+HW0, YB0), (40+HW0-0.5, YB0+0.8), (40-HW0+0.5, YB0+0.8)], "W")
+        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW1-0.6, YB1-1.0), (40-HW1+0.6, YB1-1.0)], "A")
+
+    item("circlet", 4, circlet)
 
     item("medal", 4, lambda c: (
         # A striped ribbon, not two bare straps.

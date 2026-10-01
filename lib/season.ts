@@ -151,6 +151,34 @@ export function seasonChampions(
  * gold through the current season. Null before any season has finished (so nobody
  * is gilded during Season 1 or the pre-season).
  */
+/**
+ * The podium of the most recent COMPLETED season: ids in finishing order,
+ * at most three, and only athletes who actually scored.
+ *
+ * A separate function from `reigningChampionId` rather than a widening of it,
+ * because the champion is used for GILDING — the gold name, the crown glyph,
+ * the "reigning champion" badge — and second and third get none of that. All
+ * they get is a circlet on the figure, which is a different question with a
+ * different answer, and conflating the two would quietly put a chaser's name
+ * in gold on the Board.
+ */
+export function reigningPodium(
+  athletes: Athlete[],
+  activities: Activity[],
+  settings: Settings,
+  refDay: DayKey,
+): string[] {
+  const past = seasonChampions(athletes, activities, settings, refDay, settings.seasonStart).find(
+    (c) => c.status === "past" && c.champion,
+  );
+  if (!past) return [];
+  const standings = standingsForRange(athletes, activities, settings, [
+    past.season.start,
+    past.season.end,
+  ]);
+  return standings.filter((s) => s.points > 0).slice(0, 3).map((s) => s.athlete.id);
+}
+
 export function reigningChampionId(
   athletes: Athlete[],
   activities: Activity[],
