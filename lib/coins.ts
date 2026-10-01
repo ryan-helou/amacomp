@@ -17,6 +17,7 @@ import { seasonByNumber, seasonFor } from "./season";
 import { betCoins, BET_METRIC_BY_ID, type Bet } from "./bets";
 import { bountyCoins, type Bounty } from "./bounties";
 import type { Transfer } from "./transfers";
+import { AVATAR_ITEM_BY_ID } from "./pixelAvatar";
 
 /**
  * Tri coins — the Club's currency.
@@ -271,9 +272,12 @@ export function coinAccount(
     const them = p.paidBy && p.athleteId !== athleteId
       ? athletes.find((a) => a.id === p.athleteId)
       : null;
+    // The item's NAME, not its id. "head.swimcap.cyan" in a wallet is a
+    // database row showing through the floor of the app.
+    const what = AVATAR_ITEM_BY_ID.get(p.itemId)?.label ?? p.itemId;
     entries.push({
       kind: them ? "gift" : "spend",
-      label: them ? `${p.itemId} for ${them.name}` : p.itemId,
+      label: them ? `${what} for ${them.name}` : what,
       detail: p.day,
       amount: -p.price,
       day: p.day,
