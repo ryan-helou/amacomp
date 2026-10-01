@@ -22,7 +22,7 @@ import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
 import { ProfileProvider, AthleteName } from "./ProfileContext";
 import { LoadoutsProvider } from "./AthleteFigure";
-import { canSeeClub } from "@/lib/club";
+import { canSeeClub, championWithTestMode } from "@/lib/club";
 
 type Tab = "log" | "week" | "board" | "records" | "club" | "arena";
 
@@ -242,15 +242,28 @@ export function AppShell({
     [state.athletes, state.activities, state.settings, refDay],
   );
   const championId = useMemo(
-    () => reigningChampionId(state.athletes, state.activities, state.settings, refDay),
-    [state.athletes, state.activities, state.settings, refDay],
+    () => championWithTestMode(
+      reigningChampionId(state.athletes, state.activities, state.settings, refDay),
+      state.me,
+    ),
+    [state.athletes, state.activities, state.settings, refDay, state.me],
   );
   // Second and third of the last finished season wear a circlet. Computed
   // here beside the champion so both come off the same reference day.
-  const podium = useMemo(
-    () => reigningPodium(state.athletes, state.activities, state.settings, refDay),
-    [state.athletes, state.activities, state.settings, refDay],
-  );
+  const podium = useMemo(() => {
+    const real = reigningPodium(state.athletes, state.activities, state.settings, refDay);
+    if (real.length || !championId) return real;
+    // Test mode: the champion is standing on a podium of one, so second and
+    // third come off the live season's table — otherwise the circlets have
+    // nobody to sit on and half the thing can't be looked at.
+    // Read the live table here rather than leaning on the one the header
+    // uses: that one is a fresh array every render, which the compiler
+    // refuses to accept as a dependency.
+    const live = standingsFor(state.athletes, state.activities, state.settings, "all", refDay)
+      .filter((r) => r.athlete.id !== championId)
+      .slice(0, 2);
+    return [championId, ...live.map((r) => r.athlete.id)];
+  }, [state.athletes, state.activities, state.settings, refDay, championId]);
   const crownedRef = useRef(false);
   const [crownMsg, setCrownMsg] = useState<string | null>(null);
   useEffect(() => {
