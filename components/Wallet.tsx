@@ -7,6 +7,8 @@ import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { Avatar } from "./Avatar";
 import { Glyph, type GlyphName } from "./Glyph";
+import type { League } from "./useLeague";
+import { TRANSFER_MAX, TRANSFER_MIN } from "@/lib/transfers";
 
 const KIND_GLYPH: Record<CoinEntry["kind"], GlyphName> = {
   points: "bolt",
@@ -18,6 +20,7 @@ const KIND_GLYPH: Record<CoinEntry["kind"], GlyphName> = {
   spend: "trash",
   bet: "trio",
   bounty: "target",
+  gift: "heart",
 };
 
 /**
@@ -29,21 +32,31 @@ const KIND_GLYPH: Record<CoinEntry["kind"], GlyphName> = {
  * it gets asked. Coins are derived from the board (see lib/coins.ts), so this
  * is a view of history rather than a second set of books.
  */
-export function Wallet({ state, refDay }: { state: AppState; refDay: DayKey }) {
+export function Wallet({
+  state,
+  refDay,
+  send,
+}: {
+  state: AppState;
+  refDay: DayKey;
+  /** Omitted where the wallet is read-only; sending coins needs it. */
+  send?: League["send"];
+}) {
   const [showAll, setShowAll] = useState(false);
+  const [sending, setSending] = useState(false);
   const meId = state.me?.id ?? "";
 
   const account = useMemo(
     () => coinAccount(meId, state.athletes, state.activities, state.settings, refDay,
-      state.coinGrants, state.purchases, state.bets, state.bounties),
+      state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers),
     [meId, state.athletes, state.activities, state.settings, refDay, state.coinGrants,
-     state.purchases, state.bets, state.bounties],
+     state.purchases, state.bets, state.bounties, state.transfers],
   );
   const board = useMemo(
     () => coinBoard(state.athletes, state.activities, state.settings, refDay,
-      state.coinGrants, state.purchases, state.bets, state.bounties),
+      state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers),
     [state.athletes, state.activities, state.settings, refDay, state.coinGrants,
-     state.purchases, state.bets, state.bounties],
+     state.purchases, state.bets, state.bounties, state.transfers],
   );
 
   const bonuses = account.entries.filter((e) => e.kind !== "points");
@@ -80,6 +93,28 @@ export function Wallet({ state, refDay }: { state: AppState; refDay: DayKey }) {
           </div>
         </div>
       </section>
+
+      {send && state.athletes.length > 1 && (
+        <section>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="eyebrow text-ink-3">Hand some over</h3>
+            <button
+              onClick={() => setSending((v) => !v)}
+              className="eyebrow rounded-lg border border-line px-3 py-1.5 text-ink-2"
+            >
+              {sending ? "Never mind" : "Send coins"}
+            </button>
+          </div>
+          {sending && (
+            <SendCoins
+              state={state}
+              balance={account.balance}
+              send={send}
+              onDone={(err) => { if (!err) setSending(false); }}
+            />
+          )}
+        </section>
+      )}
 
       <section>
         <h3 className="eyebrow text-ink-3">Where it came from</h3>
@@ -155,3 +190,79 @@ function ordinal(n: number): string {
   const suffix = n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th";
   return `${n}${suffix}`;
 }
+
+/**
+ * Handing coins to somebody.
+ *
+ * Deliberately plain and deliberately final: there is no "cancel a transfer".
+ * A gift you can take back is not a gift, and between six mates the fix for a
+ * mistake is the other man sending it back — which is the same two taps.
+ */
+function SendCoins({
+  state,
+  balance,
+  send,
+  onDone,
+}: {
+  state: AppState;
+  balance: number;
+  send: League["send"];
+  onDone: (err: string | null) => void;
+}) {
+  const others = state.athletes.filter((a) => a.id !== state.me?.id);
+  const [toId, setToId] = useState(others[0]?.id ?? "");
+  const [amount, setAmount] = useState(100);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  async function go() {
+    setBusy(true);
+    const err = await send("/api/arena", {
+      method: "POST",
+      body: JSON.stringify({ action: "send", toId, amount, note }),
+    });
+    setProblem(err);
+    setBusy(false);
+    onDone(err);
+  }
+
+  const them = others.find((a) => a.id === toId);
+
+  return (
+    <div className="mt-2 space-y-3 rounded-xl border border-line bg-tile p-4">
+      <label className="block">
+        <span className="eyebrow block pb-1 text-ink-3">To</span>
+        <select value={toId} onChange={(e) => setToId(e.target.value)} className={INPUT}>
+          {others.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+      </label>
+      <label className="block">
+        <span className="eyebrow block pb-1 text-ink-3">How many</span>
+        <input type="number" inputMode="numeric" value={amount}
+          min={TRANSFER_MIN} max={TRANSFER_MAX}
+          onChange={(e) => setAmount(Number(e.target.value))} className={INPUT} />
+      </label>
+      <label className="block">
+        <span className="eyebrow block pb-1 text-ink-3">What for (optional)</span>
+        <input value={note} maxLength={140} onChange={(e) => setNote(e.target.value)}
+          placeholder="you earned it" className={INPUT} />
+      </label>
+      {problem && (
+        <p role="alert" className="text-sm text-magenta">{problem}</p>
+      )}
+      <button
+        onClick={go}
+        disabled={busy || !toId || amount < TRANSFER_MIN || amount > balance}
+        className="eyebrow w-full rounded-lg bg-gold py-3 text-on-gold disabled:opacity-40"
+      >
+        {amount > balance
+          ? `You only have ${fmtCoins(balance)}`
+          : `Send ${fmtCoins(amount)} to ${them?.name ?? "them"}`}
+      </button>
+    </div>
+  );
+}
+
+const INPUT =
+  "w-full rounded-lg border border-line bg-deck px-3 py-2 text-sm text-ink outline-none focus:border-ink-2";

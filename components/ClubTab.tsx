@@ -75,7 +75,7 @@ export function ClubTab({
       </div>
 
       {room === "wallet" ? (
-        <Wallet state={state} refDay={refDay} />
+        <Wallet state={state} refDay={refDay} send={send} />
       ) : room === "shop" ? (
         <AvatarLocker state={state} refDay={refDay} send={send} />
       ) : room === "profile" ? (

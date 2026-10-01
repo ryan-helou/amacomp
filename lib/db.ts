@@ -1,6 +1,7 @@
 import type { Pool as PgPool } from "pg";
 import type { Bet, BetState } from "./bets";
 import type { Bounty, BountyState } from "./bounties";
+import type { Transfer } from "./transfers";
 import {
   DEFAULT_SETTINGS,
   SPORTS,
@@ -160,7 +161,7 @@ export interface Store {
   addCoinGrant(athleteId: string, amount: number, note: string): Promise<CoinGrant>;
   listPurchases(): Promise<Purchase[]>;
   /** Buy once. Returns null if they already own it — buying twice is a bug. */
-  addPurchase(athleteId: string, itemId: string, price: number): Promise<Purchase | null>;
+  addPurchase(athleteId: string, itemId: string, price: number, paidBy?: string | null): Promise<Purchase | null>;
   getLoadout(athleteId: string): Promise<Record<string, { item: string }> | null>;
   /** Every saved loadout, keyed by athlete. One query, because the Board
    *  draws all six figures on the first screen. */
@@ -169,10 +170,19 @@ export interface Store {
 
   // The Arena: head-to-head bets and posted bounties.
   listBets(): Promise<Bet[]>;
-  addBet(bet: Omit<Bet, "id" | "createdAt" | "decidedAt" | "state">): Promise<Bet>;
+  addBet(bet: Omit<Bet, "id" | "createdAt" | "decidedAt" | "state"
+    | "calledBy" | "calledWinner" | "settledWinner">): Promise<Bet>;
   /** Move a bet along. Returns null when the move was not legal from where it
    *  was — which is how two taps on "accept" stay one acceptance. */
   setBetState(id: string, from: BetState[], to: BetState): Promise<Bet | null>;
+  /** A word bet: one side calls a result. Null if it isn't theirs to call. */
+  callBet(id: string, byId: string, winner: string): Promise<Bet | null>;
+  /** The other side agrees (or Ryan settles outright) and the coins move. */
+  settleBet(id: string, winner: string): Promise<Bet | null>;
+  /** They don't agree: the call comes off and it is live again. */
+  clearBetCall(id: string): Promise<Bet | null>;
+  listTransfers(): Promise<Transfer[]>;
+  addTransfer(fromId: string, toId: string, amount: number, note: string): Promise<Transfer>;
   listBounties(): Promise<Bounty[]>;
   addBounty(b: Omit<Bounty, "id" | "createdAt" | "state" | "claimedBy" | "claimedAt">): Promise<Bounty>;
   /** Claim it, if it is still open. Null means somebody got there first. */
@@ -647,6 +657,29 @@ class PgStore implements Store {
             note TEXT NOT NULL DEFAULT '',
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             decided_at TIMESTAMPTZ
+          )`);
+        // Word bets and the gifting of coins landed after the table did, so
+        // these are ALTERs: the deployed database already has club_bets.
+        for (const col of [
+          `kind TEXT NOT NULL DEFAULT 'board'`,
+          `terms TEXT NOT NULL DEFAULT ''`,
+          `called_by TEXT`,
+          `called_winner TEXT`,
+          `settled_winner TEXT`,
+        ]) {
+          await this.pool.query(`ALTER TABLE club_bets ADD COLUMN IF NOT EXISTS ${col}`);
+        }
+        // Who PAID for a purchase, when it wasn't the man wearing it. Null
+        // means he bought it himself, which is every row that already exists.
+        await this.pool.query(`ALTER TABLE club_purchases ADD COLUMN IF NOT EXISTS paid_by TEXT`);
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS club_transfers (
+            id TEXT PRIMARY KEY,
+            from_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            to_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            amount INTEGER NOT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS club_bounties (
@@ -1139,7 +1172,7 @@ class PgStore implements Store {
   async listPurchases(): Promise<Purchase[]> {
     await this.init();
     const r = await this.pool.query(
-      `SELECT athlete_id, item_id, price, to_char(created_at, 'YYYY-MM-DD') AS day
+      `SELECT athlete_id, item_id, price, paid_by, to_char(created_at, 'YYYY-MM-DD') AS day
          FROM club_purchases ORDER BY created_at`,
     );
     return r.rows.map((x) => ({
@@ -1147,21 +1180,22 @@ class PgStore implements Store {
       itemId: x.item_id as string,
       price: Number(x.price),
       day: x.day as string,
+      paidBy: (x.paid_by as string) ?? null,
     }));
   }
 
-  async addPurchase(athleteId: string, itemId: string, price: number): Promise<Purchase | null> {
+  async addPurchase(athleteId: string, itemId: string, price: number, paidBy: string | null = null): Promise<Purchase | null> {
     await this.init();
     // DO NOTHING on conflict: owning a thing twice isn't a thing, and the
     // primary key is what enforces it rather than a check-then-write race.
     const r = await this.pool.query(
-      `INSERT INTO club_purchases (athlete_id, item_id, price) VALUES ($1, $2, $3)
+      `INSERT INTO club_purchases (athlete_id, item_id, price, paid_by) VALUES ($1, $2, $3, $4)
        ON CONFLICT (athlete_id, item_id) DO NOTHING
        RETURNING to_char(created_at, 'YYYY-MM-DD') AS day`,
-      [athleteId, itemId, Math.round(price)],
+      [athleteId, itemId, Math.round(price), paidBy],
     );
     if (r.rowCount === 0) return null;
-    return { athleteId, itemId, price: Math.round(price), day: r.rows[0].day as string };
+    return { athleteId, itemId, price: Math.round(price), day: r.rows[0].day as string, paidBy };
   }
 
   async getLoadout(athleteId: string): Promise<Record<string, { item: string }> | null> {
@@ -1195,6 +1229,8 @@ class PgStore implements Store {
       id: x.id as string,
       fromId: x.from_id as string,
       toId: x.to_id as string,
+      kind: (x.kind as Bet["kind"]) ?? "board",
+      terms: (x.terms as string) ?? "",
       metric: x.metric as Bet["metric"],
       period: x.period as Bet["period"],
       startsOn: x.starts_on as string,
@@ -1203,34 +1239,34 @@ class PgStore implements Store {
       note: (x.note as string) ?? "",
       createdAt: x.created_at as string,
       decidedAt: (x.decided_at as string) ?? null,
+      calledBy: (x.called_by as string) ?? null,
+      calledWinner: (x.called_winner as string) ?? null,
+      settledWinner: (x.settled_winner as string) ?? null,
     };
   }
+
+  private static readonly BET_COLS = `id, from_id, to_id, kind, terms, metric, period,
+            to_char(starts_on, 'YYYY-MM-DD') AS starts_on,
+            stake, state, note, called_by, called_winner, settled_winner,
+            to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at,
+            to_char(decided_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS decided_at`;
 
   async listBets(): Promise<Bet[]> {
     await this.init();
     const r = await this.pool.query(
-      `SELECT id, from_id, to_id, metric, period,
-              to_char(starts_on, 'YYYY-MM-DD') AS starts_on,
-              stake, state, note,
-              to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at,
-              to_char(decided_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS decided_at
-         FROM club_bets ORDER BY created_at DESC`,
+      `SELECT ${PgStore.BET_COLS} FROM club_bets ORDER BY created_at DESC`,
     );
     return r.rows.map((x) => this.betRow(x));
   }
 
-  async addBet(bet: Omit<Bet, "id" | "createdAt" | "decidedAt" | "state">): Promise<Bet> {
+  async addBet(bet: Omit<Bet, "id" | "createdAt" | "decidedAt" | "state"
+    | "calledBy" | "calledWinner" | "settledWinner">): Promise<Bet> {
     await this.init();
     const r = await this.pool.query(
-      `INSERT INTO club_bets (id, from_id, to_id, metric, period, starts_on, stake, note)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       RETURNING id, from_id, to_id, metric, period,
-                 to_char(starts_on, 'YYYY-MM-DD') AS starts_on,
-                 stake, state, note,
-                 to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at,
-                 to_char(decided_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS decided_at`,
-      [newId(), bet.fromId, bet.toId, bet.metric, bet.period, bet.startsOn,
-       Math.round(bet.stake), bet.note],
+      `INSERT INTO club_bets (id, from_id, to_id, kind, terms, metric, period, starts_on, stake, note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING ${PgStore.BET_COLS}`,
+      [newId(), bet.fromId, bet.toId, bet.kind, bet.terms, bet.metric, bet.period,
+       bet.startsOn, Math.round(bet.stake), bet.note],
     );
     return this.betRow(r.rows[0]);
   }
@@ -1242,15 +1278,69 @@ class PgStore implements Store {
     // JavaScript and then writing would be a race with a man's coins in it.
     const r = await this.pool.query(
       `UPDATE club_bets SET state = $3, decided_at = now()
-        WHERE id = $1 AND state = ANY($2::text[])
-       RETURNING id, from_id, to_id, metric, period,
-                 to_char(starts_on, 'YYYY-MM-DD') AS starts_on,
-                 stake, state, note,
-                 to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at,
-                 to_char(decided_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS decided_at`,
+        WHERE id = $1 AND state = ANY($2::text[]) RETURNING ${PgStore.BET_COLS}`,
       [id, from, to],
     );
     return r.rows[0] ? this.betRow(r.rows[0]) : null;
+  }
+
+  async callBet(id: string, byId: string, winner: string): Promise<Bet | null> {
+    await this.init();
+    // Only a side that is IN the bet, only once it has been accepted, and only
+    // while nobody has called it yet — all three in the WHERE, so a second tap
+    // cannot overwrite the first call with a different winner.
+    const r = await this.pool.query(
+      `UPDATE club_bets SET called_by = $2, called_winner = $3
+        WHERE id = $1 AND kind = 'word' AND state = 'accepted' AND called_by IS NULL
+          AND $2 IN (from_id, to_id) RETURNING ${PgStore.BET_COLS}`,
+      [id, byId, winner],
+    );
+    return r.rows[0] ? this.betRow(r.rows[0]) : null;
+  }
+
+  async settleBet(id: string, winner: string): Promise<Bet | null> {
+    await this.init();
+    const r = await this.pool.query(
+      `UPDATE club_bets SET state = 'settled', settled_winner = $2, decided_at = now()
+        WHERE id = $1 AND kind = 'word' AND state = 'accepted'
+       RETURNING ${PgStore.BET_COLS}`,
+      [id, winner],
+    );
+    return r.rows[0] ? this.betRow(r.rows[0]) : null;
+  }
+
+  async clearBetCall(id: string): Promise<Bet | null> {
+    await this.init();
+    const r = await this.pool.query(
+      `UPDATE club_bets SET called_by = NULL, called_winner = NULL
+        WHERE id = $1 AND kind = 'word' AND state = 'accepted' AND called_by IS NOT NULL
+       RETURNING ${PgStore.BET_COLS}`,
+      [id],
+    );
+    return r.rows[0] ? this.betRow(r.rows[0]) : null;
+  }
+
+  async listTransfers(): Promise<Transfer[]> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT id, from_id, to_id, amount, note,
+              to_char(created_at, 'YYYY-MM-DD') AS day
+         FROM club_transfers ORDER BY created_at DESC`,
+    );
+    return r.rows.map((x) => ({
+      id: x.id as string, fromId: x.from_id as string, toId: x.to_id as string,
+      amount: Number(x.amount), note: (x.note as string) ?? "", day: x.day as string,
+    }));
+  }
+
+  async addTransfer(fromId: string, toId: string, amount: number, note: string): Promise<Transfer> {
+    await this.init();
+    const r = await this.pool.query(
+      `INSERT INTO club_transfers (id, from_id, to_id, amount, note) VALUES ($1,$2,$3,$4,$5)
+       RETURNING to_char(created_at, 'YYYY-MM-DD') AS day`,
+      [newId(), fromId, toId, Math.round(amount), note],
+    );
+    return { id: newId(), fromId, toId, amount: Math.round(amount), note, day: r.rows[0].day as string };
   }
 
   private bountyRow(x: Record<string, unknown>): Bounty {
@@ -1626,9 +1716,9 @@ class MemoryStore implements Store {
     return [...this.purchases];
   }
 
-  async addPurchase(athleteId: string, itemId: string, price: number): Promise<Purchase | null> {
+  async addPurchase(athleteId: string, itemId: string, price: number, paidBy: string | null = null): Promise<Purchase | null> {
     if (this.purchases.some((p) => p.athleteId === athleteId && p.itemId === itemId)) return null;
-    const bought: Purchase = { athleteId, itemId, price: Math.round(price), day: toDayKey(new Date()) };
+    const bought: Purchase = { athleteId, itemId, price: Math.round(price), day: toDayKey(new Date()), paidBy };
     this.purchases.push(bought);
     return bought;
   }
@@ -1654,10 +1744,12 @@ class MemoryStore implements Store {
     return [...this.bets].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }
 
-  async addBet(bet: Omit<Bet, "id" | "createdAt" | "decidedAt" | "state">): Promise<Bet> {
+  async addBet(bet: Omit<Bet, "id" | "createdAt" | "decidedAt" | "state"
+    | "calledBy" | "calledWinner" | "settledWinner">): Promise<Bet> {
     const made: Bet = {
       ...bet, stake: Math.round(bet.stake), id: newId(), state: "open",
       createdAt: new Date().toISOString(), decidedAt: null,
+      calledBy: null, calledWinner: null, settledWinner: null,
     };
     this.bets.push(made);
     return made;
@@ -1669,6 +1761,47 @@ class MemoryStore implements Store {
     b.state = to;
     b.decidedAt = new Date().toISOString();
     return { ...b };
+  }
+
+  async callBet(id: string, byId: string, winner: string): Promise<Bet | null> {
+    const b = this.bets.find((x) => x.id === id);
+    if (!b || b.kind !== "word" || b.state !== "accepted" || b.calledBy) return null;
+    if (byId !== b.fromId && byId !== b.toId) return null;
+    b.calledBy = byId;
+    b.calledWinner = winner;
+    return { ...b };
+  }
+
+  async settleBet(id: string, winner: string): Promise<Bet | null> {
+    const b = this.bets.find((x) => x.id === id);
+    if (!b || b.kind !== "word" || b.state !== "accepted") return null;
+    b.state = "settled";
+    b.settledWinner = winner;
+    b.decidedAt = new Date().toISOString();
+    return { ...b };
+  }
+
+  async clearBetCall(id: string): Promise<Bet | null> {
+    const b = this.bets.find((x) => x.id === id);
+    if (!b || b.kind !== "word" || b.state !== "accepted" || !b.calledBy) return null;
+    b.calledBy = null;
+    b.calledWinner = null;
+    return { ...b };
+  }
+
+  private transfers: Transfer[] = [];
+
+  async listTransfers(): Promise<Transfer[]> {
+    return [...this.transfers];
+  }
+
+  async addTransfer(fromId: string, toId: string, amount: number, note: string): Promise<Transfer> {
+    const made: Transfer = {
+      id: newId(), fromId, toId, amount: Math.round(amount), note,
+      day: new Date().toISOString().slice(0, 10),
+    };
+    this.transfers.push(made);
+    return made;
   }
 
   async listBounties(): Promise<Bounty[]> {

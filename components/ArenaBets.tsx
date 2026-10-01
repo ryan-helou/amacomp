@@ -5,8 +5,8 @@ import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import type { League } from "./useLeague";
 import {
-  BET_METRICS, BET_METRIC_BY_ID, STAKE_MAX, STAKE_MIN,
-  betResult, betWhen, type Bet, type BetMetric, type BetResult,
+  BET_METRICS, BET_METRIC_BY_ID, PUSH, STAKE_MAX, STAKE_MIN,
+  betResult, betWhen, type Bet, type BetKind, type BetMetric, type BetResult,
 } from "@/lib/bets";
 import { coinAccount, fmtCoins } from "@/lib/coins";
 import { COIN } from "@/lib/club";
@@ -57,8 +57,13 @@ export function ArenaBets({
     return {
       /** Offers waiting on me — the only thing here that needs an answer. */
       inbox: rows.filter((r) => r.result.status === "offered" && r.bet.toId === meId),
+      /** A word bet the OTHER one has called: it is on me to agree or not. */
+      calls: rows.filter((r) => r.result.status === "called" && r.bet.calledBy !== meId),
       sent: rows.filter((r) => r.result.status === "offered" && r.bet.fromId === meId),
-      live: rows.filter((r) => r.result.status === "live"),
+      live: rows.filter(
+        (r) => r.result.status === "live"
+          || (r.result.status === "called" && r.bet.calledBy === meId),
+      ),
       done: rows.filter(
         (r) => r.result.status === "settled" || r.result.status === "declined"
           || r.result.status === "cancelled",
@@ -69,6 +74,14 @@ export function ArenaBets({
   async function act(id: string, action: string) {
     setBusy(id);
     setProblem(await send("/api/arena", { method: "POST", body: JSON.stringify({ action, id }) }));
+    setBusy(null);
+  }
+
+  async function call(id: string, winner: string) {
+    setBusy(id);
+    setProblem(await send("/api/arena", {
+      method: "POST", body: JSON.stringify({ action: "call", id, winner }),
+    }));
     setBusy(null);
   }
 
@@ -101,6 +114,16 @@ export function ArenaBets({
         </p>
       )}
 
+      <Group title="They say it's done" rows={mine.calls} meId={meId} state={state}
+        actions={(id) => (
+          <div className="flex gap-2">
+            <button disabled={busy === id} onClick={() => act(id, "confirm")}
+              className="eyebrow flex-1 rounded-lg bg-mint/20 py-2 text-mint">Agreed</button>
+            <button disabled={busy === id} onClick={() => act(id, "dispute")}
+              className="eyebrow flex-1 rounded-lg border border-line py-2 text-ink-2">No chance</button>
+          </div>
+        )} />
+
       <Group title="Waiting on you" rows={mine.inbox} meId={meId} state={state}
         actions={(id) => (
           <div className="flex gap-2">
@@ -117,7 +140,34 @@ export function ArenaBets({
             className="eyebrow w-full rounded-lg border border-line py-2 text-ink-2">Pull it</button>
         )} />
 
-      <Group title="Running" rows={mine.live} meId={meId} state={state} />
+      <Group title="Running" rows={mine.live} meId={meId} state={state}
+        actions={(id) => {
+          const row = mine.live.find((r) => r.bet.id === id);
+          if (!row || row.bet.kind !== "word") return null;
+          if (row.bet.calledBy === meId) {
+            return <p className="text-xs text-ink-3">Called — waiting on them.</p>;
+          }
+          // A word bet ends when they say it does, so the two buttons are the
+          // only way it ever ends. Conceding is offered as plainly as winning:
+          // most of these end with somebody admitting it.
+          const them = state.athletes.find(
+            (a) => a.id === (row.bet.fromId === meId ? row.bet.toId : row.bet.fromId),
+          );
+          return (
+            <div className="flex gap-2">
+              <button disabled={busy === id}
+                onClick={() => call(id, meId)}
+                className="eyebrow flex-1 rounded-lg bg-mint/20 py-2 text-mint">I won</button>
+              <button disabled={busy === id}
+                onClick={() => call(id, row.bet.fromId === meId ? row.bet.toId : row.bet.fromId)}
+                className="eyebrow flex-1 rounded-lg border border-line py-2 text-ink-2">
+                {them?.name} won
+              </button>
+              <button disabled={busy === id} onClick={() => call(id, PUSH)}
+                className="eyebrow rounded-lg border border-line px-3 py-2 text-ink-2">Draw</button>
+            </div>
+          );
+        }} />
       <Group title="Settled" rows={mine.done} meId={meId} state={state} />
 
       {state.bets.length === 0 && (
@@ -186,7 +236,7 @@ function BetCard({
             {bet.fromId === meId ? "You" : other?.name} v {bet.fromId === meId ? other?.name : "you"}
           </p>
           <p className="truncate font-mono text-xs text-ink-2">
-            {metric?.label} · {betWhen(bet)}
+            {bet.kind === "word" ? "On their word" : metric?.label} · {betWhen(bet)}
           </p>
         </div>
         <div className="text-right">
@@ -197,7 +247,21 @@ function BetCard({
         </div>
       </div>
 
-      {result.status !== "offered" && result.status !== "declined" && result.status !== "cancelled" && (
+      {bet.kind === "word" && bet.terms && (
+        <p className="mt-2 text-sm text-ink">{bet.terms}</p>
+      )}
+
+      {bet.kind === "word" && result.status === "called" && (
+        <p className="mt-1 font-mono text-xs text-gold">
+          {bet.calledBy === meId ? "You say" : `${other?.name} says`}{" "}
+          {bet.calledWinner === PUSH
+            ? "it's a draw"
+            : bet.calledWinner === meId ? "you won" : `${other?.name} won`}
+        </p>
+      )}
+
+      {bet.kind !== "word"
+        && result.status !== "offered" && result.status !== "declined" && result.status !== "cancelled" && (
         <div className="mt-2 flex items-baseline justify-between font-mono text-xs">
           <span className="text-ink-2">
             {fmtNum(myValue)} <span className="text-ink-3">v</span> {fmtNum(theirValue)} {metric?.unit}
@@ -208,6 +272,14 @@ function BetCard({
               : edge === 0 ? "Level" : edge > 0 ? `+${fmtNum(edge)} up` : `${fmtNum(-edge)} behind`}
           </span>
         </div>
+      )}
+
+      {bet.kind === "word" && result.status === "settled" && (
+        <p className="mt-2 font-mono text-xs">
+          <span className={result.push ? "text-ink-2" : won ? "text-mint" : "text-magenta"}>
+            {result.push ? "Push — stakes back" : won ? "Won" : "Lost"}
+          </span>
+        </p>
       )}
 
       {result.status === "declined" && <p className="mt-2 text-xs text-ink-3">Declined.</p>}
@@ -233,6 +305,8 @@ function NewBet({
 }) {
   const others = state.athletes.filter((a) => a.id !== state.me?.id);
   const [toId, setToId] = useState(others[0]?.id ?? "");
+  const [kind, setKind] = useState<BetKind>("board");
+  const [terms, setTerms] = useState("");
   const [metric, setMetric] = useState<BetMetric>("points");
   const [period, setPeriod] = useState<"week" | "month">("week");
   const [when, setWhen] = useState<"this" | "next">("this");
@@ -244,7 +318,7 @@ function NewBet({
     setBusy(true);
     onDone(await send("/api/arena", {
       method: "POST",
-      body: JSON.stringify({ action: "propose", toId, metric, period, when, stake, note }),
+      body: JSON.stringify({ action: "propose", toId, kind, terms, metric, period, when, stake, note }),
     }));
     setBusy(false);
   }
@@ -257,11 +331,33 @@ function NewBet({
         </select>
       </Field>
 
-      <Field label="On">
-        <select value={metric} onChange={(e) => setMetric(e.target.value as BetMetric)} className={INPUT}>
-          {BET_METRICS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-        </select>
+      <Field label="Settled by">
+        {/* The board settles what it can measure; anything else is on their
+            word — one calls it, the other agrees. */}
+        <div className="flex gap-2">
+          <button onClick={() => setKind("board")}
+            className={`eyebrow flex-1 rounded-lg py-2 ${kind === "board" ? "bg-ink text-on-ink" : "border border-line text-ink-2"}`}>
+            the board
+          </button>
+          <button onClick={() => setKind("word")}
+            className={`eyebrow flex-1 rounded-lg py-2 ${kind === "word" ? "bg-ink text-on-ink" : "border border-line text-ink-2"}`}>
+            your word
+          </button>
+        </div>
       </Field>
+
+      {kind === "board" ? (
+        <Field label="On">
+          <select value={metric} onChange={(e) => setMetric(e.target.value as BetMetric)} className={INPUT}>
+            {BET_METRICS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+        </Field>
+      ) : (
+        <Field label="The bet">
+          <input value={terms} maxLength={200} onChange={(e) => setTerms(e.target.value)}
+            placeholder="First one up Mont Royal" className={INPUT} />
+        </Field>
+      )}
 
       <Field label="Over">
         <div className="flex gap-2">
@@ -294,7 +390,7 @@ function NewBet({
 
       <button
         onClick={propose}
-        disabled={busy || !toId || stake > balance}
+        disabled={busy || !toId || stake > balance || (kind === "word" && !terms.trim())}
         className="eyebrow w-full rounded-lg bg-ink py-3 text-on-ink disabled:opacity-40"
       >
         <Glyph name="trio" className="mr-1.5 inline h-4 w-4 -translate-y-px align-text-bottom" />

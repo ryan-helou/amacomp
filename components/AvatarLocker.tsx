@@ -129,7 +129,7 @@ export function AvatarLocker({
   // shop has already taken.
   const account = coinAccount(
     state.me?.id ?? "", state.athletes, state.activities, state.settings, refDay,
-    state.coinGrants, state.purchases, state.bets, state.bounties,
+    state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers,
   );
   const balance = account.balance;
 
@@ -138,6 +138,23 @@ export function AvatarLocker({
     ...STARTER_ITEMS,
     ...state.purchases.filter((p) => p.athleteId === state.me?.id).map((p) => p.itemId),
   ]);
+
+  /**
+   * Buy it for somebody else.
+   *
+   * Ryan, 2026-10-01: "we can just transfer money or gift someone an item".
+   * It goes through the Arena's till rather than the shop's, because what it
+   * does is not shopping — the coins leave this wallet and the item lands in
+   * another man's locker, which is the one purchase the shop's own rule
+   * ("you can't buy what you already own") would get backwards.
+   */
+  async function gift(itemId: string, toId: string) {
+    setPaying(itemId);
+    setProblem(await send("/api/arena", {
+      method: "POST", body: JSON.stringify({ action: "gift", item: itemId, toId }),
+    }));
+    setPaying(null);
+  }
 
   async function buy(itemId: string) {
     setPaying(itemId);
@@ -447,6 +464,10 @@ export function AvatarLocker({
             setProblem(null);
           }}
           onBuy={() => buy(askedItem.id)}
+          others={state.athletes.filter((a) => a.id !== state.me?.id)}
+          ownedBy={(athleteId, itemId) =>
+            state.purchases.some((p) => p.athleteId === athleteId && p.itemId === itemId)}
+          onGift={(toId) => gift(askedItem.id, toId)}
         />
       )}
 
@@ -609,6 +630,9 @@ function BuySheet({
   problem,
   onClose,
   onBuy,
+  others,
+  ownedBy,
+  onGift,
 }: {
   item: AvatarItem;
   balance: number;
@@ -616,10 +640,17 @@ function BuySheet({
   problem: string | null;
   onClose: () => void;
   onBuy: () => void;
+  others: { id: string; name: string }[];
+  ownedBy: (athleteId: string, itemId: string) => boolean;
+  onGift: (toId: string) => void;
 }) {
   const src = itemImage(item.id);
   const affordable = item.price <= balance;
   const after = balance - item.price;
+  // Gifting is behind a toggle rather than sitting beside Buy: the sheet is
+  // opened to buy something for yourself nine times out of ten, and a present
+  // nobody meant to send is worse than one extra tap.
+  const [giving, setGiving] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
@@ -683,20 +714,51 @@ function BuySheet({
           </p>
         )}
 
+        {giving && (
+          <div className="mt-4 space-y-2">
+            <p className="eyebrow text-ink-3">Buy it for</p>
+            {others.map((a) => {
+              const has = ownedBy(a.id, item.id);
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => onGift(a.id)}
+                  disabled={has || !affordable || paying}
+                  className="eyebrow flex w-full items-center justify-between rounded-xl border border-line px-4 py-3 text-ink disabled:opacity-40"
+                >
+                  <span>{a.name}</span>
+                  <span className="text-ink-3">{has ? "has it" : `${fmtCoins(item.price)}`}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div className="mt-4 flex gap-2">
           <button
-            onClick={onClose}
+            onClick={giving ? () => setGiving(false) : onClose}
             className="eyebrow flex-1 rounded-xl border border-line py-3 text-ink-2"
           >
-            Cancel
+            {giving ? "Back" : "Cancel"}
           </button>
-          <button
-            onClick={onBuy}
-            disabled={!affordable || paying}
-            className="eyebrow flex-[2] rounded-xl bg-gold py-3 text-on-gold disabled:opacity-40"
-          >
-            {paying ? "Buying…" : affordable ? `Buy for ${fmtCoins(item.price)}` : "Not enough coins"}
-          </button>
+          {!giving && others.length > 0 && (
+            <button
+              onClick={() => setGiving(true)}
+              disabled={!affordable || paying}
+              className="eyebrow flex-1 rounded-xl border border-line py-3 text-ink-2 disabled:opacity-40"
+            >
+              Gift
+            </button>
+          )}
+          {!giving && (
+            <button
+              onClick={onBuy}
+              disabled={!affordable || paying}
+              className="eyebrow flex-[2] rounded-xl bg-gold py-3 text-on-gold disabled:opacity-40"
+            >
+              {paying ? "Buying…" : affordable ? `Buy for ${fmtCoins(item.price)}` : "Not enough coins"}
+            </button>
+          )}
         </div>
       </div>
     </div>
