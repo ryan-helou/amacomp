@@ -156,6 +156,15 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "head.durag.magenta", slot: "head", label: "Magenta durag", price: 300, tier: "common", colour: MAGENTA, accent: "#8F0C54", sprite: "durag", spriteBack: "durag_back" },
   { id: "eyes.ski.orange", slot: "eyes", label: "Orange ski goggles", price: 500, tier: "rare", colour: "#2A2F38", accent: "#FF7A29", sprite: "skigoggles" },
   { id: "eyes.ski.mirror", slot: "eyes", label: "Mirrored ski goggles", price: 650, tier: "epic", colour: BLACK, accent: "#8FD6E8", sprite: "skigoggles" },
+  { id: "torso.polo.green", slot: "torso", label: "Club polo", price: 500, tier: "common", colour: "#15493A", accent: WHITE, sprite: "polo" },
+  { id: "torso.polo.white", slot: "torso", label: "White club polo", price: 500, tier: "common", colour: WHITE, accent: "#15493A", sprite: "polo" },
+  // Philadelphia's blue and red, and the Lakers' purple and gold, each with
+  // the 23 on the chest. Named the way Ryan asked for them; the drawing
+  // itself is colours and a number, no badge or wordmark.
+  { id: "torso.hoops.phi", slot: "torso", label: "LeBron Philly jersey", price: 900, tier: "epic", colour: "#006BB6", accent: "#ED174C", sprite: "basketball" },
+  { id: "torso.hoops.gold", slot: "torso", label: "LeBron Lakers jersey", price: 1100, tier: "epic", colour: "#552583", accent: "#FDB927", sprite: "basketball" },
+  { id: "torso.dungarees", slot: "torso", label: "Dungarees", price: 700, tier: "rare", colour: "#3B5A86", accent: "#D9B46A", sprite: "dungarees" },
+  { id: "torso.gi", slot: "torso", label: "Gi", price: 800, tier: "rare", colour: "#F2F0EA", accent: "#1A1A1A", sprite: "gi" },
   { id: "prize.none", slot: "prize", label: "No prize", price: 0, tier: "common", colour: GOLD, accent: WHITE },
   { id: "prize.medal", slot: "prize", label: "Week winner's medal", price: 0, tier: "epic", colour: GOLD, accent: "#b23a48", sprite: "medal", hideBack: true, earned: "win a week" },
   { id: "prize.sash", slot: "prize", label: "Month winner's sash", price: 0, tier: "epic", colour: "#b23a48", accent: GOLD, sprite: "sash", earned: "win a month" },
