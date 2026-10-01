@@ -424,6 +424,28 @@ console.log("\na saved look is topped up, never left bare");
   check("no saved look at all is the generated one", lookFor(me, {}).torso.item, loadoutFor("Ryan").torso.item);
 }
 
+console.log("\nthe champion is gilded, not re-dressed");
+{
+  const worn: Loadout = { ...loadoutFor("Ryan"), prize: { item: "prize.crown" } };
+  const plain = avatarSvg(worn);
+  const gilt = avatarSvg(worn, { gilded: true });
+  check("gilding changes the drawing", plain === gilt, false);
+  // The whole point of an outline as the mark: he keeps every garment he
+  // chose. Only the edge colour may move.
+  check("the near-black edge is gone", gilt.includes('fill="#14161b"'), false);
+  check("and a gold one is there instead", gilt.includes('fill="#b88518"'), true);
+  check("the plain figure keeps the near-black edge", plain.includes('fill="#14161b"'), true);
+  // Same number of rectangles: nothing added, nothing taken away.
+  const rects = (svg: string) => (svg.match(/<rect /g) ?? []).length;
+  check("not one rectangle more or less", rects(gilt), rects(plain));
+  // And it has to survive the crop to a bust, which is the only reason it
+  // beats a belt or a cape.
+  const bust = avatarSvg(worn, { crop: "bust", gilded: true });
+  check("the bust is gilded too", bust.includes('fill="#b88518"'), true);
+  check("and the plain bust is not",
+    avatarSvg(worn, { crop: "bust" }).includes('fill="#b88518"'), false);
+}
+
 console.log("\na prize is not for sale");
 {
   const prizes = AVATAR_ITEMS.filter((i) => i.slot === "prize" && i.sprite);
