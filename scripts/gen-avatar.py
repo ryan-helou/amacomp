@@ -474,6 +474,104 @@ def build(P):
 
     item("skigoggles", 4, skigoggles)
 
+    # ---- The ones Ryan kept, plus the three he asked for ----
+    item("polo", 2, lambda c: (
+        torso(c, HIP-1, (AY1-AY0)*0.32, False, 2.4),
+        c.poly([(40-5.4, SH-3), (40, SH+6), (40+5.4, SH-3)], "A"),
+        c.rect(39.4, SH+1, 40.6, SH+9, "A", only="K"),
+        c.disc(40, SH+3.4, 0.7, 0.7, "W")))
+
+    def seven(c, n, x, y, w, h, ch):
+        """One digit, seven-segment, so a squad number survives being 14 px
+        tall. Drawn rather than typed: there is no font in a sprite sheet."""
+        t = h * 0.17
+        seg = {
+            "a": (x, y, x + w, y + t), "g": (x, y + h / 2 - t / 2, x + w, y + h / 2 + t / 2),
+            "d": (x, y + h - t, x + w, y + h),
+            "f": (x, y, x + t, y + h / 2), "b": (x + w - t, y, x + w, y + h / 2),
+            "e": (x, y + h / 2, x + t, y + h), "c": (x + w - t, y + h / 2, x + w, y + h),
+        }
+        on = {0: "abcdef", 1: "bc", 2: "abged", 3: "abgcd", 4: "fgbc",
+              5: "afgcd", 6: "afgedc", 7: "abc", 8: "abcdefg", 9: "abfgcd"}[n]
+        for k in on:
+            c.rect(*seg[k], ch)
+
+    def basketball(c):
+        """A basketball jersey: deep armholes, a V at the neck, trim down the
+        sides, and a two-digit number big enough to read on the board."""
+        c.trunk(SH+2, HIP+1, TT-1.4, TW_-1.0, TH_-1.0, "K")
+        for sx in (-1, 1):
+            c.poly([(40+sx*(TT-1.4), SH+4.5), (40+sx*(TT-5.2), SH+4.5),
+                    (40+sx*(TT-6.2), SH-0.5), (40+sx*(TT-2.0), SH-0.5)], "K")
+        # neck and armhole trim, then the side stripe
+        c.poly([(40-5.6, SH-1.0), (40, SH+6.0), (40+5.6, SH-1.0)], "A")
+        c.poly([(40-4.2, SH-1.0), (40, SH+4.4), (40+4.2, SH-1.0)], "W")
+        for sx in (-1, 1):
+            c.rect(40+sx*(TW_-1.4) - 0.9, SH+6, 40+sx*(TW_-1.4) + 0.9, HIP+1, "A", only="K")
+        seven(c, 2, 40 - 7.6, SH + 9.5, 6.2, 11.5, "W")
+        seven(c, 3, 40 + 1.4, SH + 9.5, 6.2, 11.5, "W")
+
+    item("basketball", 3, basketball)
+
+    def dungarees(c):
+        """Denim dungarees: a bib that is actually a bib, straps over the
+        shoulders with buckles, and trousers with a seam. The first pass had a
+        bib the size of a stamp and straps you could not see."""
+        # trousers first, so the bib sits over them
+        c.trunk(HIP-5, HIP+4, TH_+0.4, TH_+0.4, TH_+0.4, "K")
+        c.capsule(L, LY0-1, LY0+(LY1-LY0)*0.95, LHW+1.6, "K")
+        c.capsule(R, LY0-1, LY0+(LY1-LY0)*0.95, LHW+1.6, "K")
+        for cx in (L, R):
+            c.rect(cx - LHW - 1.6, LY0 + 2, cx - LHW - 0.7, LY0+(LY1-LY0)*0.95, "A", only="K")
+        # the bib: broad, up to the chest, with a patch pocket
+        c.rect(40 - 8.4, SH + 6.5, 40 + 8.4, HIP - 2, "K")
+        c.rect(40 - 5.6, SH + 10, 40 + 5.6, SH + 18, "A", only="K")
+        c.rect(40 - 4.6, SH + 11, 40 + 4.6, SH + 17, "K")
+        # straps over the shoulders, with a buckle each
+        for sx in (-1, 1):
+            c.poly([(40 + sx * 8.4, SH + 8.5), (40 + sx * 4.6, SH + 8.5),
+                    (40 + sx * 5.6, SH - 1.0), (40 + sx * 9.4, SH - 1.0)], "K")
+            c.rect(40 + sx * 8.6 - 1.8, SH + 5.0, 40 + sx * 8.6 + 1.8, SH + 7.6, "A")
+        c.rect(40 - 9.0, HIP - 4.5, 40 + 9.0, HIP - 3.0, "A", only="K")
+
+    item("dungarees", 3, dungarees)
+
+    def gi(c):
+        """A gi: wide sleeves, two lapels crossed left over right, a thick
+        belt with a knot and two ends hanging, and loose trousers. The first
+        pass was a white jumpsuit with a V on it."""
+        c.trunk(SH, HIP + 4, TT, TW_ + 1.0, TH_ + 1.0, "K")
+        c.disc(40, SH + 2, TT + 0.5, 6.5, "K")
+        # wide sleeves — a gi hangs off the arm and FLARES at the cuff. A
+        # capsule gave a round blob at the shoulder; a sleeve is a trapezium.
+        for sx in (-1, 1):
+            cx = AX if sx < 0 else 80 - AX
+            y0, y1 = AY0 - 1.0, AY0 + (AY1 - AY0) * 0.60
+            c.poly([(cx - AHW - 0.6, y0), (cx + AHW + 0.6, y0),
+                    (cx + AHW + sx * -0.2 + 3.0, y1), (cx - AHW + sx * -0.2 - 3.0, y1)], "K")
+            c.poly([(cx + AHW + sx * -0.2 + 3.0, y1 - 2.0),
+                    (cx - AHW + sx * -0.2 - 3.0, y1 - 2.0),
+                    (cx - AHW + sx * -0.2 - 3.0, y1),
+                    (cx + AHW + sx * -0.2 + 3.0, y1)], "A", only="K")
+        c.capsule(L, LY0, LY0 + (LY1 - LY0) * 0.80, LHW + 2.0, "K")
+        c.capsule(R, LY0, LY0 + (LY1 - LY0) * 0.80, LHW + 2.0, "K")
+        # the two lapels, the right one crossing over the left
+        c.poly([(40 - TT + 1.0, SH - 3.0), (40 - 1.0, SH + 15.0),
+                (40 + 2.6, SH + 15.0), (40 - TT + 5.0, SH - 3.0)], "A")
+        c.poly([(40 + TT - 1.0, SH - 3.0), (40 + 1.0, SH + 15.0),
+                (40 - 2.6, SH + 15.0), (40 + TT - 5.0, SH - 3.0)], "A")
+        # belt, knot, and the two ends
+        c.rect(40 - TT - 0.5, SH + 15.0, 40 + TT + 0.5, SH + 20.0, "A")
+        # the knot: a block of belt sitting proud of the band, split by one
+        # line of gi showing through, which is what reads as a tied knot. A
+        # white square in the middle read as a target.
+        c.rect(40 - 3.4, SH + 13.8, 40 + 3.4, SH + 21.2, "A")
+        c.rect(40 - 3.4, SH + 17.1, 40 + 3.4, SH + 17.9, "K")
+        for sx in (-1, 1):
+            c.rect(40 + sx * 1.8 - 1.4, SH + 20.6, 40 + sx * 1.8 + 1.4, SH + 29.0, "A")
+
+    item("gi", 3, gi)
+
     # prizes — won, not sold. Drawn with more care than the first pass: a
     # wreath of real leaves, a medal with a struck rim, a sash with edging.
     def leaf(c, cx, cy, ln, wd, ang, ch):
