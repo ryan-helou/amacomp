@@ -1,4 +1,4 @@
-import { canSeeClub } from "./club";
+import { canSeeClub, championWithTestMode, TEST_CHAMPION } from "./club";
 
 /**
  * Who the Club opens for.
@@ -38,6 +38,25 @@ console.log("\nand only that name, exactly");
   check("nobody signed in gets nothing", canSeeClub(null), false);
   check("and neither does undefined", canSeeClub(undefined), false);
   check("nor an empty name", canSeeClub(""), false);
+}
+
+console.log("\ntest mode never lies to anyone but Ryan");
+{
+  const ryan = { id: "r", name: "Ryan" };
+  const jona = { id: "j", name: "Jona" };
+  // Only this matters: the other five must never be shown a champion who has
+  // not won anything. That would be a lie about the league, not a preview.
+  check("Jona sees no champion", championWithTestMode(null, jona), null);
+  check("nor does a signed-out viewer", championWithTestMode(null, null), null);
+  check("Ryan sees himself, while test mode is on",
+    championWithTestMode(null, ryan), TEST_CHAMPION ? "r" : null);
+
+  // And it must never override a real result, for anybody — including Ryan,
+  // who would otherwise go on wearing the crown after losing it.
+  check("a real champion wins, for Jona", championWithTestMode("x", jona), "x");
+  check("a real champion wins, for Ryan too", championWithTestMode("x", ryan), "x");
+  check("even when the real champion is someone else",
+    championWithTestMode("j", ryan), "j");
 }
 
 console.log(failures === 0 ? "\nAll club tests passed.\n" : `\n${failures} failing.\n`);

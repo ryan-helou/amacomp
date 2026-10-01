@@ -35,6 +35,38 @@ export function canSeeClub(name: string | null | undefined): boolean {
   return name === "Ryan";
 }
 
+/**
+ * TEST MODE: pretend the viewer already won a season.
+ *
+ * Nothing in the app has ever shown the champion treatment, because no season
+ * has finished — the crown, the gold edge and the podium circlets are all
+ * drawn off `reigningChampionId`, which is null until a season actually
+ * closes. Ryan asked to see it on his phone before then, so while there is no
+ * real champion, and ONLY on his own device, he is treated as one.
+ *
+ * Three things keep this honest:
+ *
+ *  * It is per-viewer. Everyone else's app is untouched — nobody is shown a
+ *    champion who hasn't won anything, which would be a lie about the league
+ *    rather than a preview.
+ *  * It self-expires. The moment a season really closes, `real` is non-null
+ *    and the real answer wins; this never overrides a genuine result.
+ *  * It is one function with a test, not a condition sprinkled through the
+ *    components, so turning it off is deleting TEST_CHAMPION and this block.
+ *
+ * Ryan, 2026-10-01: "act like i won season 0".
+ */
+export const TEST_CHAMPION = true;
+
+export function championWithTestMode(
+  real: string | null,
+  me: { id: string; name: string | null } | null | undefined,
+): string | null {
+  if (real) return real;
+  if (!TEST_CHAMPION || !me || !canSeeClub(me.name)) return real;
+  return me.id;
+}
+
 /** What a coin is called, singular and plural, in one place. */
 export const COIN = { one: "tri coin", many: "tri coins", short: "TC" } as const;
 
