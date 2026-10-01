@@ -2,7 +2,7 @@ import { activityPoints, fmtDuration, goalFor, ratesOn, unscoredGymIds, standing
 import { getStore } from "./db";
 import { ANNOUNCE_HOUR, announcementIsDue, rateAnnouncementFor } from "./announce";
 import { addDays, daysBetween, periodRange } from "./dates";
-import { seasonByNumber, seasonChampions, seasonFor } from "./season";
+import { reigningChampionId, reigningPodium, seasonByNumber, seasonChampions, seasonFor } from "./season";
 import { hallOfFame } from "./records";
 import { DEFAULT_SETTINGS, type Activity, type Athlete, type Settings } from "./types";
 
@@ -730,6 +730,37 @@ function personalGoals() {
 }
 
 personalGoals();
+
+console.log("\nthe podium of the last finished season");
+{
+  // Season 1 opens Mon 3 Aug and closes Sun 4 Oct; 12 Oct is inside season 2,
+  // so season 1 is the most recent FINISHED one and its top three are the
+  // podium that gets drawn on the figures.
+  const S2 = { ...S, seasonStart: "2026-08-03" };
+  const people = [ath("a", "Ana"), ath("b", "Ben"), ath("c", "Cal"), ath("d", "Dee")];
+  const log = [
+    run("r1", "b", "2026-09-01", 40),   // 200
+    run("r2", "a", "2026-09-01", 30),   // 150
+    run("r3", "c", "2026-09-01", 20),   // 100
+    // Dee logged nothing in season 1 at all.
+  ];
+  const podium = reigningPodium(people, log, S2, "2026-10-12");
+  check("the podium is three deep", podium.length, 3);
+  check("and it is in finishing order", podium, ["b", "a", "c"]);
+  check("the champion is the same man the gilding uses",
+    reigningChampionId(people, log, S2, "2026-10-12"), podium[0]);
+  check("somebody who scored nothing is not on it", podium.includes("d"), false);
+
+  // Mid-season there is no finished season, so nobody is wearing anything —
+  // the crown and the circlets all arrive at once, when the season closes.
+  check("nothing is awarded while the season is still running",
+    reigningPodium(people, log, S2, "2026-09-20"), []);
+
+  // Fewer finishers than places: a podium is who turned up, not three slots
+  // that must be filled.
+  const thin = reigningPodium(people, [run("r1", "b", "2026-09-01", 40)], S2, "2026-10-12");
+  check("one scorer makes a podium of one", thin, ["b"]);
+}
 
 storedRateChangesAreNormalised().then(() => {
   console.log(failures === 0 ? "\nAll passed.\n" : `\n${failures} FAILED\n`);

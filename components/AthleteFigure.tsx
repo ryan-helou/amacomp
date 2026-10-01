@@ -110,7 +110,7 @@ export function Face({
 /**
  * The whole figure, head to shoes, optionally standing on his own flag.
  *
- * This is the only place the shoes, the socks and the bottom half of a tri
+ * This is the only place the shoes and the bottom half of a tri
  * suit are visible at all — everywhere else crops at the shoulders. If a
  * screen is meant to show off what someone is wearing, it wants this.
  */
