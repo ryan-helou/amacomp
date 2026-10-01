@@ -368,6 +368,17 @@ console.log("\none country, one purchase, one drawing");
     check(`${f.label}'s emblem keeps its ratio`, emblem.includes('preserveAspectRatio="none"'), false);
     check(`${f.label}'s emblem declares a size`, /width="30" height="20"/.test(emblem), true);
   }
+  // Jordan's thirds put the name on the white, the detail line on the green
+  // and the bar across the join — the only row where the text crossed two
+  // colours. The lane gives the middle band double width, as Lebanon has
+  // always had. The TAG keeps the flag's true thirds.
+  const jo = FLAG_BY_ID.get("jo")!;
+  check("Jordan's flag is still thirds", jo.weights, undefined);
+  check("but its lane widens the middle", jo.laneWeights, [1, 2, 1]);
+  // The tag is the copied file, untouched: its green band still starts at
+  // 3360 of 5040, which is two thirds down.
+  check("and the tag is still the real flag", flagSvg("jo").includes("m0 3360h10080v1680H0z"), true);
+
   check("Italy has no emblem layer — it is only stripes",
     flagLane("it")!.backgroundImage.split('url("').length, 2);
 
