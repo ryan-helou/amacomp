@@ -405,6 +405,75 @@ def build(P):
     item("socks_stripe", 3, lambda c: (socks(c, 0.42),
         [c.rect(cx-LHW+0.1, LY0+(LY1-LY0)*0.42+2.4+i*2.6, cx+LHW-0.1, LY0+(LY1-LY0)*0.42+3.6+i*2.6, "A")
          for cx in (L, R) for i in range(4)]))
+    # The four Ryan kept from the ideas sheet, plus the durag he asked for.
+    item("bucket", 4, lambda c: (
+        c.disc(40, HC-1, HRX-0.6, HRY-2.0, "K", y1=HC-HRY*0.05),
+        c.disc(40, HC-HRY*0.06, HRX+5.0, 2.6, "K"),
+        c.rect(40-HRX+1, HC-HRY*0.42, 40+HRX-1, HC-HRY*0.3, "A", only="K")))
+    item("cowboy", 4, lambda c: (
+        c.disc(40, HC-3.0, HRX-2.0, HRY-3.0, "K", y1=HC-HRY*0.18),
+        c.rect(40-HRX+3, HC-HRY*0.62, 40+HRX-3, HC-HRY*0.16, "K"),
+        c.disc(40, HC-HRY*0.14, HRX+7.5, 2.4, "K"),
+        c.rect(40-HRX+2.4, HC-HRY*0.34, 40+HRX-2.4, HC-HRY*0.24, "A", only="K")))
+    item("santa", 4, lambda c: (
+        c.poly([(40-HRX-1, HC-HRY*0.30), (40+HRX*0.2, HC-HRY*1.5),
+                (40+HRX*0.95, HC-HRY*1.2), (40+HRX+1, HC-HRY*0.30)], "K"),
+        c.disc(40+HRX*0.72, HC-HRY*1.30, 3.4, 3.2, "A"),
+        c.rect(40-HRX-1.4, HC-HRY*0.36, 40+HRX+1.4, HC-HRY*0.1, "A")))
+
+    def durag(c, back=False):
+        """A durag: the cap flat to the skull, the band across the brow, and
+        the tails. From the front you get the two short ends by the ears; from
+        behind, the long tails down the back of the neck, which is the whole
+        look and the reason it needs its own back sprite."""
+        c.disc(40, HC-0.5, HRX+0.3, HRY-0.2, "K", y1=HC-HRY*0.14)
+        c.rect(40-HRX-0.6, HC-HRY*0.30, 40+HRX+0.6, HC-HRY*0.12, "A")
+        # the seam that runs front to back over the crown
+        c.rect(39.4, HC-HRY*0.95, 40.6, HC-HRY*0.30, "A", only="K")
+        if back:
+            c.disc(40, HC, HRX+0.3, HRY, "K")
+            c.rect(40-HRX-0.6, HC-HRY*0.30, 40+HRX+0.6, HC-HRY*0.12, "A")
+            c.rect(39.4, HC-HRY*1.0, 40.6, HC+HRY*0.1, "A")
+            # The tails start BELOW the cap and widen as they fall. Drawn from
+            # the crown they were almost entirely hidden under it — all you
+            # saw was a nub at the neck.
+            c.rect(40-3.4, HC+HRY*0.86, 40+3.4, HC+HRY*1.05, "A")
+            c.poly([(40-3.0, HC+HRY*1.00), (40+3.0, HC+HRY*1.00),
+                    (40+8.6, HC+HRY*2.00), (40+4.2, HC+HRY*2.06)], "K")
+            c.poly([(40-3.0, HC+HRY*1.00), (40+3.0, HC+HRY*1.00),
+                    (40-4.2, HC+HRY*2.06), (40-8.6, HC+HRY*2.00)], "K")
+        else:
+            for sx in (-1, 1):
+                c.poly([(40+sx*(HRX-1.4), HC-HRY*0.16), (40+sx*(HRX+1.2), HC-HRY*0.16),
+                        (40+sx*(HRX+2.0), HC+HRY*0.40), (40+sx*(HRX-0.6), HC+HRY*0.34)], "K")
+
+    item("durag", 4, lambda c: durag(c))
+    item("durag_back", 4, lambda c: durag(c, back=True))
+
+    def skigoggles(c):
+        """Proper ski goggles: a wide strap right round, a chunky frame, one
+        big lens with a brow curve and a nose notch under it, and a hard
+        reflection across the glass. The first pass was a flat orange ellipse
+        on a thin line, which read as a sleep mask."""
+        top, bot = EYE_Y - HRY*0.30, EYE_Y + HRY*0.26
+        # strap, all the way round and a touch proud of the head
+        c.rect(40-HRX-2.0, EYE_Y-HRY*0.17, 40+HRX+2.0, EYE_Y+HRY*0.05, "K")
+        # frame: wider at the brow, tucked at the cheeks
+        c.poly([(40-HRX-1.0, top+1.2), (40-HRX*0.78, top), (40+HRX*0.78, top),
+                (40+HRX+1.0, top+1.2), (40+HRX+0.6, bot-1.6), (40+HRX*0.66, bot),
+                (40-HRX*0.66, bot), (40-HRX-0.6, bot-1.6)], "K")
+        # the glass, inset all round
+        c.poly([(40-HRX*0.92, top+2.0), (40-HRX*0.66, top+1.0), (40+HRX*0.66, top+1.0),
+                (40+HRX*0.92, top+2.0), (40+HRX*0.74, bot-2.2), (40+HRX*0.44, bot-1.2),
+                (40-HRX*0.44, bot-1.2), (40-HRX*0.74, bot-2.2)], "A")
+        # the notch over the nose, cut back out of the glass
+        c.poly([(40-2.0, bot-1.2), (40+2.0, bot-1.2), (40, bot-3.2)], "K")
+        # one hard reflection, upper left, the way light hits a curved lens
+        [c.rect(40-HRX*0.62+i*0.38, top+1.8+i*0.38, 40-HRX*0.44+i*0.38, top+4.6+i*0.38, "W")
+         for i in range(9)]
+
+    item("skigoggles", 4, skigoggles)
+
     # prizes — won, not sold. Drawn with more care than the first pass: a
     # wreath of real leaves, a medal with a struck rim, a sash with edging.
     def leaf(c, cx, cy, ln, wd, ang, ch):
