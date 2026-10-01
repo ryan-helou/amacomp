@@ -51,6 +51,32 @@ SOURCES = {
 
 W, H = 30, 20
 
+# The FIELD of each flag — the parts a lane paints for itself, stretched, as
+# plain bands. Deleting them from the drawing leaves the EMBLEM alone, which
+# is what a lane needs: the bands can take being stretched across a row and
+# the emblem cannot, so they are drawn separately and only the emblem keeps
+# its proportions. Matched exactly and asserted, so a changed upstream file
+# fails the build loudly instead of quietly shipping a flag with no field.
+#
+# Canada and Quebec are not here: their emblems are HOLES punched in the
+# field rather than shapes drawn on it, so there is nothing to subtract.
+# Canada takes its leaf from lib/away.ts and Quebec its fleur from below.
+FIELDS = {
+    "lb": ['<path fill="#d31624" d="M0 0h2880v1920H0z"/>',
+           '<path fill="#fff" d="M0 480h2880v960H0z"/>'],
+    "jp": ['<rect fill="#fff" height="600" width="900"/>'],
+    "jo": ['<path fill="#fff" d="m0 0h10080v5040H0z"/>',
+           '<path d="m0 0h10080v1680H0z"/>',
+           '<path fill="#007a3d" d="m0 3360h10080v1680H0z"/>'],
+    "br": ['<path d="m-2100-1470h4200v2940h-4200z" fill="#009440"/>'],
+    "ke": ['<path fill="#fff" d="M-120-80h240V80h-240z"/>',
+           '<path d="M-120-80h240v48h-240z"/>',
+           '<path fill="#060" d="M-120 32h240v48h-240z"/>',
+           # The red band is a PATH, not a rect: it carries the notch the
+           # shield sits in, so it reads as field and must go with the rest.
+           '<path fill="#b00" d="M-120-24v48h101c3 8 13 24 19 24s16-16 19-24h101v-48H19C16-32 6-48 0-48s-16 16-19 24z"/>'],
+}
+
 
 def fetch(path: str) -> str:
     os.makedirs(CACHE, exist_ok=True)
@@ -111,10 +137,20 @@ def fmt(n: float) -> str:
 
 def main() -> None:
     parts = []
+    motifs = []
     for fid, (label, path) in SOURCES.items():
         art = normalise(fid, fetch(path))
         parts.append((fid, label, path, art))
-        print(f"  {fid}  {label:<10} {len(art):>6} chars")
+        note = ""
+        if fid in FIELDS:
+            motif = art
+            for piece in FIELDS[fid]:
+                if piece not in motif:
+                    raise SystemExit(f"{fid}: field piece no longer in the file: {piece[:60]}")
+                motif = motif.replace(piece, "", 1)
+            motifs.append((fid, label, motif))
+            note = f"  (+ motif {len(motif)})"
+        print(f"  {fid}  {label:<10} {len(art):>6} chars{note}")
 
     esc = lambda s: s.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
 
@@ -133,6 +169,18 @@ def main() -> None:
     body = "".join(
         f"  // {label} — commons/{path}\n  {fid}:\n    `{esc(art)}`,\n"
         for fid, label, path, art in parts
+    )
+    motif_body = "".join(
+        f"  // {label}, field removed\n  {fid}:\n    `{esc(m)}`,\n"
+        for fid, label, m in motifs
+    )
+    extras += (
+        "\n/**\n * The same flags with their FIELD taken out, leaving the emblem alone.\n"
+        " *\n * A lane paints the bands itself, stretched, because bands can take that;\n"
+        " * the emblem cannot, so it is a separate layer at its own proportions. Not\n"
+        " * every flag is here — Canada's leaf and Quebec's fleur are holes punched\n"
+        " * in their fields rather than shapes on them, and Italy has no emblem.\n */\n"
+        f"export const FLAG_MOTIF: Record<string, string> = {{\n{motif_body}}};\n"
     )
 
     header = f'''/**

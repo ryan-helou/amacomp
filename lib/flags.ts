@@ -1,5 +1,5 @@
 import { MAPLE, MAPLE_BOX } from "./away";
-import { FLAG_ART, FLEUR, FLEUR_BOX } from "./flagArt";
+import { FLAG_ART, FLAG_MOTIF, FLEUR, FLEUR_BOX } from "./flagArt";
 
 /**
  * The flags you can fly beside your name.
@@ -42,14 +42,10 @@ export interface CountryFlag {
    */
   laneAt?: number | null;
   /**
-   * What to draw at that spot instead of the whole flag, in the same 30x20
-   * box, for flags whose BANDS ARE VERTICAL.
-   *
-   * The lane paints its bands stretched, which is honest for a stripe. A
-   * flag with horizontal bands looks identical stretched or not, so its whole
-   * drawing can go on top and the seam cannot be seen. Canada's cannot: drop
-   * the whole flag on and you get its red-white-red inside the stretched
-   * red-white-red, at the wrong scale. So Canada contributes its leaf alone.
+   * The emblem alone, in the same 30x20 box, when it cannot simply be taken
+   * from FLAG_MOTIF — Canada's leaf and Quebec's fleur are HOLES punched in
+   * their fields rather than shapes drawn on them, and the house flag's star
+   * is ours.
    */
   laneMotif?: string;
 }
@@ -163,26 +159,27 @@ export function flagLane(id: string): {
   const flag = FLAG_BY_ID.get(id);
   if (!flag) return null;
 
-  // ONE LONG THING: the flag itself, stretched the whole length of the row.
-  // No badge in the corner, no banner, nothing clipped out of it — Ryan asked
-  // for a lane three times and I kept putting a small shape inside it instead.
-  // ONE LONG THING, in two layers that do not fight.
+  // The away-week wash, extended to the shop's flags — lib/away.ts has done
+  // this since long before the Club existed, and does it better than the
+  // full-strength flag that replaced it. Its note is still the best summary
+  // of why: a crisp block behind a leaderboard row reads as a rendering
+  // fault, a soft one reads as lit.
   //
-  // The BANDS are painted stretched across the row, which is honest: a stripe
-  // is the same stripe at any width. Anything with a SHAPE — a leaf, a disc,
-  // a cedar, a lozenge — is a SECOND background layer, sized `auto` so the
-  // browser keeps its proportions, centred on the row.
+  // Two kinds of flag, because they fail in opposite directions:
   //
-  // It has to be CSS that holds the aspect, not SVG. A nested <svg> with
-  // preserveAspectRatio inside a parent drawn with preserveAspectRatio="none"
-  // is measured in the parent's user units, and those units are already
-  // squashed — so the nested copy came out exactly as stretched as the thing
-  // it was meant to fix. Japan's disc stayed an ellipse through two goes at
-  // it. `background-size: auto` is measured in pixels, and pixels are square.
+  // DARK under the text — the bands are painted over the deck and FEATHERED,
+  // strong at the two ends where the rank and the points sit and dipping
+  // through the middle where the name runs. The row stays dark, so the ink
+  // stays light.
+  //
+  // PALE under the text (Japan, Jordan, Lebanon) — fading those toward the
+  // deck would put dark ink on a dark row. They paint their field nearly
+  // solid instead and take dark ink, which is what away.ts does for Japan and
+  // the reason that row has always worked.
   const weights = flag.weights ?? [1, 1, 1];
   const whole = weights.reduce((a, b) => a + b, 0);
   let at = 0;
-  const field = flag.bands
+  const bands = flag.bands
     .map((colour, i) => {
       const from = (at / whole) * 100;
       at += weights[i] ?? 1;
@@ -192,52 +189,49 @@ export function flagLane(id: string): {
         : `<rect x="${from}" width="${to - from}" height="100" fill="${colour}"/>`;
     })
     .join("");
-  const url = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 
-  // The field is told to fill the row and does not care: stripes stretch.
+  // The ink follows the band that actually lands under the writing: the
+  // MIDDLE one on a horizontal flag, since the text runs across the middle of
+  // the row, and the first on a vertical one, where the name sits.
+  const light =
+    (flag.rows
+      ? lum(flag.bands[Math.floor(flag.bands.length / 2)])
+      : lum(flag.bands[0])) > 0.5;
+  const fid = `${flag.id}-fade`;
+  // A mask rather than a stack of gradients: the bands are one drawing and
+  // the dip is one shape over them, so a flag with five bands fades exactly
+  // like a flag with one.
+  const stops = light
+    ? [[0, 0.95], [1, 0.95]]
+    : [[0, 0.97], [0.16, 0.86], [0.42, 0.22], [0.58, 0.22], [0.84, 0.86], [1, 0.97]];
+  const fade =
+    `<defs><linearGradient id="${fid}" x1="0" y1="0" x2="1" y2="0">` +
+    stops.map(([o, a2]) => `<stop offset="${o}" stop-color="#fff" stop-opacity="${a2}"/>`).join("") +
+    `</linearGradient><mask id="${fid}-m"><rect width="100" height="100" fill="url(#${fid})"/></mask></defs>`;
+
+  const url = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
   const fieldUrl = url(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" ` +
-      `preserveAspectRatio="none">${field}</svg>`,
+      `preserveAspectRatio="none">${fade}<g mask="url(#${fid}-m)">${bands}</g></svg>`,
   );
-  // The motif must NOT say preserveAspectRatio="none". That is what took two
-  // goes to find: `none` strips an SVG of its intrinsic ratio, so
-  // `background-size: auto 100%` had nothing to reason from and fell back to
-  // the full width of the row — the exact stretch this exists to undo. With
-  // width and height on the root and the default fitting, the image is 3:2
-  // and `auto` keeps it that way in PIXELS, which is the only space where a
-  // circle is round.
+  // The emblem is held back too — it sits under the name, and a full-strength
+  // leaf there is a blob with writing on it. Still `auto`, because
+  // preserveAspectRatio="none" would strip the ratio and stretch it flat.
   const motifUrl = url(
     `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} width="30" height="20" ` +
-      `viewBox="0 0 30 20">${flag.laneMotif ?? flag.art}</svg>`,
+      `viewBox="0 0 30 20"><g opacity="0.6">${flag.laneMotif ?? FLAG_MOTIF[flag.id] ?? ""}</g></svg>`,
   );
 
   const layers = [fieldUrl];
   const sizes = ["100% 100%"];
   const spots = ["0 0"];
   const spot = flag.laneAt === undefined ? 0.5 : flag.laneAt;
-  if (spot !== null) {
+  if (spot !== null && (flag.laneMotif || FLAG_MOTIF[flag.id])) {
     layers.push(motifUrl);
-    sizes.push("auto 100%");
+    sizes.push("auto 76%");
     spots.push(`${(spot * 100).toFixed(0)}% center`);
   }
 
-  // The ink follows what is under the TEXT. On a horizontal flag that is the
-  // MIDDLE band, since the text runs across the middle of the row; on a
-  // vertical one it is the first band, where the name sits.
-  const ends = flag.rows
-    ? lum(flag.bands[Math.floor(flag.bands.length / 2)])
-    : lum(flag.bands[0]);
-  // NO SCRIM. Ryan's call: the wash over the lane is gone, so a flag is its
-  // own colours at full strength and nothing is dimmed.
-  //
-  // The ink still has to be chosen, and now it matters MORE rather than less:
-  // with nothing softening the flag, the text sits directly on it. It follows
-  // what is under the TEXT — the MIDDLE band on a horizontal flag, since the
-  // text runs across the middle of the row, and the first band on a vertical
-  // one, where the name sits.
-  const light = ends > 0.5;
-
-  // Emblem first so it paints over the field it sits on.
   return {
     backgroundImage: layers.slice().reverse().join(", "),
     backgroundSize: sizes.slice().reverse().join(", "),
