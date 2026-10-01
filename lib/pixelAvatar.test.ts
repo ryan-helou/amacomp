@@ -334,22 +334,18 @@ console.log("\none country, one purchase, one drawing");
     check(`${f.label} makes a lane`, !!flagLane(f.id)?.backgroundImage, true);
   }
 
-  // The lane is ONE LONG THING in two layers: the bands stretched the whole
-  // row, and the emblem on top at its OWN proportions. Both halves are pinned
-  // down here because both have been got wrong.
+  // The lane is the flag at FULL STRENGTH, in two layers and no wash: the
+  // bands stretched the whole row, and the emblem on top at its own
+  // proportions, centred. Every part of that has been got wrong once.
   const lane = flagLane("ca")!;
   const size = lane.backgroundSize.split(", ");
-  const image = lane.backgroundImage.split('url("');
-  check("a scrim rides over it", lane.backgroundImage.startsWith("linear-gradient"), true);
-  check("three layers: scrim, emblem, field", size.length, 3);
-  check("the field runs the whole row", size[2], "100% 100%");
+  check("no scrim over it", lane.backgroundImage.includes("linear-gradient"), false);
+  check("two layers: emblem, field", size.length, 2);
+  check("the field runs the whole row", size[1], "100% 100%");
   // The emblem is `auto`, never a percentage. A percentage is a stretch.
-  check("the emblem keeps its own shape", size[1], "auto 100%");
-  // Canada is the exception: centred, where its white band is widest, because
-  // the leaf is the flag and a red leaf on the red band is no leaf at all.
-  check("Canada's leaf is centred", lane.backgroundPosition.split(", ")[1], "50% center");
-  check("everyone else sits in the gap the scrim leaves",
-    flagLane("br")!.backgroundPosition.split(", ")[1], "76% center");
+  check("the emblem keeps its own shape", size[0], "auto 100%");
+  check("and every flag is centred", lane.backgroundPosition.split(", ")[0], "50% center");
+  check("Brazil too", flagLane("br")!.backgroundPosition.split(", ")[0], "50% center");
   check("the lane carries Canada's red", lane.backgroundImage.includes("%23FF0000"), true);
 
   // THE BUG, twice over: `preserveAspectRatio="none"` strips an SVG of its
@@ -365,26 +361,16 @@ console.log("\none country, one purchase, one drawing");
     check(`${f.label}'s emblem keeps its ratio`, emblem.includes('preserveAspectRatio="none"'), false);
     check(`${f.label}'s emblem declares a size`, /width="30" height="20"/.test(emblem), true);
   }
-  check("Italy has no emblem layer — it is only stripes", image.length, 3);
-  check("and Italy really has none", flagLane("it")!.backgroundImage.split('url("').length, 2);
+  check("Italy has no emblem layer — it is only stripes",
+    flagLane("it")!.backgroundImage.split('url("').length, 2);
 
-  // A pale flag needs dark ink; Japan is the one that proves it.
-  check("a white flag flips the ink", !!flagLane("jp")?.["--ink"], true);
-  // Brazil, not Jordan: Jordan's MIDDLE band is the white one, and the middle
-  // is what the text sits on, so dark ink there is right.
-  check("a dark one does not", flagLane("br")?.["--ink"], undefined);
-
-  // The ink has to follow what's under the TEXT, which for a horizontal flag
-  // is the middle band. Averaging the three put light text on the white
-  // stripe of Jordan's flag and you couldn't read the row.
-  check("a white field darkens the ink", !!flagLane("jp")?.["--ink"], true);
-  // Jordan and Lebanon would both qualify on that rule and both came out as
-  // light boxes, so they override it — a flag may ask for the dark side.
-  check("but a flag can overrule it", flagLane("jo")?.["--ink"], undefined);
-  check("and Lebanon does the same", flagLane("lb")?.["--ink"], undefined);
-  // Less scrim means more flag: Italy's colours were sitting under nine
-  // tenths of darkness.
-  check("Italy is let through", flagLane("it")!.backgroundImage.includes("0.56"), true);
+  // With nothing softening the flag, the ink is the ONLY thing keeping a row
+  // readable, so it matters more than it did, not less. It follows the band
+  // under the text: the middle one across, the first one down.
+  check("a white flag takes dark ink", !!flagLane("jp")?.["--ink"], true);
+  check("a white middle stripe does too", !!flagLane("jo")?.["--ink"], true);
+  check("and Lebanon's", !!flagLane("lb")?.["--ink"], true);
+  check("a dark flag keeps the light ink", flagLane("br")?.["--ink"], undefined);
   check("a red field leaves it alone", flagLane("vn")?.["--ink"], undefined);
   check("and so does a dark middle stripe", flagLane("de")?.["--ink"], undefined);
 
