@@ -378,6 +378,11 @@ console.log("\none country, one purchase, one drawing");
   // The tag is the copied file, untouched: its green band still starts at
   // 3360 of 5040, which is two thirds down.
   check("and the tag is still the real flag", flagSvg("jo").includes("m0 3360h10080v1680H0z"), true);
+  // And its chevron is the HOIST: hard against the left edge, full height,
+  // not floating in the middle of the row like an emblem.
+  const joLane = flagLane("jo")!;
+  check("the chevron sits at the hoist", joLane.backgroundPosition.split(", ")[0], "0% center");
+  check("and runs the full height", joLane.backgroundSize.split(", ")[0], "auto 100%");
 
   check("Italy has no emblem layer — it is only stripes",
     flagLane("it")!.backgroundImage.split('url("').length, 2);

@@ -42,6 +42,13 @@ export interface CountryFlag {
    */
   laneAt?: number | null;
   /**
+   * How tall the emblem is drawn, as a fraction of the row. 0.76 by default,
+   * the way lib/away.ts has always sized its leaf, so an emblem sits IN the
+   * row rather than filling it. A chevron is not that kind of emblem: it is
+   * cut from edge to edge of the flag, so it takes the whole height.
+   */
+  laneFit?: number;
+  /**
    * Band widths for the LANE only, when the flag's own would put the text
    * across a boundary.
    *
@@ -95,7 +102,14 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
   // The chevron belongs at the hoist on a flag, but the hoist of a LANE is
   // under the rank, the figure and the name. It goes to the middle with the
   // rest; the bands are horizontal, so they line up wherever it lands.
-  { id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true, art: FLAG_ART.jo, laneWeights: [1, 2, 1] },
+  // The chevron is Jordan's HOIST — it belongs hard against the left edge,
+  // full height, the way it is on the flag. It spent a while in the middle
+  // of the row because a scrim used to make the left end unreadable; there
+  // is no scrim any more, so there is nothing keeping it there.
+  {
+    id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true,
+    art: FLAG_ART.jo, laneWeights: [1, 2, 1], laneAt: 0, laneFit: 1,
+  },
   { id: "br", label: "Brazil", bands: ["#009440"], weights: [1], art: FLAG_ART.br },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
   // The one flag with nothing to copy. Magenta, black and mint are the app's
@@ -241,7 +255,7 @@ export function flagLane(id: string): {
   const spot = flag.laneAt === undefined ? 0.5 : flag.laneAt;
   if (spot !== null && (flag.laneMotif || FLAG_MOTIF[flag.id])) {
     layers.push(motifUrl);
-    sizes.push("auto 76%");
+    sizes.push(`auto ${((flag.laneFit ?? 0.76) * 100).toFixed(0)}%`);
     spots.push(`${(spot * 100).toFixed(0)}% center`);
   }
 
