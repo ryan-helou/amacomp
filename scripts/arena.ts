@@ -138,12 +138,14 @@ async function main() {
   if (cmd === "bounty") {
     const [title, coinsRaw] = rest;
     if (!title || !coinsRaw) throw new Error(`Usage: bounty "The task" <coins> [--detail "..."] [--until YYYY-MM-DD]`);
-    const out = await call("/api/arena", {
+    // The API answers with the whole app state (it has to — see the note on
+    // `ok` in app/api/arena), so the new row is read back out of that.
+    const out = (await call("/api/arena", {
       action: "post", title, coins: Number(coinsRaw),
       detail: flag(rest, "detail") ?? "", expiresOn: flag(rest, "until") ?? null,
-    });
-    const b = out.bounty as Bounty;
-    console.log(`Posted ${short(b.id)} — ${b.coins} on "${b.title}".`);
+    })) as unknown as State;
+    const b = out.bounties.find((x) => x.title === title);
+    console.log(b ? `Posted ${short(b.id)} — ${b.coins} on "${b.title}".` : `Posted "${title}".`);
     return;
   }
 
@@ -172,14 +174,16 @@ async function main() {
     const them = state.athletes.find((a) => a.name.toLowerCase() === name.toLowerCase());
     if (!them) throw new Error(`No athlete called "${name}".`);
     if (!BET_METRIC_BY_ID.has(metric as BetMetric)) throw new Error(`Can't bet on "${metric}".`);
-    const out = await call("/api/arena", {
+    const out = (await call("/api/arena", {
       action: "propose", toId: them.id, metric, stake: Number(stakeRaw),
       period: rest.includes("--month") ? "month" : "week",
       when: rest.includes("--next") ? "next" : "this",
       note: flag(rest, "note") ?? "",
-    });
-    const b = out.bet as Bet;
-    console.log(`Offered ${b.stake} to ${them.name} on ${b.metric}, ${betWhen(b)}. (${short(b.id)})`);
+    })) as unknown as State;
+    const b = out.bets.find((x) => x.toId === them.id && x.state === "open" && x.metric === metric);
+    console.log(b
+      ? `Offered ${b.stake} to ${them.name} on ${b.metric}, ${betWhen(b)}. (${short(b.id)})`
+      : `Offered ${stakeRaw} to ${them.name} on ${metric}.`);
     return;
   }
 
@@ -189,14 +193,16 @@ async function main() {
     if (!name || !stakeRaw || !text) throw new Error(`Usage: word <who> <stake> "what the bet is"`);
     const them = state.athletes.find((a) => a.name.toLowerCase() === name.toLowerCase());
     if (!them) throw new Error(`No athlete called "${name}".`);
-    const out = await call("/api/arena", {
+    const out = (await call("/api/arena", {
       action: "propose", kind: "word", toId: them.id, terms: text,
       stake: Number(stakeRaw), note: flag(rest, "note") ?? "",
       period: rest.includes("--month") ? "month" : "week",
       when: rest.includes("--next") ? "next" : "this",
-    });
-    const b = out.bet as Bet;
-    console.log(`Offered ${b.stake} to ${them.name} — “${b.terms}”. (${short(b.id)})`);
+    })) as unknown as State;
+    const b = out.bets.find((x) => x.terms === text && x.toId === them.id);
+    console.log(b
+      ? `Offered ${b.stake} to ${them.name} — “${b.terms}”. (${short(b.id)})`
+      : `Offered ${stakeRaw} to ${them.name} — “${text}”.`);
     return;
   }
 

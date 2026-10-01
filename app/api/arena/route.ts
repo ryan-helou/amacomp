@@ -3,6 +3,7 @@ import { getStore } from "@/lib/db";
 import { currentAthlete, isAdmin } from "@/lib/session";
 import { CLUB_LIVE, canSeeClub } from "@/lib/club";
 import { coinAccount } from "@/lib/coins";
+import { readState } from "@/lib/state";
 import {
   BET_METRIC_BY_ID, PUSH, STAKE_MAX, STAKE_MIN, betRange, duplicateBet,
   type BetMetric,
@@ -29,6 +30,17 @@ export const dynamic = "force-dynamic";
  */
 
 const bad = (msg: string, status = 400) => NextResponse.json({ error: msg }, { status });
+
+/**
+ * Every success answers with the WHOLE state, and that is not a style choice.
+ *
+ * useLeague's `send` swaps whatever an endpoint returns straight into the app
+ * state (components/useLeague.ts), so a route that answers `{ok: true}` hands
+ * the app an object with no athletes in it and the screen goes blank. Ryan
+ * found it on the first gift. One helper, so the next action added here cannot
+ * get it wrong — the only thing a caller chooses is whether it failed.
+ */
+const ok = async () => NextResponse.json(await readState());
 
 async function balanceOf(athleteId: string, refDay: DayKey): Promise<number> {
   const store = getStore();
@@ -97,10 +109,8 @@ export async function POST(req: Request) {
     if (stake > mine) return bad(`You have ${mine} coins.`);
     if (stake > theirs) return bad(`${them.name} only has ${theirs} coins.`);
 
-    const bet = await store.addBet({
-      fromId: me.id, toId, kind, terms, metric, period, startsOn, stake, note,
-    });
-    return NextResponse.json({ ok: true, bet });
+    await store.addBet({ fromId: me.id, toId, kind, terms, metric, period, startsOn, stake, note });
+    return ok();
   }
 
   if (body.action === "accept" || body.action === "decline") {
@@ -113,7 +123,7 @@ export async function POST(req: Request) {
 
     if (body.action === "decline") {
       const done = await store.setBetState(id, ["open"], "declined");
-      return done ? NextResponse.json({ ok: true, bet: done }) : bad("Already answered.", 409);
+      return done ? ok() : bad("Already answered.", 409);
     }
 
     // A window that has already closed cannot be accepted into: you would be
@@ -126,7 +136,7 @@ export async function POST(req: Request) {
     if (bet.stake > theirs) return bad("They can't cover it any more.");
 
     const done = await store.setBetState(id, ["open"], "accepted");
-    return done ? NextResponse.json({ ok: true, bet: done }) : bad("Already answered.", 409);
+    return done ? ok() : bad("Already answered.", 409);
   }
 
   if (body.action === "cancel") {
@@ -137,7 +147,7 @@ export async function POST(req: Request) {
     // Only while it is still an OFFER. Once it has been accepted it is a bet,
     // and a man who could pull out of a bet he was losing has not made one.
     const done = await store.setBetState(id, ["open"], "cancelled");
-    return done ? NextResponse.json({ ok: true, bet: done }) : bad("Too late — it's been taken.", 409);
+    return done ? ok() : bad("Too late — it's been taken.", 409);
   }
 
   // ---- Word bets: called by one, confirmed by the other -----------------
@@ -154,7 +164,7 @@ export async function POST(req: Request) {
       return bad("The winner has to be one of you, or a draw.");
     }
     const done = await store.callBet(id, me.id, winner);
-    return done ? NextResponse.json({ ok: true, bet: done }) : bad("Already called.", 409);
+    return done ? ok() : bad("Already called.", 409);
   }
 
   if (body.action === "confirm" || body.action === "dispute") {
@@ -174,10 +184,10 @@ export async function POST(req: Request) {
     if (!party && !isAdmin(me)) return bad("You're not in that bet.", 403);
     if (body.action === "dispute") {
       const done = await store.clearBetCall(id);
-      return done ? NextResponse.json({ ok: true, bet: done }) : bad("Nothing to dispute.", 409);
+      return done ? ok() : bad("Nothing to dispute.", 409);
     }
     const done = await store.settleBet(id, bet.calledWinner);
-    return done ? NextResponse.json({ ok: true, bet: done }) : bad("Already settled.", 409);
+    return done ? ok() : bad("Already settled.", 409);
   }
 
   // ---- Coins and presents ------------------------------------------------
@@ -194,8 +204,8 @@ export async function POST(req: Request) {
     }
     const mine = await balanceOf(me.id, today);
     if (amount > mine) return bad(`You have ${mine} coins.`);
-    const t = await store.addTransfer(me.id, toId, amount, note);
-    return NextResponse.json({ ok: true, transfer: t });
+    await store.addTransfer(me.id, toId, amount, note);
+    return ok();
   }
 
   if (body.action === "gift") {
@@ -219,7 +229,7 @@ export async function POST(req: Request) {
 
     const bought = await store.addPurchase(toId, item.id, item.price, me.id);
     if (!bought) return bad(`${them.name} already owns ${item.label}.`, 409);
-    return NextResponse.json({ ok: true, purchase: bought });
+    return ok();
   }
 
   // ---- Bounties ---------------------------------------------------------
@@ -234,8 +244,8 @@ export async function POST(req: Request) {
     if (!Number.isFinite(coins) || coins < BOUNTY_MIN || coins > BOUNTY_MAX) {
       return bad(`A bounty is between ${BOUNTY_MIN} and ${BOUNTY_MAX} coins.`);
     }
-    const made = await store.addBounty({ title, detail, coins, postedBy: me.id, expiresOn });
-    return NextResponse.json({ ok: true, bounty: made });
+    await store.addBounty({ title, detail, coins, postedBy: me.id, expiresOn });
+    return ok();
   }
 
   if (body.action === "claim") {
@@ -246,7 +256,7 @@ export async function POST(req: Request) {
     // The race is this call. The store's UPDATE carries the state in its WHERE,
     // so the second man to tap gets null rather than a second claim.
     const done = await store.claimBounty(id, me.id);
-    return done ? NextResponse.json({ ok: true, bounty: done }) : bad("Somebody got there first.", 409);
+    return done ? ok() : bad("Somebody got there first.", 409);
   }
 
   if (body.action === "award" || body.action === "reject" || body.action === "void") {
@@ -255,7 +265,7 @@ export async function POST(req: Request) {
     const to = body.action === "award" ? "paid" : body.action === "void" ? "void" : "open";
     const from = body.action === "void" ? ["open" as const, "claimed" as const] : ["claimed" as const];
     const done = await store.setBountyState(id, from, to);
-    return done ? NextResponse.json({ ok: true, bounty: done }) : bad("Nothing to do there.", 409);
+    return done ? ok() : bad("Nothing to do there.", 409);
   }
 
   return bad("Unknown action.");

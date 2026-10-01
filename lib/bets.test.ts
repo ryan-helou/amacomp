@@ -1,5 +1,6 @@
 import { betCoins, betResult, betValue, duplicateBet, PUSH, type Bet } from "./bets";
 import { sortBounties, bountyCoins, isOpen, type Bounty } from "./bounties";
+import { readFileSync } from "node:fs";
 import { coinAccount } from "./coins";
 import type { Transfer } from "./transfers";
 import { DEFAULT_SETTINGS, type Activity, type Athlete } from "./types";
@@ -201,7 +202,9 @@ console.log("\ncoins handed over, and items bought for somebody else");
   const payer = coinAccount("a", PEOPLE, [], S, "2026-10-05", [], gift);
   const owner = coinAccount("b", PEOPLE, [], S, "2026-10-05", [], gift);
   check("the giver pays", payer.spent, 400);
-  check("and it says who it was for", payer.entries[0]?.label, "head.santa for Ben");
+  // The item's NAME, not its id: "head.santa" in a wallet is a database row
+  // showing through the floor of the app.
+  check("and it says what it was, and who for", payer.entries[0]?.label, "Santa hat for Ben");
   // The bug this guards: charging the OWNER bills a man for his own present
   // and leaves the giver richer than he is.
   check("the man wearing it pays nothing", owner.spent, 0);
@@ -237,6 +240,25 @@ console.log("\nan expired bounty is closed, not hidden");
   const board = sortBounties([bounty({ id: "live" }), bounty({ id: "gone", expiresOn: "2026-01-01" })], "2026-10-06");
   check("both are still on the board", board.map((b) => b.id), ["live", "gone"]);
   check("with the takeable one first", board[0].id, "live");
+}
+
+console.log("\nthe Arena's API answers with the whole state");
+{
+  // The bug Ryan found on his first gift. useLeague's `send` swaps whatever an
+  // endpoint returns straight into the app state, so a route that answers
+  // `{ ok: true }` hands the app an object with no athletes in it and the
+  // screen goes blank. Every success in there has to be the full state.
+  //
+  // Checked against the source because the route cannot be imported here — it
+  // is a server module — and a rule nothing enforces is a rule that comes back.
+  const route = readFileSync("app/api/arena/route.ts", "utf8");
+  const answers = [...route.matchAll(/NextResponse\.json\(([^\n]*)/g)].map((m) => m[1]);
+  const partial = answers.filter(
+    (a) => !a.startsWith("{ error: msg }") && !a.startsWith("await readState()"),
+  );
+  check("nothing answers with a partial payload", partial, []);
+  check("and the success helper is the whole state",
+    route.includes("const ok = async () => NextResponse.json(await readState());"), true);
 }
 
 console.log(failures === 0 ? "\nAll arena tests passed.\n" : `\n${failures} failing.\n`);
