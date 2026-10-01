@@ -635,18 +635,23 @@ def build(P):
         that height, and the top edge just inside where the hair reaches, so
         the crown rests ON him at every angle instead of hovering at corners.
         """
+        # The band is a RECTANGLE, Ryan's call, and he is right: a crown's rim
+        # is a cylinder, so head-on it is a straight-sided band whose corners
+        # stand clear of the skull. The taper this had was fitting it to the
+        # head like a headband, which is not what a crown does — it sits ON
+        # you, it is not moulded to you.
         YB0, YB1 = 7.4, 14.6           # band, top and bottom
-        HW0, HW1 = 12.4, 15.8          # its half-width at each
+        HW = 15.8                      # one half-width, top and bottom
         # The velvet cap: a dome sitting in the mouth of the crown, drawn
         # before anything else so every piece of gold lands on top of it.
-        c.disc(40, YB0 + 0.4, HW0 - 0.6, 7.4, "A", y1=YB0 + 0.9)
+        c.disc(40, YB0 + 0.4, HW - 1.4, 7.4, "A", y1=YB0 + 0.9)
         # Five points, tallest in the middle, each finished with a pearl. The
         # bases overlap, so the points read as one rim and not five spikes.
         for x, top in ((0.0, -1.4), (-6.0, 0.6), (6.0, 0.6), (-11.0, 2.8), (11.0, 2.8)):
             c.poly([(40+x-2.9, YB0+1.0), (40+x+2.9, YB0+1.0), (40+x, top)], "K")
             c.disc(40+x, top + 0.7, 1.3, 1.3, "W")
         # the band itself, over the feet of the points
-        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW0, YB0), (40-HW0, YB0)], "K")
+        c.rect(40-HW, YB0, 40+HW, YB1, "K")
         # Jewels set in it, each with a glint in the upper left — the same
         # light that shades the rest of the figure.
         for x in (-8.0, 0.0, 8.0):
@@ -658,7 +663,7 @@ def build(P):
             c.disc(40 + i*2.1, YB0 + 0.5, 0.75, 0.75, "W")
         # A lit top edge and a shadowed lower lip: without them the band is a
         # flat gold rectangle with dots on it.
-        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW1-0.6, YB1-1.2), (40-HW1+0.6, YB1-1.2)], "A")
+        c.rect(40-HW+0.6, YB1-1.2, 40+HW-0.6, YB1, "A")
 
     item("crown", 4, crown)
 
@@ -671,14 +676,14 @@ def build(P):
         apart by its metal, which is the whole idea of the thing.
         """
         YB0, YB1 = 9.6, 14.6
-        HW0, HW1 = 13.6, 15.8
+        HW = 15.8
         for x, top in ((0.0, 2.6), (-8.2, 4.4), (8.2, 4.4)):
             c.poly([(40+x-2.6, YB0+0.8), (40+x+2.6, YB0+0.8), (40+x, top)], "K")
             c.disc(40+x, top + 0.7, 1.2, 1.2, "A")
-        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW0, YB0), (40-HW0, YB0)], "K")
+        c.rect(40-HW, YB0, 40+HW, YB1, "K")
         c.disc(40, YB1-2.4, 1.8, 1.8, "A")
-        c.poly([(40-HW0, YB0), (40+HW0, YB0), (40+HW0-0.5, YB0+0.8), (40-HW0+0.5, YB0+0.8)], "W")
-        c.poly([(40-HW1, YB1), (40+HW1, YB1), (40+HW1-0.6, YB1-1.0), (40-HW1+0.6, YB1-1.0)], "A")
+        c.rect(40-HW+0.5, YB0, 40+HW-0.5, YB0+0.8, "W")
+        c.rect(40-HW+0.6, YB1-1.0, 40+HW-0.6, YB1, "A")
 
     item("circlet", 4, circlet)
 
