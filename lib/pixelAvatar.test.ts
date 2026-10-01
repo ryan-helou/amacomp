@@ -366,7 +366,9 @@ console.log("\none country, one purchase, one drawing");
     if (parts.length < 3) continue; // Italy is stripes; it has no emblem layer
     const emblem = decodeURIComponent(parts[1]);
     check(`${f.label}'s emblem keeps its ratio`, emblem.includes('preserveAspectRatio="none"'), false);
-    check(`${f.label}'s emblem declares a size`, /width="30" height="20"/.test(emblem), true);
+    // A size on the root is what gives the image its intrinsic ratio. The
+    // width varies: Jordan's chevron is widened to reach across the row.
+    check(`${f.label}'s emblem declares a size`, /width="[\d.]+" height="20"/.test(emblem), true);
   }
   // Jordan's thirds put the name on the white, the detail line on the green
   // and the bar across the join — the only row where the text crossed two
@@ -393,7 +395,12 @@ console.log("\none country, one purchase, one drawing");
   check("a white flag takes dark ink", !!flagLane("jp")?.["--ink"], true);
   check("a white middle stripe does too", !!flagLane("jo")?.["--ink"], true);
   check("and Lebanon's", !!flagLane("lb")?.["--ink"], true);
+  // The one the flat wash broke: Canada's name sits on the WHITE band, so it
+  // needs dark ink even though the flag's first band is red.
+  check("and Canada's white centre", !!flagLane("ca")?.["--ink"], true);
+  check("Italy's too", !!flagLane("it")?.["--ink"], true);
   check("a dark flag keeps the light ink", flagLane("br")?.["--ink"], undefined);
+  check("and Quebec's blue", flagLane("qc")?.["--ink"], undefined);
   check("a red field leaves it alone", flagLane("vn")?.["--ink"], undefined);
   check("and so does a dark middle stripe", flagLane("de")?.["--ink"], undefined);
 
