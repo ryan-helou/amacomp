@@ -40,7 +40,7 @@ export async function readState(): Promise<AppState> {
   const store = getStore();
   const me = await currentAthlete();
   const [athletes, activities, settings, conn, efforts, steps, stepsLink, coinGrants, purchases,
-         bets, bounties] = await Promise.all([
+         bets, bounties, transfers] = await Promise.all([
     store.listAthletes(),
     store.listActivities(),
     store.getSettings(),
@@ -52,6 +52,7 @@ export async function readState(): Promise<AppState> {
     store.listPurchases(),
     store.listBets(),
     store.listBounties(),
+    store.listTransfers(),
   ]);
   if (conn) maybeBackgroundSyncStrava(store, conn);
   return {
@@ -81,6 +82,7 @@ export async function readState(): Promise<AppState> {
     // wallet works out from these rows rather than from a stored number.
     bets,
     bounties,
+    transfers,
     myLoadout: me ? await store.getLoadout(me.id) : null,
     // Everyone's, because the Board draws all six. An athlete with no row
     // here gets a look generated from their name instead — see lookFor().

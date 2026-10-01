@@ -33,13 +33,33 @@ import {
  * at the moment of ACCEPTANCE, which is the moment the bet becomes real.
  */
 
-export type BetState = "open" | "accepted" | "declined" | "cancelled";
+export type BetState = "open" | "accepted" | "declined" | "cancelled" | "settled";
+
+/**
+ * How a bet gets decided.
+ *
+ * `board` is the original: a number, over a window, settled out of the log and
+ * never by a person. `word` is Ryan's, 2026-10-01 — "the guys are all trust
+ * worthy so you dont have to put a measurable thing" — and it is a bet on
+ * anything you can say out loud: first one up Mont Royal, who cracks first on
+ * the long ride, anything the app cannot see.
+ *
+ * A word bet is NOT settled by one man's say-so. One side calls it, the other
+ * confirms, and only then do the coins move; a man who calls himself the
+ * winner and gets no confirmation has an argument, not a payout. If they
+ * genuinely disagree, the other side disputes and it goes back to being
+ * uncalled — and Ryan can settle it outright, which is what an admin is for.
+ */
+export type BetKind = "board" | "word";
 
 /** What the two of them are actually racing on. */
 export type BetMetric = "points" | "km" | "sessions" | Sport;
 
 export interface Bet {
   id: string;
+  kind: BetKind;
+  /** What a WORD bet is actually about, in their words. Empty on a board bet. */
+  terms: string;
   /** Who proposed it, and whose coins are on the line first. */
   fromId: string;
   toId: string;
@@ -55,7 +75,16 @@ export interface Bet {
   createdAt: string;
   /** When it was accepted or declined. Null while it is still an offer. */
   decidedAt: string | null;
+  /** WORD bets only: who called a result, and who they say won. */
+  calledBy: string | null;
+  /** An athlete id, or "push" for a draw. */
+  calledWinner: string | null;
+  /** Set once the other side confirms (or Ryan settles). An id, or "push". */
+  settledWinner: string | null;
 }
+
+/** The value `calledWinner`/`settledWinner` takes for a draw. */
+export const PUSH = "push";
 
 export const BET_METRICS: { id: BetMetric; label: string; unit: string }[] = [
   { id: "points", label: "Points", unit: "pts" },
@@ -118,7 +147,10 @@ export function betValue(
   return row.kmBySport[metric] ?? 0;
 }
 
-export type BetStatus = "offered" | "declined" | "cancelled" | "live" | "settled";
+export type BetStatus =
+  | "offered" | "declined" | "cancelled" | "live" | "settled"
+  /** A word bet one side has called, waiting on the other to agree. */
+  | "called";
 
 export interface BetResult {
   status: BetStatus;
@@ -147,13 +179,25 @@ export function betResult(
   today: DayKey,
 ): BetResult {
   const range = betRange(bet);
-  const from = betValue(bet.fromId, bet.metric, athletes, activities, settings, range);
-  const to = betValue(bet.toId, bet.metric, athletes, activities, settings, range);
+  const measured = bet.kind !== "word";
+  const from = measured ? betValue(bet.fromId, bet.metric, athletes, activities, settings, range) : 0;
+  const to = measured ? betValue(bet.toId, bet.metric, athletes, activities, settings, range) : 0;
   const base = { from, to, winnerId: null, push: false, range } as const;
 
   if (bet.state === "open") return { ...base, status: "offered" };
   if (bet.state === "declined") return { ...base, status: "declined" };
   if (bet.state === "cancelled") return { ...base, status: "cancelled" };
+
+  // A word bet has no numbers to read, so it ends when they say it does.
+  if (bet.kind === "word") {
+    if (bet.settledWinner) {
+      return bet.settledWinner === PUSH
+        ? { ...base, status: "settled", push: true }
+        : { ...base, status: "settled", winnerId: bet.settledWinner };
+    }
+    return { ...base, status: bet.calledBy ? "called" : "live" };
+  }
+
   if (today <= range[1]) return { ...base, status: "live" };
 
   if (from === to) return { ...base, status: "settled", push: true };
@@ -191,6 +235,9 @@ export function duplicateBet(
 ): Bet | undefined {
   return bets.find(
     (b) => (b.state === "open" || b.state === "accepted")
+      // A word bet is never a duplicate of anything: two men can have as many
+      // running arguments as they like, and no two of them are the same bet.
+      && b.kind !== "word"
       && b.metric === metric && b.startsOn === startsOn
       && ((b.fromId === fromId && b.toId === toId) || (b.fromId === toId && b.toId === fromId)),
   );

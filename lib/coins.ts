@@ -16,6 +16,7 @@ import {
 import { seasonByNumber, seasonFor } from "./season";
 import { betCoins, BET_METRIC_BY_ID, type Bet } from "./bets";
 import { bountyCoins, type Bounty } from "./bounties";
+import type { Transfer } from "./transfers";
 
 /**
  * Tri coins — the Club's currency.
@@ -45,7 +46,7 @@ export const COIN_RATES = {
 
 export type CoinKind =
   | "points" | "quota" | "week" | "month" | "season" | "grant" | "spend"
-  | "bet" | "bounty";
+  | "bet" | "bounty" | "gift";
 
 export interface CoinEntry {
   kind: CoinKind;
@@ -115,6 +116,7 @@ export function coinAccount(
   purchases: Purchase[] = [],
   bets: Bet[] = [],
   bounties: Bounty[] = [],
+  transfers: Transfer[] = [],
 ): CoinAccount {
   const entries: CoinEntry[] = [];
   const seasonStart = settings.seasonStart;
@@ -232,13 +234,46 @@ export function coinAccount(
     });
   }
 
+  // Coins handed from one man to another: one stored row, two ledger lines.
+  // Never a balance edited in two places — the ledger is the truth and the
+  // balance is what you get when you add it up, so the two sides cannot end up
+  // disagreeing about how much moved.
+  for (const t of transfers) {
+    const them = athletes.find((a) => a.id === (t.fromId === athleteId ? t.toId : t.fromId));
+    if (t.fromId === athleteId) {
+      entries.push({
+        kind: "gift",
+        label: t.note || `Sent to ${them?.name ?? "someone"}`,
+        detail: `To ${them?.name ?? "someone"}`,
+        amount: -t.amount,
+        day: t.day,
+      });
+    } else if (t.toId === athleteId) {
+      entries.push({
+        kind: "gift",
+        label: t.note || `From ${them?.name ?? "someone"}`,
+        detail: `From ${them?.name ?? "someone"}`,
+        amount: t.amount,
+        day: t.day,
+      });
+    }
+  }
+
   // And what the shop took. Kept in the same ledger as a negative line, so the
   // wallet can show where the money went as well as where it came from.
+  //
+  // The charge follows the PAYER, not the owner. A gifted item sits in the
+  // other man's locker and comes out of this man's wallet, so charging the
+  // owner would bill him for a present — and leave the giver richer than he is.
   for (const p of purchases) {
-    if (p.athleteId !== athleteId) continue;
+    const payer = p.paidBy ?? p.athleteId;
+    if (payer !== athleteId) continue;
+    const them = p.paidBy && p.athleteId !== athleteId
+      ? athletes.find((a) => a.id === p.athleteId)
+      : null;
     entries.push({
-      kind: "spend",
-      label: p.itemId,
+      kind: them ? "gift" : "spend",
+      label: them ? `${p.itemId} for ${them.name}` : p.itemId,
       detail: p.day,
       amount: -p.price,
       day: p.day,
@@ -261,12 +296,13 @@ export function coinBoard(
   purchases: Purchase[] = [],
   bets: Bet[] = [],
   bounties: Bounty[] = [],
+  transfers: Transfer[] = [],
 ): { athlete: Athlete; balance: number }[] {
   return athletes
     .map((athlete) => ({
       athlete,
       balance: coinAccount(athlete.id, athletes, activities, settings, refDay,
-        grants, purchases, bets, bounties).balance,
+        grants, purchases, bets, bounties, transfers).balance,
     }))
     .sort((a, b) => b.balance - a.balance || a.athlete.name.localeCompare(b.athlete.name));
 }

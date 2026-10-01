@@ -1,6 +1,7 @@
-import { betCoins, betResult, betValue, duplicateBet, type Bet } from "./bets";
+import { betCoins, betResult, betValue, duplicateBet, PUSH, type Bet } from "./bets";
 import { sortBounties, bountyCoins, isOpen, type Bounty } from "./bounties";
 import { coinAccount } from "./coins";
+import type { Transfer } from "./transfers";
 import { DEFAULT_SETTINGS, type Activity, type Athlete } from "./types";
 
 /** The Arena: bets settle off the board, bounties settle off Ryan. */
@@ -28,9 +29,10 @@ function run(id: string, who: string, day: string, km: number): Activity {
 
 /** Mon 28 Sep – Sun 4 Oct 2026. */
 const bet = (over: Partial<Bet> = {}): Bet => ({
-  id: "x", fromId: "a", toId: "b", metric: "km", period: "week",
+  id: "x", kind: "board", terms: "", fromId: "a", toId: "b", metric: "km", period: "week",
   startsOn: "2026-09-28", stake: 100, state: "accepted", note: "",
-  createdAt: "2026-09-27T10:00:00Z", decidedAt: "2026-09-27T11:00:00Z", ...over,
+  createdAt: "2026-09-27T10:00:00Z", decidedAt: "2026-09-27T11:00:00Z",
+  calledBy: null, calledWinner: null, settledWinner: null, ...over,
 });
 
 console.log("\nthe board settles it, not the men");
@@ -136,6 +138,76 @@ console.log("\nthe same bet twice is one bet");
   check("so is a different metric", duplicateBet(open, "a", "b", "run", "2026-09-28"), undefined);
   check("and a declined one is not in the way",
     duplicateBet([bet({ state: "declined" })], "a", "b", "km", "2026-09-28"), undefined);
+}
+
+console.log("\na word bet is settled by the two of them, not by the log");
+{
+  // Ryan's call: the guys are trustworthy, so a bet doesn't have to be
+  // measurable. The log says Ana ran ten and Ben ran two; none of that
+  // decides a word bet, which is the point.
+  const log = [run("1", "a", "2026-09-29", 10), run("2", "b", "2026-09-30", 2)];
+  const w = (over: Partial<Bet> = {}) =>
+    bet({ kind: "word", terms: "first one up Mont Royal", ...over });
+
+  const running = betResult(w(), PEOPLE, log, S, "2026-10-05");
+  check("it does not settle itself when the week ends", running.status, "live");
+  check("and it shows no numbers to argue about", [running.from, running.to], [0, 0]);
+  check("so nobody is paid", betCoins("a", w(), PEOPLE, log, S, "2026-10-05"), null);
+
+  // One side calls it; that alone pays nobody.
+  const called = w({ calledBy: "a", calledWinner: "a" });
+  check("a call is not a settlement", betResult(called, PEOPLE, log, S, "2026-10-05").status, "called");
+  check("and still pays nobody", betCoins("a", called, PEOPLE, log, S, "2026-10-05"), null);
+
+  // Only once it is confirmed.
+  const agreed = w({ state: "settled", calledBy: "a", calledWinner: "a", settledWinner: "a" });
+  const r = betResult(agreed, PEOPLE, log, S, "2026-10-05");
+  check("confirmed is settled", r.status, "settled");
+  check("with the winner they agreed on", r.winnerId, "a");
+  check("the winner is paid", betCoins("a", agreed, PEOPLE, log, S, "2026-10-05")?.amount, 100);
+  check("the loser pays", betCoins("b", agreed, PEOPLE, log, S, "2026-10-05")?.amount, -100);
+
+  // And the log can say the opposite without changing a thing — a word bet is
+  // THEIR word, so a big week does not overrule it.
+  const agreedOther = w({ state: "settled", calledBy: "a", calledWinner: "b", settledWinner: "b" });
+  check("they can agree Ben won it, whatever the log says",
+    betResult(agreedOther, PEOPLE, log, S, "2026-10-05").winnerId, "b");
+
+  const drawn = w({ state: "settled", settledWinner: PUSH });
+  check("a draw they agreed on is a push", betResult(drawn, PEOPLE, log, S, "2026-10-05").push, true);
+  check("and moves nothing", betCoins("a", drawn, PEOPLE, log, S, "2026-10-05"), null);
+
+  // Two men can have as many running arguments as they like.
+  check("a word bet is never a duplicate",
+    duplicateBet([w({ id: "1" })], "a", "b", "km", "2026-09-28"), undefined);
+}
+
+console.log("\ncoins handed over, and items bought for somebody else");
+{
+  const t = (over: Partial<Transfer> = {}): Transfer =>
+    ({ id: "t", fromId: "a", toId: "b", amount: 250, note: "", day: "2026-09-30", ...over });
+
+  const sender = coinAccount("a", PEOPLE, [], S, "2026-10-05", [], [], [], [], [t()]);
+  const getter = coinAccount("b", PEOPLE, [], S, "2026-10-05", [], [], [], [], [t()]);
+  check("it comes out of one wallet", sender.entries.find((e) => e.kind === "gift")?.amount, -250);
+  check("and into the other", getter.entries.find((e) => e.kind === "gift")?.amount, 250);
+  // One row, two lines: the two sides cannot disagree about how much moved.
+  check("the same coins, both ways", sender.balance + getter.balance, 0);
+  const bystander = coinAccount("c", PEOPLE, [], S, "2026-10-05", [], [], [], [], [t()]);
+  check("and nobody else is touched", bystander.entries.length, 0);
+
+  // A gifted ITEM is a purchase owned by one man and paid for by the other.
+  const gift = [{ athleteId: "b", itemId: "head.santa", price: 400, day: "2026-09-30", paidBy: "a" }];
+  const payer = coinAccount("a", PEOPLE, [], S, "2026-10-05", [], gift);
+  const owner = coinAccount("b", PEOPLE, [], S, "2026-10-05", [], gift);
+  check("the giver pays", payer.spent, 400);
+  check("and it says who it was for", payer.entries[0]?.label, "head.santa for Ben");
+  // The bug this guards: charging the OWNER bills a man for his own present
+  // and leaves the giver richer than he is.
+  check("the man wearing it pays nothing", owner.spent, 0);
+  const own = [{ athleteId: "b", itemId: "head.santa", price: 400, day: "2026-09-30", paidBy: null }];
+  check("an ordinary purchase still charges the buyer",
+    coinAccount("b", PEOPLE, [], S, "2026-10-05", [], own).spent, 400);
 }
 
 console.log("\nbounties pay when Ryan says so, and not before");

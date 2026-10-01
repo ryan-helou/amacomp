@@ -6,7 +6,12 @@
  *   npx tsx scripts/arena.ts award <id>        (also: claim, reject, void)
  *   npx tsx scripts/arena.ts bets
  *   npx tsx scripts/arena.ts bet Jona points 150 --month --next --note "easy money"
+ *   npx tsx scripts/arena.ts word Jona 150 "First one up Mont Royal"
  *   npx tsx scripts/arena.ts accept <id>       (also: decline, cancel)
+ *   npx tsx scripts/arena.ts call <id> Jona    (or: me, draw) — then the other
+ *   npx tsx scripts/arena.ts confirm <id>      (also: dispute)
+ *   npx tsx scripts/arena.ts send Jona 200 --note "you earned it"
+ *   npx tsx scripts/arena.ts gift Jona head.santa
  *
  * Ryan, 2026-10-01: bounties have to be postable from his phone AND from here.
  * The phone has the Arena tab; this is the other half.
@@ -26,7 +31,8 @@
  *                to play with it against a throwaway in-memory server.
  *   AMAGOH_NAME  defaults to Ryan.
  */
-import { BET_METRIC_BY_ID, betResult, betWhen, type Bet, type BetMetric } from "../lib/bets";
+import { BET_METRIC_BY_ID, PUSH, betResult, betWhen, type Bet, type BetMetric } from "../lib/bets";
+import { AVATAR_ITEM_BY_ID } from "../lib/pixelAvatar";
 import { sortBounties, type Bounty } from "../lib/bounties";
 import { today as todayKey } from "../lib/dates";
 import type { Athlete } from "../lib/types";
@@ -113,10 +119,15 @@ async function main() {
     const rows = state.bets.map((b) => ({ b, r: betResult(b, state.athletes, state.activities, state.settings, today) }));
     if (!rows.length) console.log("No bets on.");
     for (const { b, r } of rows) {
-      const metric = BET_METRIC_BY_ID.get(b.metric)?.label ?? b.metric;
+      const metric = b.kind === "word"
+        ? `“${b.terms}”`
+        : BET_METRIC_BY_ID.get(b.metric)?.label ?? b.metric;
       const score = r.status === "offered" ? "offered"
         : r.status === "settled"
           ? r.push ? "push — stakes back" : `won by ${who(r.winnerId ?? "")}`
+        : r.status === "called"
+          ? `${who(b.calledBy ?? "")} says ${b.calledWinner === PUSH ? "it's a draw" : who(b.calledWinner ?? "")} won — needs the other to confirm`
+        : b.kind === "word" ? "on their word"
           : `${r.from} v ${r.to}`;
       console.log(`${short(b.id)}  ${String(b.stake).padStart(5)}  ${who(b.fromId)} v ${who(b.toId)}`);
       console.log(`        ${metric} · ${betWhen(b)} · ${r.status} · ${score}`);
@@ -172,6 +183,68 @@ async function main() {
     return;
   }
 
+  if (cmd === "word") {
+    const [name, stakeRaw, ...terms] = rest;
+    const text = terms.filter((t) => !t.startsWith("--")).join(" ");
+    if (!name || !stakeRaw || !text) throw new Error(`Usage: word <who> <stake> "what the bet is"`);
+    const them = state.athletes.find((a) => a.name.toLowerCase() === name.toLowerCase());
+    if (!them) throw new Error(`No athlete called "${name}".`);
+    const out = await call("/api/arena", {
+      action: "propose", kind: "word", toId: them.id, terms: text,
+      stake: Number(stakeRaw), note: flag(rest, "note") ?? "",
+      period: rest.includes("--month") ? "month" : "week",
+      when: rest.includes("--next") ? "next" : "this",
+    });
+    const b = out.bet as Bet;
+    console.log(`Offered ${b.stake} to ${them.name} — “${b.terms}”. (${short(b.id)})`);
+    return;
+  }
+
+  if (cmd === "call") {
+    const b = resolve(state.bets, rest[0] ?? "", "bet");
+    const want = (rest[1] ?? "").toLowerCase();
+    const winner = want === "draw" || want === PUSH ? PUSH
+      : want === "me" ? state.me?.id ?? ""
+      : state.athletes.find((a) => a.name.toLowerCase() === want)?.id ?? "";
+    if (!winner) throw new Error(`Who won? Give me a name, "me", or "draw".`);
+    await call("/api/arena", { action: "call", id: b.id, winner });
+    console.log(`Called ${short(b.id)} for ${winner === PUSH ? "a draw" : who(winner)}. Waiting on the other one.`);
+    return;
+  }
+
+  if (cmd === "confirm" || cmd === "dispute") {
+    const b = resolve(state.bets, rest[0] ?? "", "bet");
+    await call("/api/arena", { action: cmd, id: b.id });
+    console.log(cmd === "confirm"
+      ? `Settled ${short(b.id)} — ${b.stake} ${b.calledWinner === PUSH ? "back to both" : `to ${who(b.calledWinner ?? "")}`}.`
+      : `Disputed ${short(b.id)} — the call is off, it's running again.`);
+    return;
+  }
+
+  if (cmd === "send") {
+    const [name, amountRaw] = rest;
+    if (!name || !amountRaw) throw new Error(`Usage: send <who> <coins> [--note "..."]`);
+    const them = state.athletes.find((a) => a.name.toLowerCase() === name.toLowerCase());
+    if (!them) throw new Error(`No athlete called "${name}".`);
+    await call("/api/arena", {
+      action: "send", toId: them.id, amount: Number(amountRaw), note: flag(rest, "note") ?? "",
+    });
+    console.log(`Sent ${amountRaw} to ${them.name}.`);
+    return;
+  }
+
+  if (cmd === "gift") {
+    const [name, itemId] = rest;
+    if (!name || !itemId) throw new Error("Usage: gift <who> <item id>   (ids are in the shop, e.g. head.santa)");
+    const them = state.athletes.find((a) => a.name.toLowerCase() === name.toLowerCase());
+    if (!them) throw new Error(`No athlete called "${name}".`);
+    const item = AVATAR_ITEM_BY_ID.get(itemId);
+    if (!item) throw new Error(`No item "${itemId}".`);
+    await call("/api/arena", { action: "gift", toId: them.id, item: itemId });
+    console.log(`Bought ${item.label} for ${them.name} — ${item.price} coins.`);
+    return;
+  }
+
   if (cmd === "accept" || cmd === "decline" || cmd === "cancel") {
     const b = resolve(state.bets, rest[0] ?? "", "bet");
     await call("/api/arena", { action: cmd, id: b.id });
@@ -179,7 +252,7 @@ async function main() {
     return;
   }
 
-  throw new Error(`Unknown command "${cmd}". Try: bounties, bounty, claim, award, reject, void, bets, bet, accept, decline, cancel.`);
+  throw new Error(`Unknown command "${cmd}". Try: bounties, bounty, claim, award, reject, void, bets, bet, word, accept, decline, cancel, call, confirm, dispute, send, gift.`);
 }
 
 main().catch((e: Error) => { console.error(e.message); process.exit(1); });

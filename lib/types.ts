@@ -1,5 +1,6 @@
 import type { Bet } from "./bets";
 import type { Bounty } from "./bounties";
+import type { Transfer } from "./transfers";
 import type { DayKey } from "./dates";
 
 export const SPORTS = ["swim", "bike", "run", "gym"] as const;
@@ -371,10 +372,17 @@ export interface CoinGrant {
 
 /** Something bought from the Club shop. Owned for good once it's paid for. */
 export interface Purchase {
+  /** Who owns it and gets to wear it. */
   athleteId: string;
   itemId: string;
   price: number;
   day: string;
+  /**
+   * Who PAID, when it wasn't the owner — a gift. Null means he bought it
+   * himself, which is every row that existed before gifting did. The coins
+   * come out of this man's wallet; the item lands in the other's locker.
+   */
+  paidBy?: string | null;
 }
 
 export interface AppState {
@@ -402,6 +410,8 @@ export interface AppState {
   bets: Bet[];
   /** Posted bounties, everyone's. */
   bounties: Bounty[];
+  /** Coins moved between athletes, everyone's. */
+  transfers: Transfer[];
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {

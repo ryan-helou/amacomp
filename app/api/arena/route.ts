@@ -4,9 +4,11 @@ import { currentAthlete, isAdmin } from "@/lib/session";
 import { CLUB_LIVE, canSeeClub } from "@/lib/club";
 import { coinAccount } from "@/lib/coins";
 import {
-  BET_METRIC_BY_ID, STAKE_MAX, STAKE_MIN, betRange, duplicateBet,
+  BET_METRIC_BY_ID, PUSH, STAKE_MAX, STAKE_MIN, betRange, duplicateBet,
   type BetMetric,
 } from "@/lib/bets";
+import { TRANSFER_MAX, TRANSFER_MIN } from "@/lib/transfers";
+import { AVATAR_ITEM_BY_ID } from "@/lib/pixelAvatar";
 import { BOUNTY_MAX, BOUNTY_MIN } from "@/lib/bounties";
 import { monthStart, today as todayKey, weekStart, type DayKey } from "@/lib/dates";
 
@@ -30,12 +32,14 @@ const bad = (msg: string, status = 400) => NextResponse.json({ error: msg }, { s
 
 async function balanceOf(athleteId: string, refDay: DayKey): Promise<number> {
   const store = getStore();
-  const [athletes, activities, settings, grants, purchases, bets, bounties] = await Promise.all([
-    store.listAthletes(), store.listActivities(), store.getSettings(),
-    store.listCoinGrants(), store.listPurchases(), store.listBets(), store.listBounties(),
-  ]);
+  const [athletes, activities, settings, grants, purchases, bets, bounties, transfers] =
+    await Promise.all([
+      store.listAthletes(), store.listActivities(), store.getSettings(),
+      store.listCoinGrants(), store.listPurchases(), store.listBets(), store.listBounties(),
+      store.listTransfers(),
+    ]);
   return coinAccount(athleteId, athletes, activities, settings, refDay,
-    grants, purchases, bets, bounties).balance;
+    grants, purchases, bets, bounties, transfers).balance;
 }
 
 export async function POST(req: Request) {
@@ -55,7 +59,13 @@ export async function POST(req: Request) {
 
   if (body.action === "propose") {
     const toId = String(body.toId ?? "");
-    const metric = String(body.metric ?? "") as BetMetric;
+    // Ryan, 2026-10-01: "the guys are all trust worthy so you dont have to put
+    // a measurable thing". A word bet carries its terms as text and is settled
+    // by the two of them; the metric and the window are still stored, because
+    // a word bet made for "this week" should still say which week it was.
+    const kind = body.kind === "word" ? "word" : "board";
+    const terms = String(body.terms ?? "").trim().slice(0, 200);
+    const metric = (kind === "word" ? "points" : String(body.metric ?? "")) as BetMetric;
     const period = body.period === "month" ? "month" : "week";
     const stake = Math.round(Number(body.stake));
     const note = String(body.note ?? "").slice(0, 140);
@@ -65,6 +75,7 @@ export async function POST(req: Request) {
     const them = athletes.find((a) => a.id === toId);
     if (!them) return bad("No such athlete.");
     if (!BET_METRIC_BY_ID.has(metric)) return bad("No such thing to bet on.");
+    if (kind === "word" && !terms) return bad("Say what the bet is.");
     if (!Number.isFinite(stake) || stake < STAKE_MIN || stake > STAKE_MAX) {
       return bad(`A stake is between ${STAKE_MIN} and ${STAKE_MAX} coins.`);
     }
@@ -86,7 +97,9 @@ export async function POST(req: Request) {
     if (stake > mine) return bad(`You have ${mine} coins.`);
     if (stake > theirs) return bad(`${them.name} only has ${theirs} coins.`);
 
-    const bet = await store.addBet({ fromId: me.id, toId, metric, period, startsOn, stake, note });
+    const bet = await store.addBet({
+      fromId: me.id, toId, kind, terms, metric, period, startsOn, stake, note,
+    });
     return NextResponse.json({ ok: true, bet });
   }
 
@@ -125,6 +138,88 @@ export async function POST(req: Request) {
     // and a man who could pull out of a bet he was losing has not made one.
     const done = await store.setBetState(id, ["open"], "cancelled");
     return done ? NextResponse.json({ ok: true, bet: done }) : bad("Too late — it's been taken.", 409);
+  }
+
+  // ---- Word bets: called by one, confirmed by the other -----------------
+
+  if (body.action === "call") {
+    const id = String(body.id ?? "");
+    const winner = String(body.winner ?? "");
+    const bet = (await store.listBets()).find((b) => b.id === id);
+    if (!bet) return bad("No such bet.", 404);
+    if (bet.kind !== "word") return bad("That one settles itself off the board.", 409);
+    if (bet.fromId !== me.id && bet.toId !== me.id) return bad("You're not in that bet.", 403);
+    if (bet.state !== "accepted") return bad("That bet isn't running.", 409);
+    if (winner !== PUSH && winner !== bet.fromId && winner !== bet.toId) {
+      return bad("The winner has to be one of you, or a draw.");
+    }
+    const done = await store.callBet(id, me.id, winner);
+    return done ? NextResponse.json({ ok: true, bet: done }) : bad("Already called.", 409);
+  }
+
+  if (body.action === "confirm" || body.action === "dispute") {
+    const id = String(body.id ?? "");
+    const bet = (await store.listBets()).find((b) => b.id === id);
+    if (!bet) return bad("No such bet.", 404);
+    if (bet.kind !== "word") return bad("That one settles itself off the board.", 409);
+    if (!bet.calledBy || !bet.calledWinner) return bad("Nobody has called it yet.", 409);
+    // The man who called it can NEVER confirm it, and that includes Ryan.
+    // Being the admin is what lets him settle other people's arguments; it
+    // must not let him settle his own, or every word bet he is in is one he
+    // can win by tapping twice. A bet the two of them genuinely cannot agree
+    // on simply never pays — the stake stays where it is, which is a far
+    // better answer than the admin always winning.
+    if (bet.calledBy === me.id) return bad("The other one has to agree.", 403);
+    const party = bet.fromId === me.id || bet.toId === me.id;
+    if (!party && !isAdmin(me)) return bad("You're not in that bet.", 403);
+    if (body.action === "dispute") {
+      const done = await store.clearBetCall(id);
+      return done ? NextResponse.json({ ok: true, bet: done }) : bad("Nothing to dispute.", 409);
+    }
+    const done = await store.settleBet(id, bet.calledWinner);
+    return done ? NextResponse.json({ ok: true, bet: done }) : bad("Already settled.", 409);
+  }
+
+  // ---- Coins and presents ------------------------------------------------
+
+  if (body.action === "send") {
+    const toId = String(body.toId ?? "");
+    const amount = Math.round(Number(body.amount));
+    const note = String(body.note ?? "").trim().slice(0, 140);
+    if (toId === me.id) return bad("Sending coins to yourself achieves nothing.");
+    const them = (await store.listAthletes()).find((a) => a.id === toId);
+    if (!them) return bad("No such athlete.");
+    if (!Number.isFinite(amount) || amount < TRANSFER_MIN || amount > TRANSFER_MAX) {
+      return bad(`Send between ${TRANSFER_MIN} and ${TRANSFER_MAX} coins.`);
+    }
+    const mine = await balanceOf(me.id, today);
+    if (amount > mine) return bad(`You have ${mine} coins.`);
+    const t = await store.addTransfer(me.id, toId, amount, note);
+    return NextResponse.json({ ok: true, transfer: t });
+  }
+
+  if (body.action === "gift") {
+    const toId = String(body.toId ?? "");
+    const item = AVATAR_ITEM_BY_ID.get(String(body.item ?? ""));
+    if (!item) return bad("No such item.");
+    // A prize is won, not sold, so it cannot be bought for somebody either —
+    // a crown you were given is not a crown.
+    if (item.earned) return bad(`${item.label} isn't for sale — ${item.earned}.`);
+    const them = (await store.listAthletes()).find((a) => a.id === toId);
+    if (!them) return bad("No such athlete.");
+    if (toId === me.id) return bad("That's just buying it.");
+
+    const purchases = await store.listPurchases();
+    if (purchases.some((p) => p.athleteId === toId && p.itemId === item.id)) {
+      return bad(`${them.name} already owns ${item.label}.`, 409);
+    }
+    // The price comes from the catalogue, never from the request.
+    const mine = await balanceOf(me.id, today);
+    if (item.price > mine) return bad(`${item.label} costs ${item.price}. You have ${mine}.`);
+
+    const bought = await store.addPurchase(toId, item.id, item.price, me.id);
+    if (!bought) return bad(`${them.name} already owns ${item.label}.`, 409);
+    return NextResponse.json({ ok: true, purchase: bought });
   }
 
   // ---- Bounties ---------------------------------------------------------
