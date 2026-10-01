@@ -39,7 +39,8 @@ function maybeBackgroundSyncStrava(store: Store, conn: StravaConn): void {
 export async function readState(): Promise<AppState> {
   const store = getStore();
   const me = await currentAthlete();
-  const [athletes, activities, settings, conn, efforts, steps, stepsLink, coinGrants, purchases] = await Promise.all([
+  const [athletes, activities, settings, conn, efforts, steps, stepsLink, coinGrants, purchases,
+         bets, bounties] = await Promise.all([
     store.listAthletes(),
     store.listActivities(),
     store.getSettings(),
@@ -49,6 +50,8 @@ export async function readState(): Promise<AppState> {
     me ? store.getStepsLink(me.id) : Promise.resolve({ connected: false, lastSyncAtISO: null, shortcutKey: null }),
     store.listCoinGrants(),
     store.listPurchases(),
+    store.listBets(),
+    store.listBounties(),
   ]);
   if (conn) maybeBackgroundSyncStrava(store, conn);
   return {
@@ -73,6 +76,11 @@ export async function readState(): Promise<AppState> {
     // balance is only right with the spending taken off it.
     coinGrants,
     purchases,
+    // The Arena. Everyone's, because a bet has two sides and both have to see
+    // the same card — and because a settled bet moves a balance, which the
+    // wallet works out from these rows rather than from a stored number.
+    bets,
+    bounties,
     myLoadout: me ? await store.getLoadout(me.id) : null,
     // Everyone's, because the Board draws all six. An athlete with no row
     // here gets a look generated from their name instead — see lookFor().

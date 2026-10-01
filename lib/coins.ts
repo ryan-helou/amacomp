@@ -14,6 +14,8 @@ import {
   type DayKey,
 } from "./dates";
 import { seasonByNumber, seasonFor } from "./season";
+import { betCoins, BET_METRIC_BY_ID, type Bet } from "./bets";
+import { bountyCoins, type Bounty } from "./bounties";
 
 /**
  * Tri coins — the Club's currency.
@@ -41,7 +43,9 @@ export const COIN_RATES = {
   seasonWin: 250,
 } as const;
 
-export type CoinKind = "points" | "quota" | "week" | "month" | "season" | "grant" | "spend";
+export type CoinKind =
+  | "points" | "quota" | "week" | "month" | "season" | "grant" | "spend"
+  | "bet" | "bounty";
 
 export interface CoinEntry {
   kind: CoinKind;
@@ -109,6 +113,8 @@ export function coinAccount(
   refDay: DayKey = todayKey(),
   grants: CoinGrant[] = [],
   purchases: Purchase[] = [],
+  bets: Bet[] = [],
+  bounties: Bounty[] = [],
 ): CoinAccount {
   const entries: CoinEntry[] = [];
   const seasonStart = settings.seasonStart;
@@ -191,6 +197,41 @@ export function coinAccount(
     });
   }
 
+  // Settled bets. DERIVED, like everything else above it: the stored row is
+  // the terms and the handshake, and who won is worked out from the same
+  // activities the Board is drawn from — so a session struck off a fortnight
+  // later moves the bet with the table instead of leaving a paid-out bet
+  // disagreeing with it. A bet still running pays nobody, and a draw is a
+  // push, so neither appears here at all.
+  for (const bet of bets) {
+    const moved = betCoins(athleteId, bet, athletes, activities, settings, refDay);
+    if (!moved) continue;
+    const other = athletes.find(
+      (a) => a.id === (bet.fromId === athleteId ? bet.toId : bet.fromId),
+    );
+    const metric = BET_METRIC_BY_ID.get(bet.metric)?.label ?? bet.metric;
+    entries.push({
+      kind: "bet",
+      label: `${moved.amount > 0 ? "Beat" : "Lost to"} ${other?.name ?? "someone"} on ${metric.toLowerCase()}`,
+      detail: formatRange(moved.result.range),
+      amount: moved.amount,
+      day: moved.result.range[1],
+    });
+  }
+
+  // Bounties, which pay only once Ryan has said the task was actually done.
+  for (const b of bounties) {
+    const paid = bountyCoins(athleteId, b);
+    if (!paid) continue;
+    entries.push({
+      kind: "bounty",
+      label: b.title,
+      detail: "Bounty",
+      amount: paid,
+      day: (b.claimedAt ?? b.createdAt).slice(0, 10),
+    });
+  }
+
   // And what the shop took. Kept in the same ledger as a negative line, so the
   // wallet can show where the money went as well as where it came from.
   for (const p of purchases) {
@@ -218,11 +259,14 @@ export function coinBoard(
   refDay: DayKey = todayKey(),
   grants: CoinGrant[] = [],
   purchases: Purchase[] = [],
+  bets: Bet[] = [],
+  bounties: Bounty[] = [],
 ): { athlete: Athlete; balance: number }[] {
   return athletes
     .map((athlete) => ({
       athlete,
-      balance: coinAccount(athlete.id, athletes, activities, settings, refDay, grants, purchases).balance,
+      balance: coinAccount(athlete.id, athletes, activities, settings, refDay,
+        grants, purchases, bets, bounties).balance,
     }))
     .sort((a, b) => b.balance - a.balance || a.athlete.name.localeCompare(b.athlete.name));
 }

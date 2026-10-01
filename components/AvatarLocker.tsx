@@ -129,7 +129,7 @@ export function AvatarLocker({
   // shop has already taken.
   const account = coinAccount(
     state.me?.id ?? "", state.athletes, state.activities, state.settings, refDay,
-    state.coinGrants, state.purchases,
+    state.coinGrants, state.purchases, state.bets, state.bounties,
   );
   const balance = account.balance;
 

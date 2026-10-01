@@ -22,7 +22,7 @@ import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
 import { ProfileProvider, AthleteName } from "./ProfileContext";
 import { LoadoutsProvider } from "./AthleteFigure";
-import { canSeeClub, championWithTestMode } from "@/lib/club";
+import { CLUB_LIVE, canSeeClub, championWithTestMode } from "@/lib/club";
 
 type Tab = "log" | "week" | "board" | "records" | "club" | "arena";
 
@@ -86,7 +86,12 @@ export function AppShell({
   const { state, busy, send } = league;
   const [tab, setTab] = useState<Tab>("week");
   // The new shape is Ryan's until he sends it to the league.
-  const newShape = canSeeClub(state.me?.name);
+  // The new shape — the "+" button, the split Club/Bets tabs — follows the
+  // same door as the Club itself and as the Arena's API: Ryan always, the rest
+  // of the league once CLUB_LIVE is on. Three different answers to "can he see
+  // this" is how you end up with a man who can accept a bet but has no tab to
+  // see it in.
+  const newShape = CLUB_LIVE || canSeeClub(state.me?.name);
   const tabs = newShape ? RYAN_TABS : TABS;
   const [logOpen, setLogOpen] = useState(false);
   const [scoringOpen, setScoringOpen] = useState(false);
