@@ -307,7 +307,7 @@ export function AppShell({
 
   return (
     <ProfileProvider state={state} refDay={refDay} championId={championId} podium={podium} send={send}>
-    <LoadoutsProvider loadouts={state.loadouts} showFigures={canSeeClub(state.me?.name)}>
+    <LoadoutsProvider loadouts={state.loadouts} showFigures={canSeeClub(state.me?.name)} champion={championId}>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
       {/* The notch strip.

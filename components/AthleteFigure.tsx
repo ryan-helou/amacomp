@@ -31,20 +31,51 @@ const Saved = createContext<Saved>(undefined);
  */
 const Showing = createContext(false);
 
+/**
+ * The reigning champion's id, so every figure in the app can gild him without
+ * eight call sites remembering to.
+ *
+ * It lives here rather than in ProfileContext — which already holds the same
+ * id for the gold NAME — because ProfileContext renders AthleteSheet, which
+ * renders these figures, and reaching back the other way would close a module
+ * cycle. The duplication is one prop on one provider; the cycle would be a
+ * context that is sometimes undefined depending on which file loaded first.
+ */
+const Champion = createContext<string | null>(null);
+
 export function LoadoutsProvider({
   loadouts,
   showFigures,
+  champion = null,
   children,
 }: {
   loadouts: Saved;
   showFigures: boolean;
+  /** Last finished season's winner: he wears the crown and the gold edge. */
+  champion?: string | null;
   children: ReactNode;
 }) {
   return (
-    <Showing.Provider value={showFigures}>
-      <Saved.Provider value={loadouts}>{children}</Saved.Provider>
-    </Showing.Provider>
+    <Champion.Provider value={champion}>
+      <Showing.Provider value={showFigures}>
+        <Saved.Provider value={loadouts}>{children}</Saved.Provider>
+      </Showing.Provider>
+    </Champion.Provider>
   );
+}
+
+/**
+ * What the champion wears, for a figure that hasn't been told otherwise.
+ *
+ * Both halves of one mark. The crown is the mark on the full figure; the gold
+ * edge is the half that survives the crop to a 36px bust, which is how most of
+ * this app actually sees a man. An explicit `prize` still wins — the sheet
+ * hands second and third their circlets through it.
+ */
+function useCrowned(athlete: Who, prize?: string) {
+  const champion = useContext(Champion);
+  const is = champion != null && champion === athlete.id;
+  return { prize: prize ?? (is ? "prize.crown" : undefined), gilded: is };
 }
 
 /** True when this viewer should be shown figures instead of initials. */
@@ -83,17 +114,29 @@ export function Face({
   loadouts,
   me = false,
   prize,
+  gilded = false,
   className = "h-9 w-9",
 }: {
   athlete: Who;
   loadouts?: Saved;
   me?: boolean;
   prize?: string;
+  /**
+   * The reigning champion, drawn with a gold edge.
+   *
+   * The crown says it too, but only on the full figure — every row in this
+   * app crops at the shoulders, and at 36px a crown on a hat on a head is
+   * three gold shapes in nine pixels. The outline is the half of the mark
+   * that survives the crop, which is why the champion gets both.
+   */
+  gilded?: boolean;
   className?: string;
 }) {
   const fromContext = useContext(Saved);
   const saved = loadouts ?? fromContext;
-  const worn = useMemo(() => look(athlete, saved, prize), [athlete, saved, prize]);
+  const crowned = useCrowned(athlete, prize);
+  const gilt = gilded || crowned.gilded;
+  const worn = useMemo(() => look(athlete, saved, crowned.prize), [athlete, saved, crowned.prize]);
   return (
     <span
       aria-hidden
@@ -102,7 +145,7 @@ export function Face({
         me ? "ring-2 ring-ink ring-offset-2 ring-offset-deck" : ""
       } ${className}`}
     >
-      <PixelAvatar loadout={worn} bust flat className="h-full w-full" />
+      <PixelAvatar loadout={worn} bust flat gilded={gilt} className="h-full w-full" />
     </span>
   );
 }
@@ -119,11 +162,14 @@ export function Figure({
   loadouts,
   prize,
   flag,
+  gilded = false,
   className = "w-28",
 }: {
   athlete: Who;
   loadouts?: Saved;
   prize?: string;
+  /** The reigning champion, drawn with a gold edge. */
+  gilded?: boolean;
   /**
    * A country id from lib/flags, drawn as the ground he stands on. Left out,
    * it comes from the flag he bought — which is the point of buying one.
@@ -139,7 +185,9 @@ export function Figure({
 }) {
   const fromContext = useContext(Saved);
   const saved = loadouts ?? fromContext;
-  const worn = useMemo(() => look(athlete, saved, prize), [athlete, saved, prize]);
+  const crowned = useCrowned(athlete, prize);
+  const gilt = gilded || crowned.gilded;
+  const worn = useMemo(() => look(athlete, saved, crowned.prize), [athlete, saved, crowned.prize]);
   const flown = flag === undefined
     ? AVATAR_ITEM_BY_ID.get(worn.flag?.item ?? "")?.flag ?? null
     : flag;
@@ -149,7 +197,7 @@ export function Figure({
       className="relative flex items-end justify-center overflow-hidden rounded-xl"
       style={lane ? (lane as React.CSSProperties) : undefined}
     >
-      <PixelAvatar loadout={worn} className={`relative ${className}`} />
+      <PixelAvatar loadout={worn} gilded={gilt} className={`relative ${className}`} />
     </span>
   );
 }
@@ -168,17 +216,22 @@ export function TurnAround({
   loadouts,
   prize,
   flag,
+  gilded = false,
   className = "w-24",
 }: {
   athlete: Who;
   loadouts?: Saved;
   prize?: string;
+  /** The reigning champion, drawn with a gold edge. */
+  gilded?: boolean;
   flag?: string | null;
   className?: string;
 }) {
   const fromContext = useContext(Saved);
   const saved = loadouts ?? fromContext;
-  const worn = useMemo(() => look(athlete, saved, prize), [athlete, saved, prize]);
+  const crowned = useCrowned(athlete, prize);
+  const gilt = gilded || crowned.gilded;
+  const worn = useMemo(() => look(athlete, saved, crowned.prize), [athlete, saved, crowned.prize]);
   const flown = flag === undefined
     ? AVATAR_ITEM_BY_ID.get(worn.flag?.item ?? "")?.flag ?? null
     : flag;
@@ -192,7 +245,7 @@ export function TurnAround({
           two words of chrome under a pair of figures is the label telling you
           the picture is a picture. */}
       {(["front", "back"] as const).map((view) => (
-        <PixelAvatar key={view} loadout={worn} view={view} className={`relative ${className}`} />
+        <PixelAvatar key={view} loadout={worn} view={view} gilded={gilt} className={`relative ${className}`} />
       ))}
     </span>
   );

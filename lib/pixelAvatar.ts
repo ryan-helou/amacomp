@@ -233,6 +233,20 @@ const EYE = "#1b1410", MOUTH = "#b5705a", LIGHT = "#f3f3f1";
 const OUTLINE = "#14161b";
 const RIM = "#4a5f7a"; // the cool edge on the lit side
 
+/**
+ * The champion's gilding: the same figure, drawn with a gold edge instead of
+ * the near-black one.
+ *
+ * Not an item, deliberately. A champion keeps every single thing he chose to
+ * wear — the crown already costs him his hat, and taking the shirt as well
+ * would mean the better you do the less of your own figure is left. An
+ * outline takes nothing: it is the one mark that can be applied to a man who
+ * is already fully dressed. It is also the only one that survives the crop to
+ * a 36px bust, which is where most of the app actually sees a figure.
+ */
+const GILT = "#b88518";
+const GILT_RIM = "#f0c64b";
+
 // Legs first, eyewear last: the order things are put on.
 // A crown goes on over the hair and over the helmet, so the prize is the last
 // thing drawn. Nothing else in the slot reaches anything that comes before it.
@@ -311,7 +325,7 @@ function rasterise(
 }
 
 /** A lit grid turned into SVG: outline first, then the colour runs. */
-function draw(L: Layer): string {
+function draw(L: Layer, ink = OUTLINE, rim = RIM): string {
   const at = (x: number, y: number) => (x < 0 || y < 0 || x >= L.w || y >= L.h ? null : L.grid[y][x]);
   const u = 1 / L.res, ox = L.x0 / L.res, oy = L.y0 / L.res;
 
@@ -331,7 +345,7 @@ function draw(L: Layer): string {
       let paintAs: string | null | undefined;
       if (c) paintAs = c;
       else if (x < L.w && (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1))) {
-        paintAs = at(x + 1, y) && !at(x - 1, y) ? RIM : null;
+        paintAs = at(x + 1, y) && !at(x - 1, y) ? rim : null;
       }
       if (paintAs !== runColour) {
         flush(x);
@@ -370,7 +384,7 @@ function draw(L: Layer): string {
   }
   for (const key of [...open.keys()]) shut(key);
 
-  return `<g fill="${OUTLINE}">${edges}</g>${cells}`;
+  return `<g fill="${ink}">${edges}</g>${cells}`;
 }
 
 /**
@@ -438,17 +452,22 @@ const ZONE_SPLIT = 86;
 
 function bodyChunks(
   view: "front" | "back", src: string[], bustOnly: boolean, skin: string, shade: string,
+  gilded = false,
 ): { upper: string; lower: string } {
-  const key = `${view}${bustOnly ? ":bust" : ""}:${skin}`;
+  // The gilding changes the markup, so it has to be part of the cache key —
+  // without it the first figure drawn decides the edge colour of every figure
+  // that shares a skin tone for the rest of the session.
+  const key = `${view}${bustOnly ? ":bust" : ""}:${skin}${gilded ? ":gilt" : ""}`;
   const held = BODY_CACHE.get(key);
   if (held) return held;
   const SPLIT = ZONE_SPLIT;
   const tone = { skin, shade };
+  const ink = gilded ? GILT : OUTLINE, rim = gilded ? GILT_RIM : RIM;
   const made = {
-    upper: draw(rasterise(src.slice(0, SPLIT), 1, 0, 0, skin, shade, false, "upper", tone)),
+    upper: draw(rasterise(src.slice(0, SPLIT), 1, 0, 0, skin, shade, false, "upper", tone), ink, rim),
     lower: bustOnly
       ? ""
-      : draw(rasterise(src.slice(SPLIT), 1, 0, SPLIT, skin, shade, false, "lower", tone)),
+      : draw(rasterise(src.slice(SPLIT), 1, 0, SPLIT, skin, shade, false, "lower", tone), ink, rim),
   };
   BODY_CACHE.set(key, made);
   return made;
@@ -462,7 +481,12 @@ function bodyChunks(
  */
 export function avatarSvg(
   loadout: Loadout,
-  { view = "front", crop = "full" }: { view?: "front" | "back"; crop?: "full" | "bust" } = {},
+  { view = "front", crop = "full", gilded = false }: {
+    view?: "front" | "back";
+    crop?: "full" | "bust";
+    /** The reigning champion, drawn with a gold edge. See GILT. */
+    gilded?: boolean;
+  } = {},
 ): string {
   const { W, H } = DATA;
   const src = view === "back" ? DATA.back : DATA.base;
@@ -492,7 +516,7 @@ export function avatarSvg(
   const IN_BUST: Set<Slot> = new Set(["torso", "prize", "head", "eyes", "hair", "face"]);
   const wanted = (slot: Slot) => crop !== "bust" || IN_BUST.has(slot);
 
-  const body = bodyChunks(view, src, crop === "bust", tone.colour, tone.accent);
+  const body = bodyChunks(view, src, crop === "bust", tone.colour, tone.accent, gilded);
 
   // Brows ride with whatever hair you chose, in its colour — they belong to
   // the face, not to any one hairstyle.
@@ -531,8 +555,9 @@ export function avatarSvg(
   }
 
   let upperOut = body.upper, lowerOut = body.lower;
+  const ink = gilded ? GILT : OUTLINE, rim = gilded ? GILT_RIM : RIM;
   for (const L of layers) {
-    const chunk = draw(L);
+    const chunk = draw(L, ink, rim);
     if (L.zone === "upper") upperOut += chunk;
     else lowerOut += chunk;
   }

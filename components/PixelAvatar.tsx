@@ -14,11 +14,14 @@ export function PixelAvatar({
   view = "front",
   bust = false,
   flat = false,
+  gilded = false,
   className,
 }: {
   loadout: Loadout;
   view?: "front" | "back";
   bust?: boolean;
+  /** The reigning champion: the same figure with a gold edge. */
+  gilded?: boolean;
   /**
    * Draw it as an image rather than as live SVG.
    *
@@ -31,8 +34,8 @@ export function PixelAvatar({
   className?: string;
 }) {
   const svg = useMemo(
-    () => avatarSvg(loadout, { view, crop: bust ? "bust" : "full" }),
-    [loadout, view, bust],
+    () => avatarSvg(loadout, { view, crop: bust ? "bust" : "full", gilded }),
+    [loadout, view, bust, gilded],
   );
 
   if (flat) {
