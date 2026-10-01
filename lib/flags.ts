@@ -42,6 +42,18 @@ export interface CountryFlag {
    */
   laneAt?: number | null;
   /**
+   * Band widths for the LANE only, when the flag's own would put the text
+   * across a boundary.
+   *
+   * A lane is a sixth the height of a flag and has three lines of writing
+   * stacked down the middle of it. Jordan's thirds meant the name sat on the
+   * white, the detail line on the green and the bar on the join — the only
+   * row on the board where the text crossed two colours. Lebanon has always
+   * read well at 1:2:1, so Jordan gets the same room. The TAG still draws the
+   * flag's true thirds; this is the lane making space for words.
+   */
+  laneWeights?: number[];
+  /**
    * The emblem alone, in the same 30x20 box, when it cannot simply be taken
    * from FLAG_MOTIF — Canada's leaf and Quebec's fleur are HOLES punched in
    * their fields rather than shapes drawn on them, and the house flag's star
@@ -83,7 +95,7 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
   // The chevron belongs at the hoist on a flag, but the hoist of a LANE is
   // under the rank, the figure and the name. It goes to the middle with the
   // rest; the bands are horizontal, so they line up wherever it lands.
-  { id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true, art: FLAG_ART.jo },
+  { id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true, art: FLAG_ART.jo, laneWeights: [1, 2, 1] },
   { id: "br", label: "Brazil", bands: ["#009440"], weights: [1], art: FLAG_ART.br },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
   // The one flag with nothing to copy. Magenta, black and mint are the app's
@@ -176,7 +188,7 @@ export function flagLane(id: string): {
   // deck would put dark ink on a dark row. They paint their field nearly
   // solid instead and take dark ink, which is what away.ts does for Japan and
   // the reason that row has always worked.
-  const weights = flag.weights ?? [1, 1, 1];
+  const weights = flag.laneWeights ?? flag.weights ?? [1, 1, 1];
   const whole = weights.reduce((a, b) => a + b, 0);
   let at = 0;
   const bands = flag.bands
@@ -197,6 +209,7 @@ export function flagLane(id: string): {
     (flag.rows
       ? lum(flag.bands[Math.floor(flag.bands.length / 2)])
       : lum(flag.bands[0])) > 0.5;
+
   const fid = `${flag.id}-fade`;
   // A mask rather than a stack of gradients: the bands are one drawing and
   // the dip is one shape over them, so a flag with five bands fades exactly
