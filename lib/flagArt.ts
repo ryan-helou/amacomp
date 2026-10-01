@@ -40,3 +40,11 @@ export const FLAG_ART: Record<string, string> = {
   ke:
     `<g transform="scale(0.125,0.125) translate(120,80)"><defs><path id="ke-A" stroke-miterlimit="10" d="M-1 55.426h2V-38c2-2 2-5 2-8 0-2 0-10-3-18.663C-3-56-3-48-3-46c0 3 0 6 2 8z" transform="rotate(30)"/></defs><path fill="#fff" d="M-120-80h240V80h-240z"/><path d="M-120-80h240v48h-240z"/><path fill="#060" d="M-120 32h240v48h-240z"/><g id="ke-B"><use xlink:href="#ke-A" stroke="#000"/><use xlink:href="#ke-A" fill="#fff"/></g><use xlink:href="#ke-B" transform="scale(-1 1)"/><path fill="#b00" d="M-120-24v48h101c3 8 13 24 19 24s16-16 19-24h101v-48H19C16-32 6-48 0-48s-16 16-19 24z"/><path id="ke-C" d="M19 24c3-8 5-16 5-24s-2-16-5-24c-3 8-5 16-5 24s2 16 5 24"/><use xlink:href="#ke-C" transform="scale(-1 1)"/><g fill="#fff"><ellipse rx="4" ry="6"/><path id="ke-D" d="M1 5.85s4 8 4 21-4 21-4 21z"/><use xlink:href="#ke-D" transform="scale(-1)"/><use xlink:href="#ke-D" transform="scale(-1 1)"/><use xlink:href="#ke-D" transform="scale(1 -1)"/></g></g>`,
 };
+
+/**
+ * Quebec's fleur-de-lis on its own, lifted out of the quarter path. The
+ * box was measured with getBBox rather than guessed.
+ */
+export const FLEUR_BOX = "1414 400 1172 1600";
+export const FLEUR =
+  "M2309 1622v-129h-115c0-66 32-130 66-150 20-17 65-25 104-5 51 29 54 113 28 151 243-45 219-280 136-365-67-69-140-79-196-58-128 46-214 199-218 427h-67c0-207 36-273 130-534 48-123 19-275-65-415-31-50-69-95-112-144-43 49-81 94-112 144-84 140-113 292-65 415 94 261 130 327 130 534h-67c-4-228-90-381-218-427-56-21-129-11-196 58-83 85-107 320 136 365-26-38-23-122 28-151 39-20 84-12 104 5 34 20 66 84 66 150h-115v129h239c-3 67-39 119-106 148 8 28 49 85 105 81 11 60 21 94 71 149 50-55 60-89 71-149 56 4 97-53 105-81-67-29-103-81-106-148z";

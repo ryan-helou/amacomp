@@ -345,7 +345,11 @@ console.log("\none country, one purchase, one drawing");
   check("the field runs the whole row", size[2], "100% 100%");
   // The emblem is `auto`, never a percentage. A percentage is a stretch.
   check("the emblem keeps its own shape", size[1], "auto 100%");
-  check("and sits in the gap the scrim leaves", lane.backgroundPosition.split(", ")[1], "64% center");
+  // Canada is the exception: centred, where its white band is widest, because
+  // the leaf is the flag and a red leaf on the red band is no leaf at all.
+  check("Canada's leaf is centred", lane.backgroundPosition.split(", ")[1], "50% center");
+  check("everyone else sits in the gap the scrim leaves",
+    flagLane("br")!.backgroundPosition.split(", ")[1], "76% center");
   check("the lane carries Canada's red", lane.backgroundImage.includes("%23FF0000"), true);
 
   // THE BUG, twice over: `preserveAspectRatio="none"` strips an SVG of its
@@ -374,7 +378,13 @@ console.log("\none country, one purchase, one drawing");
   // is the middle band. Averaging the three put light text on the white
   // stripe of Jordan's flag and you couldn't read the row.
   check("a white field darkens the ink", !!flagLane("jp")?.["--ink"], true);
-  check("so does a white middle stripe", !!flagLane("jo")?.["--ink"], true);
+  // Jordan and Lebanon would both qualify on that rule and both came out as
+  // light boxes, so they override it — a flag may ask for the dark side.
+  check("but a flag can overrule it", flagLane("jo")?.["--ink"], undefined);
+  check("and Lebanon does the same", flagLane("lb")?.["--ink"], undefined);
+  // Less scrim means more flag: Italy's colours were sitting under nine
+  // tenths of darkness.
+  check("Italy is let through", flagLane("it")!.backgroundImage.includes("0.56"), true);
   check("a red field leaves it alone", flagLane("vn")?.["--ink"], undefined);
   check("and so does a dark middle stripe", flagLane("de")?.["--ink"], undefined);
 

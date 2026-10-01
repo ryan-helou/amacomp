@@ -117,6 +117,19 @@ def main() -> None:
         print(f"  {fid}  {label:<10} {len(art):>6} chars")
 
     esc = lambda s: s.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
+
+    # A lane needs a flag's emblem ON ITS OWN when the flag's bands run
+    # vertically: the whole drawing cannot be laid over stretched vertical
+    # bands without disagreeing with them. Quebec is the one that needs
+    # lifting out here — Canada's leaf already lives in lib/away.ts.
+    quarter = re.search(r'<path fill="#003da5" d="([^"]+)"', fetch(SOURCES["qc"][1])).group(1)
+    fleur = quarter[quarter.index("M", 1):]
+    extras = (
+        "\n/**\n * Quebec's fleur-de-lis on its own, lifted out of the quarter path. The\n"
+        " * box was measured with getBBox rather than guessed.\n */\n"
+        'export const FLEUR_BOX = "1414 400 1172 1600";\n'
+        f'export const FLEUR =\n  "{fleur}";\n'
+    )
     body = "".join(
         f"  // {label} — commons/{path}\n  {fid}:\n    `{esc(art)}`,\n"
         for fid, label, path, art in parts
@@ -140,7 +153,7 @@ def main() -> None:
 
 export const FLAG_ART: Record<string, string> = {{
 {body}}};
-'''
+{extras}'''
     with open(OUT, "w") as f:
         f.write(header)
     print(f"wrote {OUT} ({len(header)} bytes, {len(parts)} flags)")

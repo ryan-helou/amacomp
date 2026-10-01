@@ -1,5 +1,5 @@
 import { MAPLE, MAPLE_BOX } from "./away";
-import { FLAG_ART } from "./flagArt";
+import { FLAG_ART, FLEUR, FLEUR_BOX } from "./flagArt";
 
 /**
  * The flags you can fly beside your name.
@@ -51,6 +51,19 @@ export interface CountryFlag {
    * red-white-red, at the wrong scale. So Canada contributes its leaf alone.
    */
   laneMotif?: string;
+  /**
+   * Which way the scrim leans, when the flag's own colours would decide
+   * wrongly. A flag whose middle band is white gets a WHITE scrim, and a
+   * white scrim at nine tenths turns the whole row into a light box — Jordan
+   * and Lebanon both glared. Forcing the dark side keeps them in the deck.
+   */
+  laneInk?: "light" | "dark";
+  /**
+   * How much scrim, as a multiplier. Below 1 lets more of the flag through,
+   * which is how a muted one is brightened: Italy's green and red were
+   * sitting under nine tenths of darkness.
+   */
+  laneAlpha?: number;
 }
 
 /**
@@ -70,20 +83,27 @@ const STAR =
 export const COUNTRY_FLAGS: CountryFlag[] = [
   {
     id: "ca", label: "Canada", bands: ["#FF0000", "#FFFFFF", "#FF0000"], weights: [1, 2, 1], art: FLAG_ART.ca,
-    // 0.64, not 0.76: Canada's white band ends at three quarters of the row,
-    // and a red leaf on the red band is no leaf at all.
-    laneAt: 0.64,
-    laneMotif: `<svg x="9.4" y="4" width="11.2" height="12" viewBox="${MAPLE_BOX}"><path fill="#FF0000" d="${MAPLE}"/></svg>`,
+    // Centred, where the white band is widest, and as big as that band will
+    // take: the leaf is the flag, so it gets the room.
+    laneAt: 0.5,
+    laneMotif: `<svg x="6.5" y="1" width="17" height="18" viewBox="${MAPLE_BOX}"><path fill="#FF0000" d="${MAPLE}"/></svg>`,
   },
-  { id: "qc", label: "Quebec", bands: ["#003DA5"], weights: [1], art: FLAG_ART.qc },
-  { id: "lb", label: "Lebanon", bands: ["#D31624", "#FFFFFF", "#D31624"], rows: true, weights: [1, 2, 1], art: FLAG_ART.lb },
-  { id: "it", label: "Italy", bands: ["#009246", "#FFFFFF", "#CE2B37"], art: FLAG_ART.it, laneAt: null },
+  {
+    id: "qc", label: "Quebec", bands: ["#003DA5"], weights: [1], art: FLAG_ART.qc,
+    // The whole Fleurdelise shrunk to row height put four fleurs and a cross
+    // into about twelve pixels, which is porridge. One fleur, big, on the
+    // blue it already has — that reads as Quebec at a glance and the little
+    // one does not.
+    laneMotif: `<svg x="8.4" y="0.5" width="13.2" height="19" viewBox="${FLEUR_BOX}"><path fill="#FFFFFF" d="${FLEUR}"/></svg>`,
+  },
+  { id: "lb", label: "Lebanon", bands: ["#D31624", "#FFFFFF", "#D31624"], rows: true, weights: [1, 2, 1], art: FLAG_ART.lb, laneInk: "dark" },
+  { id: "it", label: "Italy", bands: ["#009246", "#FFFFFF", "#CE2B37"], art: FLAG_ART.it, laneAt: null, laneAlpha: 0.62 },
   { id: "jp", label: "Japan", bands: ["#FFFFFF"], weights: [1], art: FLAG_ART.jp },
   // The chevron belongs at the hoist on a flag, but the hoist of a LANE is
   // under the rank, the figure and the name, with the scrim at its heaviest.
   // Put it where it can be seen; the bands are horizontal, so they line up
   // wherever the copy lands and only the chevron appears.
-  { id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true, art: FLAG_ART.jo },
+  { id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true, art: FLAG_ART.jo, laneInk: "dark" },
   { id: "br", label: "Brazil", bands: ["#009440"], weights: [1], art: FLAG_ART.br },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
   // The one flag with nothing to copy. Magenta, black and mint are the app's
@@ -222,14 +242,15 @@ export function flagLane(id: string): {
   const ends = flag.rows
     ? lum(flag.bands[Math.floor(flag.bands.length / 2)])
     : lum(flag.bands[0]);
-  const light = ends > 0.5;
+  const light = flag.laneInk ? flag.laneInk === "light" : ends > 0.5;
   const c = light ? "255,255,255" : "8,10,14";
+  const a = (v: number) => (v * (flag.laneAlpha ?? 1)).toFixed(2);
   // Left-heavy: solid under the figure, the name and the detail line, thinning
   // only over the right third, which is the one stretch of the row with
   // nothing in it, then firming up again under the points.
   const scrim =
-    `linear-gradient(90deg, rgba(${c},0.90) 0%, rgba(${c},0.88) 56%,` +
-    ` rgba(${c},0.46) 70%, rgba(${c},0.34) 84%, rgba(${c},0.78) 100%)`;
+    `linear-gradient(90deg, rgba(${c},${a(0.9)}) 0%, rgba(${c},${a(0.88)}) 56%,` +
+    ` rgba(${c},${a(0.46)}) 70%, rgba(${c},${a(0.34)}) 84%, rgba(${c},${a(0.78)}) 100%)`;
 
   // The scrim goes on top of both, so the text is legible over whichever of
   // them happens to be under it.
