@@ -61,10 +61,17 @@ claim it covers anything.
 ## And for anything with a button, drive the UI
 
 ```bash
-npx next build
+NEXT_PUBLIC_CLUB_LIVE=1 npx next build
 DATABASE_URL= SESSION_SECRET=qa NEXT_PUBLIC_CLUB_LIVE=1 npx next start -p 3177 &
 python3 scripts/qa.py
 ```
+
+**The var has to be on BOTH lines.** `NEXT_PUBLIC_*` is inlined into the client
+bundle at BUILD time and read from the environment at RUN time, so a build
+without it and a server with it disagree about `CLUB_LIVE` — React throws
+hydration error #418, the non-admin's page never hydrates, and every button he
+owns silently does nothing. It looks exactly like a broken feature. It has cost
+three debugging detours; it is not a bug in the app.
 
 `scripts/qa.py` walks every screen in both palettes, as the admin and as a
 regular athlete, then presses everything that writes and checks the number
