@@ -570,8 +570,24 @@ def build(P):
             c.rect(*seg[k], ch)
 
     def basketball(c):
-        """A basketball jersey: deep armholes, a V at the neck, trim down the
-        sides, and a two-digit number big enough to read on the board."""
+        """A basketball KIT, vest and shorts in one drawing.
+
+        Ryan, 2026-10-02: "only sell the kit together". So this is one item
+        rather than two, the way the tri suit already is — which also means
+        the trim runs from the shoulder to the hem without the two halves
+        having to be bought in the right order to line up.
+
+        It crosses the waist, and the renderer splits a sheet at ZONE_SPLIT so
+        each half lands in its own zone (see avatarSvg). That is what stops a
+        pair of shorts from painting over the bottom of it.
+        """
+        # shorts first, so the vest's hem falls over the waistband
+        c.trunk(HIP-4, HIP+2, TH_, TH_, TH_, "K")
+        end = LY0 + (LY1-LY0)*0.62          # longer than a running short
+        c.capsule(L, LY0-2, end, LHW+0.9, "K"); c.capsule(R, LY0-2, end, LHW+0.9, "K")
+        c.rect(40-TH_, HIP-4, 40+TH_, HIP-2.0, "A")
+        for cx, sx in ((L, -1), (R, 1)):
+            c.rect(cx + sx*(LHW+0.1), HIP-2, cx + sx*(LHW+1.0), end-1.0, "A", only="K")
         c.trunk(SH+2, HIP+1, TT-1.4, TW_-1.0, TH_-1.0, "K")
         for sx in (-1, 1):
             c.poly([(40+sx*(TT-1.4), SH+4.5), (40+sx*(TT-5.2), SH+4.5),
