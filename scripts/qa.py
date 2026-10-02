@@ -1,8 +1,14 @@
 """A walk through the whole of AmaComp, pressing the buttons.
 
-    npx next build
+    NEXT_PUBLIC_CLUB_LIVE=1 npx next build
     DATABASE_URL= SESSION_SECRET=qa NEXT_PUBLIC_CLUB_LIVE=1 npx next start -p 3177
     python3 scripts/qa.py
+
+The var goes on BOTH lines. NEXT_PUBLIC_* is inlined at build time and read
+from the environment at run time, so a build without it and a server with it
+disagree — React throws hydration #418, the non-admin's page never hydrates,
+and every button he owns quietly does nothing. That reads as five broken
+features and is not a bug in the app.
 
 It needs playwright and a copy of Chrome:  pip install playwright
 

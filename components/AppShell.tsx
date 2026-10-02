@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, logToday, parseDayKey, today, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, goalFor, standingsFor } from "@/lib/scoring";
-import { reigningChampionId, reigningPodium, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
+import { reigningChampionId, reigningPodium, seasonByNumber, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
 import type { AppState } from "@/lib/types";
 import { announcementIsDue, rateAnnouncementFor, type RateAnnouncement } from "@/lib/announce";
 import { useLeague } from "./useLeague";
@@ -176,18 +176,29 @@ export function AppShell({
   const [kickoffSeason, setKickoffSeason] = useState<ReturnType<typeof seasonFor>>(null);
   useEffect(() => {
     if (!state.me) return;
-    const season = seasonFor(refDay, state.settings.seasonStart);
+    // ?intro=2 forces the card for a given season, marker and window ignored.
+    // A card that only exists in the first week of a season is a card nobody
+    // can look at while they are still writing it — this is how it gets read
+    // before Monday. You have to type it, so nobody meets it by accident.
+    const forced = new URLSearchParams(window.location.search).get("intro");
+    const asked = forced === null ? null : Number(forced);
+    const season = asked && Number.isFinite(asked) && asked > 0
+      ? seasonByNumber(asked, state.settings.seasonStart)
+      : seasonFor(refDay, state.settings.seasonStart);
     if (!season) return;
-    const opensOn = seasonOpensOn(season);
-    if (refDay < opensOn || refDay > addDays(opensOn, 6)) return;
-    const key = `amacomp-season-intro-${state.me.id}-${season.number}`;
-    try {
-      if (localStorage.getItem(key)) return;
-      // Marked as seen up front: a reload or a crash mid-animation shouldn't
-      // replay it, and the card is a moment rather than something to re-earn.
-      localStorage.setItem(key, "1");
-    } catch {
-      return; // private mode — skip rather than replay it on every open
+
+    if (forced === null) {
+      const opensOn = seasonOpensOn(season);
+      if (refDay < opensOn || refDay > addDays(opensOn, 6)) return;
+      const key = `amacomp-season-intro-${state.me.id}-${season.number}`;
+      try {
+        if (localStorage.getItem(key)) return;
+        // Marked as seen up front: a reload or a crash mid-animation shouldn't
+        // replay it, and the card is a moment rather than something to re-earn.
+        localStorage.setItem(key, "1");
+      } catch {
+        return; // private mode — skip rather than replay it on every open
+      }
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot on mount, gated by a localStorage marker
     setKickoffSeason(season);
@@ -590,8 +601,11 @@ export function AppShell({
       )}
 
       {kickoffSeason && state.me && (
+        // The what's-new cards are SEASON 2's news. Season 3 gets a title card
+        // and nothing behind the arrow until somebody writes it.
         <SeasonKickoff
           season={kickoffSeason}
+          news={kickoffSeason.number === 2}
           onDismiss={() => setKickoffSeason(null)}
         />
       )}
