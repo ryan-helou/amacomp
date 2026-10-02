@@ -380,7 +380,127 @@ function Lane({ flag, name }: { flag: string; name: string }) {
   );
 }
 
+/** The coin itself, the same file the wallet and the shop use. */
+function Coin() {
+  return (
+    <div className="relative flex items-center justify-center py-1">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute h-40 w-40 rounded-full"
+        style={{
+          background: "radial-gradient(circle, rgba(226,181,61,0.45) 0%, transparent 66%)",
+          filter: "blur(18px)",
+        }}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element -- static same-origin asset */}
+      <img
+        src="/tri-coin.png"
+        alt=""
+        aria-hidden
+        className="relative h-28 w-28 object-contain"
+        style={{ filter: "drop-shadow(0 12px 22px rgba(0,0,0,0.5))" }}
+      />
+    </div>
+  );
+}
+
+/**
+ * A bet, drawn as the card it actually is: two men, a stake between them.
+ *
+ * Built from the app's own pieces rather than an icon of a handshake — the
+ * thing being announced is that you can put coins on your mate, and two
+ * figures either side of a number says that without a caption.
+ */
+function BetCard() {
+  const faces: [string, string][] = [["Jona", "torso.jersey.magenta"], ["Philippe", "torso.tee.white"]];
+  return (
+    <div className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
+      {faces.map(([name, kit], i) => (
+        <span key={name} className="flex flex-1 flex-col items-center gap-1">
+          <span className="h-11 w-11 overflow-hidden rounded-full bg-black/25">
+            <PixelAvatar
+              loadout={{ ...loadoutFor(name), torso: { item: kit }, flag: { item: "flag.none" } } as Loadout}
+              bust flat className="h-full w-full"
+            />
+          </span>
+          <span className="font-mono text-[0.625rem] text-white/50">{i === 0 ? "You" : name}</span>
+        </span>
+      ))}
+      <span className="flex shrink-0 flex-col items-center">
+        <span className="stamp text-xl leading-none" style={{ color: GOLD }}>150</span>
+        <span className="font-mono text-[0.5625rem] tracking-[0.15em] text-white/35">ON IT</span>
+      </span>
+    </div>
+  );
+}
+
+/** The podium, with the real prizes on real figures. */
+function Podium() {
+  const steps: [string, string, string][] = [
+    ["Philippe", "prize.silver", "2nd"],
+    ["Jona", "prize.crown", "1st"],
+    ["Jonah", "prize.bronze", "3rd"],
+  ];
+  return (
+    <div className="flex items-end justify-center gap-2">
+      {steps.map(([name, prize, place]) => (
+        <span key={name} className="flex flex-col items-center gap-1" style={{ width: "27%", maxWidth: 92 }}>
+          <PixelAvatar
+            loadout={{ ...loadoutFor(name), prize: { item: prize }, flag: { item: "flag.none" } } as Loadout}
+            flat
+            className={place === "1st" ? "w-full" : "w-[86%]"}
+            gilded={place === "1st"}
+          />
+          <span
+            className="w-full rounded-t-md text-center font-mono text-[0.625rem] leading-[1.9]"
+            style={{
+              height: place === "1st" ? 30 : place === "2nd" ? 22 : 16,
+              background: "rgba(255,255,255,0.07)",
+              color: place === "1st" ? GOLD : "rgba(255,255,255,0.45)",
+            }}
+          >
+            {place}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** George, as himself. */
+function George() {
+  return (
+    <div className="flex justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element -- static same-origin asset */}
+      <img
+        src="/george.webp"
+        alt="George"
+        className="h-44 w-auto rounded-2xl object-cover"
+        style={{
+          border: `2px solid ${GOLD}`,
+          boxShadow: "0 16px 34px -12px rgba(0,0,0,0.7), 0 0 0 6px rgba(226,181,61,0.1)",
+        }}
+      />
+    </div>
+  );
+}
+
 const NEWS: Card[] = [
+  // Coins first, Ryan's call 2026-10-02. They are the thing the rest of it
+  // hangs off — a character you cannot dress and a bet you cannot stake are
+  // both answered by "where do I get the money", so answer that first.
+  {
+    eyebrow: "New in Season 2",
+    title: "Tri coins",
+    blurb: "Every point you score mints a coin. Coins never touch the standings.",
+    points: [
+      { icon: "bolt", text: <>One coin a point, <b>+25</b> for hitting quota.</> },
+      { icon: "trophy", text: <>Win a week <b>+50</b>, a month <b>+100</b>, the season <b>+250</b>.</> },
+      { icon: "diamond", text: "They buy what your man wears — 80-odd things on the shelf." },
+      { icon: "heart", text: "Send them to anyone, or buy somebody something outright." },
+    ],
+    art: <Coin />,
+  },
   {
     eyebrow: "New in Season 2",
     title: "You have a character",
@@ -389,21 +509,14 @@ const NEWS: Card[] = [
     points: [
       { icon: "star", text: "Yours is built from your name, so it was already waiting for you." },
       { icon: "trio", text: "He stands on the Board, the Week and your profile." },
-      { icon: "diamond", text: "Dress him in the Club — 80-odd things to put on him." },
-    ],
-    art: <Figures />,
-  },
-  {
-    eyebrow: "New in Season 2",
-    title: "Tri coins",
-    blurb: "Every point you score mints a coin. Coins never touch the standings.",
-    points: [
-      { icon: "bolt", text: <>One coin a point, <b>+25</b> for hitting quota.</> },
-      { icon: "trophy", text: <>Win a week <b>+50</b>, a month <b>+100</b>, the season <b>+250</b>.</> },
       { icon: "flag", text: "Fly your country and it washes your lane on the Board." },
-      { icon: "heart", text: "Send coins to anyone, or buy them something outright." },
     ],
-    art: <Lane flag="lb" name="Jona" />,
+    art: (
+      <div className="space-y-3">
+        <Figures />
+        <Lane flag="lb" name="Jona" />
+      </div>
+    ),
   },
   {
     eyebrow: "New in Season 2",
@@ -414,6 +527,7 @@ const NEWS: Card[] = [
       { icon: "chat", text: "Or bet on anything at all: one of you calls it, the other agrees." },
       { icon: "target", text: "Bounties are tasks with coins on them. First man to do it takes them." },
     ],
+    art: <BetCard />,
   },
   {
     eyebrow: "New in Season 2",
@@ -424,6 +538,7 @@ const NEWS: Card[] = [
       { icon: "crown", text: "The champion wears the crown all next season — and a gold outline, everywhere." },
       { icon: "shield", text: "Second and third get a circlet, in silver and in bronze." },
     ],
+    art: <Podium />,
   },
   {
     eyebrow: "And one more",
@@ -433,6 +548,7 @@ const NEWS: Card[] = [
       { icon: "footprints", text: "Same quota, same forfeit, no grace for being new." },
       { icon: "rings", text: "Which also means one more man between you and the crown." },
     ],
+    art: <George />,
   },
 ];
 
