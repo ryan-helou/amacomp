@@ -467,18 +467,38 @@ function Podium() {
   );
 }
 
-/** George, as himself. */
+/**
+ * George, cut out and slapped on — the same die-cut sticker the lads get on
+ * the title card, so the new man arrives the way the rest of them did.
+ *
+ * The cutout is the photo with its background lifted off (Vision's foreground
+ * mask), not a rounded frame: a frame around a face is a passport photo, and
+ * the card already has one picture in a box on every other page.
+ */
 function George() {
   return (
-    <div className="flex justify-center">
+    <div className="relative flex justify-center">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 h-48 w-48 -translate-y-1/2 rounded-full"
+        style={{
+          background: "radial-gradient(circle, rgba(226,181,61,0.38) 0%, transparent 68%)",
+          filter: "blur(22px)",
+        }}
+      />
       {/* eslint-disable-next-line @next/next/no-img-element -- static same-origin asset */}
       <img
         src="/george.webp"
         alt="George"
-        className="h-44 w-auto rounded-2xl object-cover"
+        className="relative h-56 w-auto object-contain sm:h-64"
         style={{
-          border: `2px solid ${GOLD}`,
-          boxShadow: "0 16px 34px -12px rgba(0,0,0,0.7), 0 0 0 6px rgba(226,181,61,0.1)",
+          // Stacked white shadows build the sticker edge; the last is the
+          // shadow it casts. Same recipe as the lads on page one.
+          filter:
+            "drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)" +
+            " drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)" +
+            " drop-shadow(0 16px 26px rgba(0,0,0,0.6))",
+          animation: "sk-slap 700ms cubic-bezier(0.2, 1.2, 0.35, 1) 0.3s both",
         }}
       />
     </div>
