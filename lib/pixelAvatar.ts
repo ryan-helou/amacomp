@@ -137,12 +137,6 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "legs.shorts.magenta", slot: "legs", label: "Magenta shorts", price: 150, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "shorts" },
   { id: "legs.shorts.cyan", slot: "legs", label: "Cyan shorts", price: 150, tier: "common", colour: CYAN, accent: WHITE, sprite: "shorts" },
   { id: "legs.shorts.gold", slot: "legs", label: "Gold shorts", price: 400, tier: "rare", colour: GOLD, accent: BLACK, sprite: "shorts" },
-  // The bottom half of each LeBron kit. Same shorts as everyone else's — one
-  // garment in colours was Ryan's call and a basketball short that was its own
-  // sprite would quietly undo it — in the jersey's own colours, with the trim
-  // on the side split where the stripe goes anyway.
-  { id: "legs.shorts.phi", slot: "legs", label: "LeBron Philly shorts", price: 400, tier: "rare", colour: "#006BB6", accent: "#ED174C", sprite: "shorts" },
-  { id: "legs.shorts.lakers", slot: "legs", label: "LeBron Lakers shorts", price: 400, tier: "rare", colour: "#552583", accent: "#FDB927", sprite: "shorts" },
 
   { id: "feet.barefoot", slot: "feet", label: "Barefoot", price: 0, tier: "common", colour: SKIN_C, accent: WHITE, sprite: "barefoot" },
   { id: "feet.runshoes.white", slot: "feet", label: "White running shoes", price: 600, tier: "rare", colour: WHITE, accent: MAGENTA, sprite: "runshoes" },
@@ -166,8 +160,12 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   // Philadelphia's blue and red, and the Lakers' purple and gold, each with
   // the 23 on the chest. Named the way Ryan asked for them; the drawing
   // itself is colours and a number, no badge or wordmark.
-  { id: "torso.hoops.phi", slot: "torso", label: "LeBron Philly jersey", price: 900, tier: "epic", colour: "#006BB6", accent: "#ED174C", sprite: "basketball" },
-  { id: "torso.hoops.gold", slot: "torso", label: "LeBron Lakers jersey", price: 1100, tier: "epic", colour: "#552583", accent: "#FDB927", sprite: "basketball" },
+  //
+  // Vest AND shorts in one item, Ryan's call 2026-10-02: "only sell the kit
+  // together". It sits in the torso slot and carries on past the waist, the
+  // way the tri suit does — so whatever shorts you own, the kit covers them.
+  { id: "torso.hoops.phi", slot: "torso", label: "LeBron Philly kit", price: 1300, tier: "epic", colour: "#006BB6", accent: "#ED174C", sprite: "basketball" },
+  { id: "torso.hoops.gold", slot: "torso", label: "LeBron Lakers kit", price: 1500, tier: "epic", colour: "#552583", accent: "#FDB927", sprite: "basketball" },
   { id: "torso.dungarees", slot: "torso", label: "Dungarees", price: 700, tier: "rare", colour: "#3B5A86", accent: "#D9B46A", sprite: "dungarees" },
   { id: "torso.gi", slot: "torso", label: "Gi", price: 800, tier: "rare", colour: "#F2F0EA", accent: "#1A1A1A", sprite: "gi" },
   { id: "prize.none", slot: "prize", label: "No prize", price: 0, tier: "common", colour: GOLD, accent: WHITE },
