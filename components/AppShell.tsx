@@ -85,12 +85,14 @@ export function AppShell({
   const league = useLeague(initial);
   const { state, busy, send } = league;
   const [tab, setTab] = useState<Tab>("week");
-  // The new shape is Ryan's until he sends it to the league.
-  // The new shape — the "+" button, the split Club/Bets tabs — follows the
-  // same door as the Club itself and as the Arena's API: Ryan always, the rest
-  // of the league once CLUB_LIVE is on. Three different answers to "can he see
-  // this" is how you end up with a man who can accept a bet but has no tab to
-  // see it in.
+  // ONE DOOR. The "+" button, the split Club/Bets tabs, the pixel figures, the
+  // Club's rooms, the shop's till and the Arena's API all ask this same
+  // question: Ryan always, the rest of the league once CLUB_LIVE is on.
+  //
+  // It is one question because every time it has been two, something has come
+  // apart at the seam — a man who could accept a bet with no tab to see it in,
+  // and a shop he could browse but not buy from. Throwing the switch has to
+  // open all of it or none of it.
   const newShape = CLUB_LIVE || canSeeClub(state.me?.name);
   const tabs = newShape ? RYAN_TABS : TABS;
   const [logOpen, setLogOpen] = useState(false);
@@ -336,7 +338,7 @@ export function AppShell({
 
   return (
     <ProfileProvider state={state} refDay={refDay} championId={championId} podium={podium} send={send}>
-    <LoadoutsProvider loadouts={state.loadouts} showFigures={canSeeClub(state.me?.name)} champion={championId}>
+    <LoadoutsProvider loadouts={state.loadouts} showFigures={newShape} champion={championId}>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
       {/* The notch strip.

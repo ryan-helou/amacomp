@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
 import { currentAthlete, isAdmin } from "@/lib/session";
 import { readState } from "@/lib/state";
-import { canSeeClub } from "@/lib/club";
+import { CLUB_LIVE, canSeeClub } from "@/lib/club";
 import { coinAccount } from "@/lib/coins";
 import { AVATAR_ITEM_BY_ID } from "@/lib/pixelAvatar";
 
@@ -19,7 +19,11 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const me = await currentAthlete();
   if (!me) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
-  if (!canSeeClub(me.name)) return new NextResponse("Not found", { status: 404 });
+  // The same door as the Club's rooms, the Arena's API and the tab shape:
+  // Ryan always, the league once CLUB_LIVE is on. It used to be Ryan alone,
+  // which would have given everyone else a shop they could look at and not
+  // buy from the moment the switch was thrown.
+  if (!CLUB_LIVE && !canSeeClub(me.name)) return new NextResponse("Not found", { status: 404 });
 
   const body = (await req.json().catch(() => ({}))) as {
     buy?: unknown;
