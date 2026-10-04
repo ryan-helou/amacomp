@@ -141,6 +141,15 @@ def sign_in(browser, name, width=390, palette="dark"):
     if got:
         got.click()
         pg.wait_for_timeout(300)
+    # A season card (the run-in, the champion, the kickoff) covers the whole
+    # app and swallows every click behind it. Tap through whatever is up.
+    for _ in range(10):
+        if not pg.query_selector('[role=dialog]'):
+            break
+        if not pg.evaluate("""()=>{const b=[...document.querySelectorAll('[role=dialog] button')]
+            .filter(e=>!e.disabled).pop(); if(b){b.click();return true} return false}"""):
+            break
+        pg.wait_for_timeout(700)
     pg.evaluate('(p)=>document.documentElement.setAttribute("data-palette",p)', palette)
     return c, pg, errs
 
