@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, logToday, parseDayKey, today, weekStart, type DayKey } from "@/lib/dates";
-import { fmtPoints, goalFor, standingsFor } from "@/lib/scoring";
+import { fmtPoints, goalFor, standingsFor, standingsForRange } from "@/lib/scoring";
 import { reigningChampionId, reigningPodium, seasonByNumber, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
 import type { AppState } from "@/lib/types";
 import { announcementIsDue, rateAnnouncementFor, type RateAnnouncement } from "@/lib/announce";
@@ -17,6 +17,9 @@ import { ScoringSheet } from "./ScoringSheet";
 import { HouseRulesSheet } from "./HouseRulesSheet";
 import { Confetti } from "./Confetti";
 import { SeasonKickoff } from "./SeasonKickoff";
+import { WaitingRoom } from "./WaitingRoom";
+import { SeasonMoment } from "./SeasonMoment";
+import { seasonMomentFor, type SeasonMoment as Moment } from "@/lib/seasonMoment";
 import { PointsChange } from "./PointsChange";
 import { PullToRefresh } from "./PullToRefresh";
 import { Glyph } from "./Glyph";
@@ -215,15 +218,26 @@ export function AppShell({
   const [pointsChange, setPointsChange] = useState<RateAnnouncement | null>(null);
   useEffect(() => {
     if (!state.me) return;
-    const announcement = rateAnnouncementFor(refDay, state.settings);
+    // ?rates shows the card for the most recent change whatever the date is —
+    // the same preview door as ?intro and ?moment. A card that fires at 6 AM on
+    // one morning a season cannot otherwise be looked at.
+    const forced = new URLSearchParams(window.location.search).has("rates");
+    const changes = state.settings.rateChanges ?? [];
+    const last = changes[changes.length - 1];
+    const announcement = forced && last
+      ? rateAnnouncementFor(last.from, state.settings)
+      : rateAnnouncementFor(refDay, state.settings);
     if (!announcement) return;
-    if (!announcementIsDue(announcement, refDay, new Date().getHours())) return;
-    const key = `amacomp-rates-${state.me.id}-${announcement.from}`;
-    try {
-      if (localStorage.getItem(key)) return;
-      localStorage.setItem(key, "1");
-    } catch {
-      return; // private mode — skip rather than replay it on every open
+
+    if (!forced) {
+      if (!announcementIsDue(announcement, refDay, new Date().getHours())) return;
+      const key = `amacomp-rates-${state.me.id}-${announcement.from}`;
+      try {
+        if (localStorage.getItem(key)) return;
+        localStorage.setItem(key, "1");
+      } catch {
+        return; // private mode — skip rather than replay it on every open
+      }
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot, gated by a localStorage marker
     setPointsChange(announcement);
@@ -282,6 +296,86 @@ export function AppShell({
       .slice(0, 2);
     return [championId, ...live.map((r) => r.athlete.id)];
   }, [state.athletes, state.activities, state.settings, refDay, championId]);
+  /**
+   * The season's own moments — the champion card that closes a season, and the
+   * two that count it down. Siblings of the kickoff: same ink ground, same
+   * once-per-athlete localStorage marker, same bounded window.
+   *
+   * On the first day of a new season BOTH this and the kickoff are due, and
+   * they run in that order — you close the old season before you open the new
+   * one, so the champion is crowned and then Season n starts.
+   */
+  const [moment, setMoment] = useState<Moment | null>(null);
+  useEffect(() => {
+    if (!state.me) return;
+    const params = new URLSearchParams(window.location.search);
+    // Asking for another card by name means this one must not jump the queue
+    // in front of it — otherwise previewing the kickoff during the run-in week
+    // shows the countdown instead of the thing you asked to see.
+    if (params.has("intro") || params.has("rates")) return;
+    const forced = params.get("moment");
+    // ?moment=champion BUILDS that card rather than waiting for the one week a
+    // year it is due, the same way ?intro= forces the kickoff. Filtering the
+    // natural answer would not do: no day in the calendar is both today and
+    // the opening week of a season, so the champion card could never be looked
+    // at while it was being written.
+    const cur = seasonFor(refDay, state.settings.seasonStart);
+    let due: Moment | null = null;
+    if (forced && cur) {
+      const prev = seasonByNumber(Math.max(1, cur.number - 1), state.settings.seasonStart);
+      due = forced === "champion" ? { kind: "champion", season: prev }
+        : forced === "last-day" ? { kind: "last-day", season: cur }
+        : forced === "final-stretch" ? { kind: "final-stretch", season: cur, daysLeft: 3 }
+        : null;
+    } else {
+      due = seasonMomentFor(refDay, state.settings.seasonStart);
+    }
+    if (!due) return;
+    if (!forced) {
+      const key = `amacomp-moment-${due.kind}-${state.me.id}-${due.season.number}`;
+      try {
+        if (localStorage.getItem(key)) return;
+        localStorage.setItem(key, "1");
+      } catch {
+        return;
+      }
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot on mount, gated by a localStorage marker
+    setMoment(due);
+  }, [state.me, state.settings.seasonStart, refDay]);
+
+  /**
+   * The waiting room, for a man who has joined before there is anything to
+   * join. It is the WHOLE app for him until the season opens — no marker, no
+   * dismiss: Ryan's call, because the only thing behind it is a board he was
+   * never in and is last on.
+   *
+   * `?waiting` forces it, the same preview door as the other cards.
+   */
+  const waitingFor = useMemo(() => {
+    if (!state.me) return null;
+    const forced = typeof window !== "undefined"
+      && new URLSearchParams(window.location.search).has("waiting");
+    const cur = seasonFor(refDay, state.settings.seasonStart);
+    const next = cur ? seasonByNumber(cur.number + 1, state.settings.seasonStart) : null;
+    if (forced) return next;
+    // Only a man with nothing logged at all, and only while the season he
+    // would be joining has not opened. Both go false on their own.
+    const mine = state.activities.some((a) => a.athleteId === state.me!.id);
+    if (mine || !next || refDay >= next.start) return null;
+    return next;
+  }, [state.me, state.activities, state.settings.seasonStart, refDay]);
+
+  /** The table a moment is about: its own season, best first. */
+  const momentTable = useMemo(
+    () => (moment
+      ? standingsForRange(state.athletes, state.activities, state.settings, [
+          moment.season.start, moment.season.end,
+        ])
+      : []),
+    [moment, state.athletes, state.activities, state.settings],
+  );
+
   const crownedRef = useRef(false);
   const [crownMsg, setCrownMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -334,6 +428,14 @@ export function AppShell({
         }
       />
     );
+  }
+
+  // Nothing else, Ryan's call: the waiting room IS the app until his season
+  // opens. Rendering the board behind it would leave a man who cannot see it
+  // still able to tab into it, and anything slow to paint would flash a table
+  // he is bottom of before the card lands on top.
+  if (waitingFor && state.me) {
+    return <WaitingRoom name={state.me.name} season={waitingFor} today={refDay} />;
   }
 
   return (
@@ -602,7 +704,18 @@ export function AppShell({
         />
       )}
 
-      {kickoffSeason && state.me && (
+      {/* The champion closes the old season before the kickoff opens the new
+          one, so on day one you see the crowning and then SEASON n STARTS NOW. */}
+      {moment && state.me && (
+        <SeasonMoment
+          moment={moment}
+          table={momentTable}
+          meId={state.me.id}
+          onDismiss={() => setMoment(null)}
+        />
+      )}
+
+      {!moment && kickoffSeason && state.me && (
         // The what's-new cards are SEASON 2's news. Season 3 gets a title card
         // and nothing behind the arrow until somebody writes it.
         <SeasonKickoff
