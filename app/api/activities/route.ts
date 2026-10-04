@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
 import { currentAthlete } from "@/lib/session";
 import { readState } from "@/lib/state";
-import { isDayKey } from "@/lib/dates";
+import { isDayKey, leagueToday } from "@/lib/dates";
 import { isSport, SPORT_UNIT } from "@/lib/types";
 import { MAX_ELEVATION_M, MAX_KM, parseElevation, parseKm, parseNote } from "@/lib/validate";
 import { notifyOvertakes, notifyQuotaHits, notifySeasonLead } from "@/lib/push";
+import { waitingFor } from "@/lib/waiting";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,23 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: `Enter an ascent between 0 and ${MAX_ELEVATION_M} m, or leave it blank.` },
       { status: 400 },
+    );
+  }
+
+  // A man still on the coming-soon screen cannot log a session, and this is
+  // the same predicate the screen uses (lib/waiting). Without it he can post
+  // one from the API — and because the screen hides itself the moment he has
+  // an activity, that single request would drop him onto the very board the
+  // screen exists to keep him off.
+  const [allActivities, allSettings] = await Promise.all([
+    getStore().listActivities(),
+    getStore().getSettings(),
+  ]);
+  const held = waitingFor(me, allActivities, allSettings, leagueToday());
+  if (held) {
+    return NextResponse.json(
+      { error: `${held.label} hasn't started yet. The board opens on ${held.start}.` },
+      { status: 403 },
     );
   }
 

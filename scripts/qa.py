@@ -97,8 +97,17 @@ def seed(browser):
         jpost(c, "/api/session", {"name": n})
         ctx[n] = c
     ids = {a["name"]: a["id"] for a in state(ctx["Ryan"])["athletes"]}
-    random.seed(7)
     today = datetime.date.today()
+    # A float FIRST, in a finished week, and not only so there are coins.
+    # A grant lands as an activity row, which is what takes each man out of the
+    # coming-soon hold (lib/waiting) — a brand-new league seeded during the
+    # run-out week of a season is otherwise refused its very first session.
+    last = (today - datetime.timedelta(days=today.weekday() + 7)).isoformat()
+    for n in NAMES:
+        jpost(ctx["Ryan"], "/api/grants", {
+            "kind": "award", "athleteId": ids[n], "points": 1500,
+            "occurredOn": last, "note": "float"})
+    random.seed(7)
     made = 0
     for n in NAMES:
         for d in range(28):
@@ -116,12 +125,6 @@ def seed(browser):
                 problems.append(f"seed: {n} {r.status} {r.text()[:80]}")
                 break
             made += 1
-    # A float in a FINISHED week, so it has already turned into coins.
-    last = (today - datetime.timedelta(days=today.weekday() + 7)).isoformat()
-    for n in NAMES:
-        jpost(ctx["Ryan"], "/api/grants", {
-            "kind": "award", "athleteId": ids[n], "points": 1500,
-            "occurredOn": last, "note": "float"})
     print(f"seeded {len(NAMES)} athletes, {made} sessions")
     for c in ctx.values():
         c.close()

@@ -18,6 +18,7 @@ import { HouseRulesSheet } from "./HouseRulesSheet";
 import { Confetti } from "./Confetti";
 import { SeasonKickoff } from "./SeasonKickoff";
 import { WaitingRoom } from "./WaitingRoom";
+import { waitingFor } from "@/lib/waiting";
 import { SeasonMoment } from "./SeasonMoment";
 import { seasonMomentFor, type SeasonMoment as Moment } from "@/lib/seasonMoment";
 import { PointsChange } from "./PointsChange";
@@ -352,19 +353,15 @@ export function AppShell({
    *
    * `?waiting` forces it, the same preview door as the other cards.
    */
-  const waitingFor = useMemo(() => {
-    if (!state.me) return null;
+  const waiting = useMemo(() => {
     const forced = typeof window !== "undefined"
       && new URLSearchParams(window.location.search).has("waiting");
-    const cur = seasonFor(refDay, state.settings.seasonStart);
-    const next = cur ? seasonByNumber(cur.number + 1, state.settings.seasonStart) : null;
-    if (forced) return next;
-    // Only a man with nothing logged at all, and only while the season he
-    // would be joining has not opened. Both go false on their own.
-    const mine = state.activities.some((a) => a.athleteId === state.me!.id);
-    if (mine || !next || refDay >= next.start) return null;
-    return next;
-  }, [state.me, state.activities, state.settings.seasonStart, refDay]);
+    if (forced) {
+      const cur = seasonFor(refDay, state.settings.seasonStart);
+      return cur ? seasonByNumber(cur.number + 1, state.settings.seasonStart) : null;
+    }
+    return waitingFor(state.me, state.activities, state.settings, refDay);
+  }, [state.me, state.activities, state.settings, refDay]);
 
   /** The table a moment is about: its own season, best first. */
   const momentTable = useMemo(
@@ -434,8 +431,8 @@ export function AppShell({
   // opens. Rendering the board behind it would leave a man who cannot see it
   // still able to tab into it, and anything slow to paint would flash a table
   // he is bottom of before the card lands on top.
-  if (waitingFor && state.me) {
-    return <WaitingRoom name={state.me.name} season={waitingFor} today={refDay} />;
+  if (waiting && state.me) {
+    return <WaitingRoom name={state.me.name} season={waiting} today={refDay} />;
   }
 
   return (
