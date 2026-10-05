@@ -284,6 +284,14 @@ export function lastWeekRecap(
   if (range[0] < weekStart(settings.seasonStart)) return null;
   const standings = standingsForRange(athletes, activities, settings, range);
   if (!standings.some((s) => s.points > 0)) return null;
+  // A man who had never logged a session by the end of the week was not in
+  // it, so he cannot have missed its quota. George and Jamal joined during the
+  // last week of Season 1, sat on the coming-soon screen, and were refused
+  // when they tried to log — and then this card told the whole league they
+  // owed a marathon for it. Being "in" starts with your first session.
+  const playing = new Set(
+    activities.filter((a) => a.occurredOn <= range[1]).map((a) => a.athleteId),
+  );
   return {
     rangeLabel: formatRange(range),
     champion: standings[0],
@@ -291,7 +299,9 @@ export function lastWeekRecap(
     // Quota totals, not points: a session from the small hours of Monday can
     // still have saved this week (see `countsForLastWeeksQuota`).
     hit: standings.filter((s) => s.quotaPoints >= s.goal),
-    missed: standings.filter((s) => s.quotaPoints < s.goal && !s.excused),
+    missed: standings.filter(
+      (s) => s.quotaPoints < s.goal && !s.excused && playing.has(s.athlete.id),
+    ),
     excused: standings.filter((s) => s.excused),
   };
 }
