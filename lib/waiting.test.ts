@@ -1,4 +1,4 @@
-import { waitingFor } from "./waiting";
+import { firstDayIn, waitingFor } from "./waiting";
 import { DEFAULT_SETTINGS, type Activity, type Athlete } from "./types";
 
 /** The coming-soon hold: who gets it, and when it lets go. */
@@ -52,6 +52,17 @@ check("Ryan, who has been at it since August",
 check("somebody else's sessions don't release George",
   waitingFor(george, [run("r", "2026-08-10")], S, "2026-10-03")?.number, 2);
 check("signed out", waitingFor(null, [], S, "2026-10-03"), null);
+
+// A man's first day in the league — the importer drops anything before it.
+// Season 1 = 3 Aug - 4 Oct, Season 2 opens 5 Oct.
+const L = "2026-08-03";
+check("joined in the last week: his first day is the next season's", firstDayIn("2026-10-03", L), "2026-10-05");
+check("joined on the very last day: same", firstDayIn("2026-10-04", L), "2026-10-05");
+check("joined six days out: still the run-out", firstDayIn("2026-09-28", L), "2026-10-05");
+check("joined a week and a bit out: that day", firstDayIn("2026-09-27", L), "2026-09-27");
+check("joined on a season's opening day: that day", firstDayIn("2026-10-05", L), "2026-10-05");
+check("joined mid-season: that day, not the season's start", firstDayIn("2026-11-10", L), "2026-11-10");
+check("joined before the league began: that day", firstDayIn("2026-07-30", L), "2026-07-30");
 
 console.log(failures === 0 ? "\nAll waiting tests passed.\n" : `\n${failures} failing.\n`);
 process.exit(failures === 0 ? 0 : 1);

@@ -46,3 +46,26 @@ export function waitingFor(
   if (today >= next.start) return null;
   return next;
 }
+
+/**
+ * A man's first day in the league: the day he joined, or — if he joined in a
+ * season's last week, when the waiting room holds him — the day the next
+ * season opens.
+ *
+ * Ryan, 2026-10-06. George and Jamal connected Strava on Season 2's opening
+ * day and the connect-time backfill pulled in two weeks of history: eleven
+ * sessions from Season 1, which they were never in. It put them on the
+ * Season 1 table, made Jamal host its potluck, paid them coins Ryan had said
+ * they would not have, and had last week's card tell the league they owed a
+ * marathon. Ryan had the sessions deleted; this is what stops the next man
+ * being backfilled the same way. The importer drops anything dated before it.
+ */
+export function firstDayIn(joinedOn: DayKey, seasonStart: DayKey): DayKey {
+  const cur = seasonFor(joinedOn, seasonStart);
+  if (!cur || joinedOn < cur.start) return joinedOn;
+  const left = daysBetween(joinedOn, cur.end);
+  if (left >= 0 && left <= JOINING_LATE_DAYS) {
+    return seasonByNumber(cur.number + 1, seasonStart).start;
+  }
+  return joinedOn;
+}
