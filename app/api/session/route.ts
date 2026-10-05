@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getStore, normalizeName } from "@/lib/db";
-import { currentAthlete, signIn, signOut } from "@/lib/session";
+import { currentAthlete, isAdmin, signIn, signOut } from "@/lib/session";
+import { nameProblem, renameInSettings } from "@/lib/rename";
+import { loadoutFor } from "@/lib/pixelAvatar";
+import { leagueLogToday } from "@/lib/dates";
 import { readState } from "@/lib/state";
 import { isAvatarColor, isAvatarGlyph } from "@/lib/types";
 
@@ -14,18 +17,8 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { name?: unknown };
   const name = typeof body.name === "string" ? normalizeName(body.name) : "";
 
-  if (!name) {
-    return NextResponse.json({ error: "Enter your name to continue." }, { status: 400 });
-  }
-  if (name.length > 40) {
-    return NextResponse.json({ error: "Keep the name under 40 characters." }, { status: 400 });
-  }
-  if (!/^[\p{L}\p{N}][\p{L}\p{N} '’.-]*$/u.test(name)) {
-    return NextResponse.json(
-      { error: "Names can use letters, numbers, spaces, apostrophes and hyphens." },
-      { status: 400 },
-    );
-  }
+  const problem = nameProblem(name);
+  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
   await signIn(name);
   return NextResponse.json(await readState());
@@ -39,6 +32,7 @@ export async function PATCH(req: Request) {
     avatarColor?: unknown;
     avatarGlyph?: unknown;
     weightKg?: unknown;
+    name?: unknown;
   };
   const store = getStore();
 
@@ -71,6 +65,42 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Pick a valid colour and symbol." }, { status: 400 });
     }
     await store.setAvatar(me.id, color, glyph);
+  }
+
+  // A new name, once a league day. Ryan, 2026-10-06.
+  if (Object.prototype.hasOwnProperty.call(body, "name")) {
+    const name = typeof body.name === "string" ? normalizeName(body.name) : "";
+    const problem = nameProblem(name);
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+    // Admin is "whoever is called Ryan" (lib/session), so the admin renaming
+    // would hand the keys to nobody.
+    if (isAdmin(me)) {
+      return NextResponse.json(
+        { error: "You're the admin, and the admin is whoever's called Ryan — so your name stays." },
+        { status: 403 },
+      );
+    }
+    if (name !== me.name) {
+      const done = await store.renameAthlete(me.id, name, leagueLogToday());
+      if (done === "taken") {
+        return NextResponse.json({ error: `Somebody's already called ${name}.` }, { status: 409 });
+      }
+      if (done === "too-soon") {
+        return NextResponse.json(
+          { error: "You've already changed your name today. Try again tomorrow." },
+          { status: 429 },
+        );
+      }
+      // His generated look is built from his NAME, so a new name would be a
+      // new face. Keep the old one by saving it as his outfit — anything he
+      // had already saved wins over the generated parts.
+      const saved = (await store.listLoadouts())[me.id] ?? {};
+      await store.setLoadout(me.id, { ...loadoutFor(me.name), ...saved });
+      // And the quota overrides that are keyed by name go with him.
+      const settings = await store.getSettings();
+      const moved = renameInSettings(settings, me.name, name);
+      if (moved !== settings) await store.setSettings(moved);
+    }
   }
 
   // Body weight, for the cycling W/kg records. Explicit null clears it back to
