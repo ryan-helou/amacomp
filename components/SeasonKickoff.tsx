@@ -468,39 +468,70 @@ function Podium() {
 }
 
 /**
- * George, cut out and slapped on — the same die-cut sticker the lads get on
- * the title card, so the new man arrives the way the rest of them did.
+ * A man cut out and slapped on — the same die-cut sticker the lads get on the
+ * title card, so each new arrival turns up the way the rest of them did.
  *
  * The cutout is the photo with its background lifted off (Vision's foreground
  * mask), not a rounded frame: a frame around a face is a passport photo, and
  * the card already has one picture in a box on every other page.
  */
-function George() {
+function Cutout({ src, alt, delay = 0.3 }: { src: string; alt: string; delay?: number }) {
   return (
-    <div className="relative flex justify-center">
+    /* eslint-disable-next-line @next/next/no-img-element -- static same-origin asset */
+    <img
+      src={src}
+      alt={alt}
+      className="relative h-44 w-auto object-contain sm:h-52"
+      style={{
+        // Stacked white shadows build the sticker edge; the last is the
+        // shadow it casts. Same recipe as the lads on page one.
+        filter:
+          "drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)" +
+          " drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)" +
+          " drop-shadow(0 16px 26px rgba(0,0,0,0.6))",
+        animation: `sk-slap 700ms cubic-bezier(0.2, 1.2, 0.35, 1) ${delay}s both`,
+      }}
+    />
+  );
+}
+
+/**
+ * A new man who hasn't sent a photo yet stands here as his own pixel figure —
+ * the one the app already built from his name. Not a placeholder: it is
+ * literally what the league will see next to him all season, and the card
+ * two pages back has just finished promising him one.
+ */
+function NewFigure({ name, delay = 0.3 }: { name: string; delay?: number }) {
+  return (
+    <span
+      className="relative block h-44 w-auto sm:h-52"
+      style={{ animation: `sk-slap 700ms cubic-bezier(0.2, 1.2, 0.35, 1) ${delay}s both` }}
+    >
+      <PixelAvatar
+        loadout={{ ...loadoutFor(name), flag: { item: "flag.none" } } as Loadout}
+        flat
+        className="h-full w-auto"
+      />
+    </span>
+  );
+}
+
+/** The new men, side by side, over one shared gold wash. */
+function NewMen() {
+  return (
+    <div className="relative flex items-end justify-center gap-2">
       <div
         aria-hidden
-        className="pointer-events-none absolute top-1/2 h-48 w-48 -translate-y-1/2 rounded-full"
+        className="pointer-events-none absolute top-1/2 h-48 w-64 -translate-y-1/2 rounded-full"
         style={{
           background: "radial-gradient(circle, rgba(226,181,61,0.38) 0%, transparent 68%)",
           filter: "blur(22px)",
         }}
       />
-      {/* eslint-disable-next-line @next/next/no-img-element -- static same-origin asset */}
-      <img
-        src="/george.webp"
-        alt="George"
-        className="relative h-56 w-auto object-contain sm:h-64"
-        style={{
-          // Stacked white shadows build the sticker edge; the last is the
-          // shadow it casts. Same recipe as the lads on page one.
-          filter:
-            "drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)" +
-            " drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)" +
-            " drop-shadow(0 16px 26px rgba(0,0,0,0.6))",
-          animation: "sk-slap 700ms cubic-bezier(0.2, 1.2, 0.35, 1) 0.3s both",
-        }}
-      />
+      <Cutout src="/george.webp" alt="George" delay={0.3} />
+      {/* Swap for <Cutout src="/jamal.webp" alt="Jamal" delay={0.42} /> the day
+          there's a photo to cut out. */}
+      <NewFigure name="Jamal" delay={0.42} />
     </div>
   );
 }
@@ -561,14 +592,14 @@ const NEWS: Card[] = [
     art: <Podium />,
   },
   {
-    eyebrow: "And one more",
-    title: "George is in",
-    blurb: "Seven of us this season. He starts on zero like everybody else.",
+    eyebrow: "And two more",
+    title: "George and Jamal are in",
+    blurb: "Eight of us this season. They start on zero like everybody else.",
     points: [
       { icon: "footprints", text: "Same quota, same forfeit, no grace for being new." },
-      { icon: "rings", text: "Which also means one more man between you and the crown." },
+      { icon: "rings", text: "Which also means two more men between you and the crown." },
     ],
-    art: <George />,
+    art: <NewMen />,
   },
 ];
 
