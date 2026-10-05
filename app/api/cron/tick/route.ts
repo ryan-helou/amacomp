@@ -3,11 +3,10 @@ import { getStore } from "@/lib/db";
 import { readState } from "@/lib/state";
 import { pushEnabled, sendToAthlete } from "@/lib/push";
 import { standingsFor, standingsForRange, fmtPoints } from "@/lib/scoring";
-import { addDays, daysBetween, leagueToday, parseDayKey, weekStart } from "@/lib/dates";
+import { addDays, leagueToday, parseDayKey, weekStart } from "@/lib/dates";
 import { lastWeekRecap } from "@/lib/achievements";
 import { runStravaTick } from "@/lib/tick";
 import { seasonByNumber, seasonFor } from "@/lib/season";
-import { closingPhase, seasonClosingMessages } from "@/lib/seasonClose";
 
 export const dynamic = "force-dynamic";
 
@@ -151,13 +150,9 @@ export async function GET(req: Request) {
   }
 
   if (job === "season") {
-    // Fires daily. Two independent things, each sent once per season via its
-    // own meta marker, so a double-fire never double-notifies:
-    //   1. the morning a season opens — announce it and crown the last one
-    //   2. the run-in to its end — a heads-up in the last few days, then the
-    //      last day itself (lib/seasonClose.ts)
-    // They used to be one branch that returned "already announced" for the rest
-    // of the season, which is exactly when the run-in needs to fire.
+    // Fires daily. The morning a season opens it announces it and crowns the
+    // last one, once, behind a meta marker so a double-fire never
+    // double-notifies.
     const cur = seasonFor(now, state.settings.seasonStart);
     if (!cur || now < state.settings.seasonStart) {
       return NextResponse.json({ ok: true, skipped: "pre-season" });
@@ -192,32 +187,11 @@ export async function GET(req: Request) {
       did.push("announced");
     }
 
-    const daysLeft = daysBetween(now, cur.end);
-    const phase = closingPhase(daysLeft);
-    if (phase) {
-      const marker = `season-closing-${phase}-${cur.number}`;
-      if (!(await store.getMeta(marker))) {
-        await store.setMeta(marker, "1");
-        const table = standingsForRange(state.athletes, activities, state.settings, [
-          cur.start,
-          cur.end,
-        ]);
-        for (const m of seasonClosingMessages(table, daysLeft, cur.label)) {
-          await sendToAthlete(m.athleteId, {
-            title: m.title,
-            body: m.body,
-            url: "/",
-            // One tag per phase, so the last-day message replaces the heads-up
-            // on a lock screen rather than stacking under it.
-            tag: `season-closing-${cur.number}`,
-          });
-          sent += 1;
-        }
-        did.push(`closing:${phase}`);
-      }
-    }
+    // The run-in pushes — a heads-up in a season's last few days, then the
+    // last day — went on 2026-10-06 with the rest of the run-in, at Ryan's
+    // word. The opening-morning announcement above is all that's left.
 
-    return NextResponse.json({ ok: true, sent, did, daysLeft });
+    return NextResponse.json({ ok: true, sent, did });
   }
 
   return NextResponse.json({ error: "Unknown job" }, { status: 400 });

@@ -6,10 +6,9 @@ import { seasonByNumber, seasonFor, type SeasonInfo } from "./season";
  *
  *   champion      — the opening week of the next season, crowning the last one
  *
- * There used to be a run-in as well — a countdown card for the last few days
- * and a "THE TABLE LOCKS" card on the last one. Ryan removed it on
- * 2026-10-06. The push notifications the cron sends on those days are a
- * separate thing (lib/seasonClose.ts) and were left alone.
+ * There used to be a run-in as well — a countdown card for the last few days,
+ * a "THE TABLE LOCKS" card on the last one, a run-in panel on the Board and
+ * push notifications to match. Ryan removed all of it on 2026-10-06.
  *
  * Each is shown once per athlete per season (the caller keeps the marker). The
  * windows are ranges rather than single days so that someone who doesn't open

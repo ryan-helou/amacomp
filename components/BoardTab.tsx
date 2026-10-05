@@ -20,7 +20,6 @@ import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { Figure, useFigures, useLane } from "./AthleteFigure";
 import { SportMark } from "./SportMark";
-import { SeasonRace } from "./SeasonRace";
 import { CLIMB_SPORTS, climbLeader, climbStandings, fmtMetres, type ClimbRow } from "@/lib/climb";
 
 // "climb" is not a discipline — it is the same sessions ranked by the metres
@@ -239,13 +238,8 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           repainted, only their text had changed. New rows cannot keep a stale
           paint. The lanes re-run their entrance too, which reads as the board
           changing on purpose. */}
-      {/* The season is the one period that is a race with an ending, so it gets
-          the run-in above the lanes. Only on "All": a single-sport board ranks
-          by kilometres, and a points projection over it would be answering a
-          different question than the one on screen. */}
-      {period === "season" && sport === "all" && (
-        <SeasonRace state={state} refDay={refDay} meId={state.me?.id} />
-      )}
+      {/* The run-in panel used to sit here, above the season's lanes. Ryan
+          removed it on 2026-10-06; lib/race.ts still holds the maths. */}
 
       {sport === "climb" ? (
         !anyClimb ? (
