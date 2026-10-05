@@ -600,7 +600,31 @@ const ShopBox = memo(function ShopBox({
               {item.earned}
             </span>
           ) : free ? (
-            <span className="text-ink-3">yours</span>
+            // Ryan, 2026-10-05: something you own should have an Equip button
+            // on it, the same way something you don't has a price. "yours" was
+            // a label — true, and no use to anybody. The tile itself still
+            // works, so this is a second, obvious target for the same thing.
+            worn ? (
+              <span className="flex w-full items-center justify-center gap-1 rounded border border-gold/50 bg-gold/10 px-1 py-0.5 text-[0.5625rem] text-gold">
+                worn
+              </span>
+            ) : (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label={`Equip ${item.label}`}
+                onClick={(e) => { e.stopPropagation(); onPick(slot, item.id); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.stopPropagation();
+                    onPick(slot, item.id);
+                  }
+                }}
+                className="flex w-full items-center justify-center gap-1 rounded border border-line bg-deck-2/60 px-1 py-0.5 text-[0.5625rem] text-ink-2"
+              >
+                equip
+              </span>
+            )
           ) : (
             // Trying it on is a tap on the box; buying it is a tap on this.
             // They're different decisions, so they're different targets.

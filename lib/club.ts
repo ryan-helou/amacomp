@@ -82,18 +82,24 @@ export const COIN = { one: "tri coin", many: "tri coins", short: "TC" } as const
 export type ClubRoom = "wallet" | "shop" | "profile" | "bets" | "bounties";
 export type ClubHouse = "club" | "arena";
 
+/**
+ * The order here is the order of the chips AND which room opens first —
+ * ClubTab starts on rooms[0]. Shop leads: Ryan, 2026-10-05. You come to the
+ * Club to spend, and a wallet that opens on a number you cannot do anything
+ * with is a statement, not a door.
+ */
 export const CLUB_ROOMS: { id: ClubRoom; house: ClubHouse; label: string; blurb: string }[] = [
-  {
-    id: "wallet",
-    house: "club",
-    label: "Wallet",
-    blurb: "What you've earned, and where every coin came from.",
-  },
   {
     id: "shop",
     house: "club",
     label: "Shop",
     blurb: "Spend coins on frames, flags, lane colours and a title under your name.",
+  },
+  {
+    id: "wallet",
+    house: "club",
+    label: "Wallet",
+    blurb: "What you've earned, and where every coin came from.",
   },
   {
     id: "profile",
