@@ -1,42 +1,31 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { fmtPoints, type Standing } from "@/lib/scoring";
-import { RESET_HOUR, daysBetween, formatDay, parseDayKey } from "@/lib/dates";
 import type { SeasonMoment as Moment } from "@/lib/seasonMoment";
 import { Avatar } from "./Avatar";
 import { Glyph } from "./Glyph";
 
 /**
- * The season's closing announcements — siblings of the kickoff card.
+ * The season's closing announcement — a sibling of the kickoff card.
  *
- * Same pool-ink ground and stamp type, so they read as the league speaking, but
- * each carries one centrepiece taken from the app's own world rather than
- * generic celebration:
- *   final-stretch — the countdown numeral, and the season drawn as a lap of the
- *                   track with the runner on the final bend
- *   last-day      — a live clock to the midnight lock, night falling behind it
- *   champion      — a podium, and the two tickets the house rules promise:
- *                   who eats free and who hosts the potluck
- * Still no confetti — that means someone hit quota.
+ * Same pool-ink ground and stamp type, so it reads as the league speaking: a
+ * podium, and the two tickets the house rules promise — who eats free and who
+ * hosts the potluck. Still no confetti; that means someone hit quota.
+ *
+ * There was a run-in here too — a countdown for the last days of a season and
+ * a "THE TABLE LOCKS" card on the last one. Ryan removed it on 2026-10-06.
  */
 
 const GOLD = "#e2b53d";
 
-/**
- * The rollover, in words. RESET_HOUR is 0 now that the day turns at midnight,
- * and "0 AM" is not a time anybody says.
- */
-const ROLLOVER = RESET_HOUR === 0 ? "midnight" : `${RESET_HOUR} AM`;
 const GOLD_FILL = "linear-gradient(168deg, #ffeaa4 0%, #e2b53d 46%, #b98d09 100%)";
 const INK = "#081722";
 
 // Beat sheet, in seconds.
 const T_TOP = 0.15;
 const T_HERO = 0.3;
-const T_SUB = 0.8;
 const T_BODY = 1.0;
-const T_STEP = 0.12;
 
 const goldText: CSSProperties = {
   backgroundImage: GOLD_FILL,
@@ -245,22 +234,6 @@ function Stage({
   );
 }
 
-/** The finish line from the week ring, laid across the card. */
-function Checkers({ delay, className = "" }: { delay: number; className?: string }) {
-  return (
-    <div
-      aria-hidden
-      className={`h-2.5 origin-left rounded-[2px] ${className}`}
-      style={{
-        backgroundImage: `repeating-conic-gradient(#fff 0 25%, ${INK} 0 50%)`,
-        backgroundSize: "10px 10px",
-        opacity: 0.85,
-        animation: `sk-rope 700ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}s both`,
-      }}
-    />
-  );
-}
-
 function Eyebrow({ children, delay }: { children: ReactNode; delay: number }) {
   return (
     <p
@@ -276,119 +249,6 @@ function ordinal(n: number): string {
   const tail = n % 100;
   if (tail >= 11 && tail <= 13) return `${n}th`;
   return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
-}
-
-/** Where the athlete stands, in one sentence. */
-function standingLine(table: Standing[], meId: string | undefined): ReactNode {
-  const scored = table.filter((s) => s.points > 0);
-  const leader = scored[0];
-  if (!leader) return "Nobody has scored yet.";
-  const leaders = scored.filter((s) => s.rank === 1);
-  const me = table.find((s) => s.athlete.id === meId);
-  if (me && me.points > 0 && me.rank === 1) {
-    if (leaders.length > 1) {
-      const rivals = leaders.filter((l) => l.athlete.id !== meId).map((l) => l.athlete.name).join(" and ");
-      return <>You&rsquo;re <span style={{ color: GOLD }}>level at the top</span> with {rivals}.</>;
-    }
-    const second = scored.find((s) => s.rank > 1);
-    return second ? (
-      <>You lead {second.athlete.name} by <span className="font-semibold" style={{ color: GOLD }}>{fmtPoints(me.points - second.points)}</span>. Hold on.</>
-    ) : (
-      <>You&rsquo;re the only one on the board.</>
-    );
-  }
-  if (me && me.points > 0) {
-    return (
-      <>
-        You&rsquo;re {ordinal(me.rank)}, <span className="font-semibold text-white">{fmtPoints(leader.points - me.points)}</span> behind {leader.athlete.name}.
-      </>
-    );
-  }
-  return <>{leader.athlete.name} leads on {fmtPoints(leader.points)}.</>;
-}
-
-/**
- * The table as lanes: each row carries a bar of its points against the leader's,
- * so the size of every gap is visible at a glance rather than subtracted in the
- * head. The athlete's own lane is always shown, below the top three if need be.
- */
-function Lanes({ table, meId, start }: { table: Standing[]; meId?: string; start: number }) {
-  const scored = table.filter((s) => s.points > 0);
-  const leader = scored[0];
-  if (!leader) return null;
-  const top = scored.slice(0, 3);
-  const me = scored.find((s) => s.athlete.id === meId);
-  const rows = me && !top.includes(me) ? [...top, null, me] : top;
-  return (
-    <ul className="space-y-1.5">
-      {rows.map((s, i) => {
-        if (s === null) {
-          return (
-            <li key="gap" aria-hidden className="py-0.5 text-center font-mono text-[0.625rem] tracking-[0.3em] text-white/25">
-              · · ·
-            </li>
-          );
-        }
-        const mine = s.athlete.id === meId;
-        const first = s.rank === 1;
-        const share = Math.max(0.04, s.points / leader.points);
-        return (
-          <li
-            key={s.athlete.id}
-            className="relative overflow-hidden rounded-xl border px-3 pb-2.5 pt-2"
-            style={{
-              borderColor: mine ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.09)",
-              background: mine
-                ? "linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04))"
-                : "rgba(255,255,255,0.035)",
-              ...rise(start + i * T_STEP),
-            }}
-          >
-            {mine && (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  backgroundImage: "linear-gradient(100deg, transparent 35%, rgba(255,255,255,0.14) 50%, transparent 65%)",
-                  backgroundSize: "250% 100%",
-                  animation: `sm-shimmer 2600ms ease-in-out ${start + i * T_STEP + 0.8}s infinite`,
-                }}
-              />
-            )}
-            <div className="relative flex items-center gap-2.5">
-              <span className="stamp w-5 text-center text-xl leading-none" style={first ? goldText : { color: "rgba(255,255,255,0.4)" }}>
-                {s.rank}
-              </span>
-              <Avatar athlete={s.athlete} className="h-7 w-7 text-[0.5625rem]" />
-              <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">
-                {s.athlete.name}
-                {mine && <span className="ml-1.5 text-xs font-normal text-white/50">you</span>}
-              </span>
-              {!first && (
-                <span className="shrink-0 font-mono text-[0.6875rem] text-white/40">
-                  −{fmtPoints(leader.points - s.points)}
-                </span>
-              )}
-              <span className="w-12 shrink-0 text-right font-mono text-sm tabular-nums" style={first ? { color: GOLD } : undefined}>
-                {fmtPoints(s.points)}
-              </span>
-            </div>
-            <div className="relative ml-[3.25rem] mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">
-              <div
-                className="h-full origin-left rounded-full"
-                style={{
-                  width: `${share * 100}%`,
-                  backgroundImage: first ? GOLD_FILL : undefined,
-                  backgroundColor: first ? undefined : mine ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.32)",
-                  animation: `sk-rope 900ms cubic-bezier(0.16, 1, 0.3, 1) ${start + i * T_STEP + 0.2}s both`,
-                }}
-              />
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
 }
 
 function Outro({
@@ -416,176 +276,7 @@ function Outro({
 
 // ── Final stretch ────────────────────────────────────────────────────────────
 
-/**
- * The countdown numeral. It rolls down a scoreboard reel from a few days out to
- * the real count, lands with a slam, and leaves speed trails running off behind.
- */
-function Numeral({ n }: { n: number }) {
-  const size = "clamp(7rem, 34vw, 9.5rem)";
-  const reel = Array.from({ length: 7 }, (_, i) => n + 6 - i); // n+6 … n
-  const roll = 900;
-  return (
-    <span className="relative inline-block leading-[0.8]" style={{ fontSize: size }}>
-      {[3, 2, 1].map((k) => (
-        <span
-          key={k}
-          aria-hidden
-          className="stamp absolute left-0 top-0"
-          style={{
-            transform: `translateX(-${k * 0.16}em)`,
-            WebkitTextStroke: "2px rgba(226,181,61,0.5)",
-            color: "transparent",
-            opacity: 0.55 - k * 0.15,
-            animation: `sk-rise 500ms ease-out ${T_HERO + roll / 1000 + k * 0.06}s both`,
-          }}
-        >
-          {n}
-        </span>
-      ))}
-      {/* The reel is clipped to one numeral's height. The glow sits on this
-          wrapper, never on the gradient text itself: a filter on an element
-          that is also background-clipped to text makes Chrome paint the whole
-          gradient box behind the numeral. */}
-      <span
-        className="relative block overflow-hidden"
-        style={{ height: "0.8em", filter: "drop-shadow(0 6px 28px rgba(226,181,61,0.45))" }}
-      >
-        <span
-          className="block"
-          style={{
-            ["--reel-to" as string]: `-${(reel.length - 1) * 0.8}em`,
-            animation: `sm-reel ${roll}ms cubic-bezier(0.22, 0.9, 0.3, 1) ${T_HERO}s both`,
-          }}
-        >
-          {reel.map((d, i) => (
-            <span
-              key={i}
-              className="stamp block"
-              style={{ height: "0.8em", ...goldText }}
-            >
-              {d}
-            </span>
-          ))}
-        </span>
-      </span>
-    </span>
-  );
-}
-
-/** The whole season as one lap: kickoff on the left, the flag on the right. */
-function SeasonLap({ season, daysLeft }: { season: Moment["season"]; daysLeft: number }) {
-  const total = Math.max(1, daysBetween(season.start, season.end));
-  const done = Math.min(1, Math.max(0, (total - daysLeft) / total));
-  return (
-    <div style={rise(T_SUB + 0.1)}>
-      <div className="flex items-center justify-between font-mono text-[0.625rem] tracking-[0.18em] text-white/40">
-        <span>{formatDay(season.start).toUpperCase()}</span>
-        <span className="text-white/70">FINAL BEND</span>
-        <span>{formatDay(season.end).toUpperCase()}</span>
-      </div>
-      <div className="relative mt-2 h-3">
-        <div className="absolute inset-y-[3px] left-0 right-6 rounded-full bg-white/[0.08]" />
-        <div
-          className="absolute inset-y-[3px] left-0 origin-left rounded-full"
-          style={{
-            width: `calc((100% - 1.5rem) * ${done})`,
-            background: "linear-gradient(90deg, rgba(226,181,61,0.15), rgba(226,181,61,0.9))",
-            animation: `sk-rope 1100ms cubic-bezier(0.16, 1, 0.3, 1) ${T_SUB + 0.2}s both`,
-          }}
-        />
-        <div
-          aria-hidden
-          className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full"
-          style={{
-            left: `calc((100% - 1.5rem) * ${done} - 5rem)`,
-            width: "5rem",
-            background: "linear-gradient(90deg, transparent, rgba(255,240,190,0.95))",
-            filter: "blur(2px)",
-            animation: `sk-veil 700ms ease-out ${T_SUB + 1}s both`,
-          }}
-        />
-        <div
-          aria-hidden
-          className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{
-            left: `calc((100% - 1.5rem) * ${done})`,
-            background: GOLD,
-            animation: `sm-pulse 1800ms ease-out ${T_SUB + 1.2}s infinite`,
-          }}
-        />
-        <div
-          className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white"
-          style={{
-            left: `calc((100% - 1.5rem) * ${done})`,
-            borderColor: GOLD,
-            boxShadow: "0 0 14px rgba(226,181,61,0.9)",
-            animation: `sk-rise 500ms ease-out ${T_SUB + 1}s both`,
-          }}
-        />
-        <div
-          aria-hidden
-          className="absolute inset-y-0 right-0 w-5 rounded-[2px]"
-          style={{
-            backgroundImage: `repeating-conic-gradient(#fff 0 25%, ${INK} 0 50%)`,
-            backgroundSize: "6px 6px",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
 // ── Last day ─────────────────────────────────────────────────────────────────
-
-/** A live clock to the moment the table locks: midnight, when the day ends. */
-function LockClock({ closesAt }: { closesAt: number }) {
-  const target = useLockPreview(closesAt);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-  const left = Math.max(0, target - now);
-  const h = Math.floor(left / 3_600_000);
-  const m = Math.floor((left % 3_600_000) / 60_000);
-  const s = Math.floor((left % 60_000) / 1000);
-  const cells: [string, string][] = [
-    [String(h).padStart(2, "0"), "HRS"],
-    [String(m).padStart(2, "0"), "MIN"],
-    [String(s).padStart(2, "0"), "SEC"],
-  ];
-  return (
-    <div className="flex items-start justify-center gap-2" style={rise(T_HERO + 0.25)} role="timer" aria-live="off">
-      {cells.map(([v, label], i) => (
-        <div key={label} className="flex items-start gap-2">
-          <div className="flex flex-col items-center">
-            <div
-              className="relative overflow-hidden rounded-xl border border-white/15 px-2.5 py-1.5"
-              style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 50%, rgba(0,0,0,0.25) 50%, rgba(255,255,255,0.04) 100%)" }}
-            >
-              <span className="stamp flex text-[3.25rem] leading-none tabular-nums text-white" style={{ perspective: "220px" }}>
-                {/* Each digit is keyed by its value, so the one that changed
-                    remounts and turns over while the other stays put. */}
-                {v.split("").map((ch, j) => (
-                  <span
-                    key={`${label}-${j}-${ch}`}
-                    className="inline-block"
-                    style={{ transformOrigin: "50% 50%", animation: "sm-flip 360ms cubic-bezier(0.2, 0.8, 0.3, 1) both" }}
-                  >
-                    {ch}
-                  </span>
-                ))}
-              </span>
-              <span aria-hidden className="absolute inset-x-0 top-1/2 h-px bg-black/50" />
-            </div>
-            <span className="mt-1.5 font-mono text-[0.5625rem] tracking-[0.25em] text-white/40">{label}</span>
-          </div>
-          {i < 2 && <span className="stamp mt-2 text-4xl leading-none text-white/35">:</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ── Champion ─────────────────────────────────────────────────────────────────
 
@@ -897,78 +588,6 @@ export function SeasonMoment({
 
   const { season } = moment;
 
-  if (moment.kind === "final-stretch") {
-    const n = moment.daysLeft;
-    return (
-      <Stage label={`${n} days left in ${season.label}`} glow="rgba(226,181,61,0.22)" floodlights>
-        <Checkers delay={T_TOP} className="-mx-5" />
-        <div className="flex min-h-0 flex-1 flex-col justify-center">
-          <Eyebrow delay={T_TOP + 0.1}>{season.label.toUpperCase()} · THE RUN-IN</Eyebrow>
-          <div className="mt-3 flex items-center justify-center gap-4">
-            <Numeral n={n} />
-            <div className="text-left" style={{ animation: `sk-headline 760ms cubic-bezier(0.16, 1, 0.3, 1) ${T_HERO + 0.25}s both` }}>
-              <p className="stamp text-5xl leading-[0.9]">{n === 1 ? "DAY" : "DAYS"}</p>
-              <p className="stamp text-5xl leading-[0.9]">LEFT</p>
-            </div>
-          </div>
-          <div className="mt-5">
-            <SeasonLap season={season} daysLeft={n} />
-          </div>
-          <p className="mt-5 text-balance text-center text-[1.0625rem] leading-snug text-white/85" style={rise(T_BODY)}>
-            {standingLine(table, meId)}
-          </p>
-          <div className="mt-3.5">
-            <Lanes table={table} meId={meId} start={T_BODY + 0.15} />
-          </div>
-        </div>
-        <Outro delay={T_BODY + 1} button="Go get it" onDismiss={onDismiss}>
-          Winner eats free and wears <span className="font-semibold" style={{ color: GOLD }}>gold</span> all next season. Last place hosts the potluck.
-        </Outro>
-      </Stage>
-    );
-  }
-
-  if (moment.kind === "last-day") {
-    // The table locks at the rollover the morning after the season's last day.
-    const end = parseDayKey(season.end);
-    const lockAt = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1, RESET_HOUR).getTime();
-    return (
-      <Stage label={`Last day of ${season.label}`} glow="rgba(120,80,200,0.25)" horizon>
-        <div className="flex min-h-0 flex-1 flex-col justify-center">
-          <Eyebrow delay={T_TOP}>
-            <Glyph name="moon" className="h-3.5 w-3.5" />
-            {season.label.toUpperCase()} · LAST DAY
-          </Eyebrow>
-          <div className="mt-3 text-center">
-            <p className="stamp leading-[0.95]" style={{ fontSize: "clamp(2.1rem, 10.5vw, 3rem)", animation: `sk-headline 760ms cubic-bezier(0.16, 1, 0.3, 1) ${T_HERO}s both` }}>
-              THE TABLE LOCKS
-            </p>
-          </div>
-          <div className="mt-4">
-            <LockClock closesAt={lockAt} />
-          </div>
-          <p className="mt-2 flex items-center justify-center gap-2 font-mono text-[0.6875rem] tracking-[0.22em]" style={{ color: GOLD, ...rise(T_SUB) }}>
-            <span className="relative inline-flex h-2 w-2" aria-hidden>
-              <span className="absolute inset-0 rounded-full bg-[#ff5a4a]" style={{ animation: "sm-pulse 1600ms ease-out infinite" }} />
-              <span className="relative h-2 w-2 rounded-full bg-[#ff5a4a]" />
-            </span>
-            LIVE · AT {ROLLOVER.toUpperCase()} TONIGHT
-          </p>
-          <Checkers delay={T_SUB + 0.1} className="mx-auto mt-4 w-2/3" />
-          <p className="mt-4 text-balance text-center text-[1.0625rem] leading-snug text-white/85" style={rise(T_BODY)}>
-            {standingLine(table, meId)}
-          </p>
-          <div className="mt-3.5">
-            <Lanes table={table} meId={meId} start={T_BODY + 0.15} />
-          </div>
-        </div>
-        <Outro delay={T_BODY + 1.1} button="One more session" onDismiss={onDismiss}>
-          A session that finishes before <span className="font-semibold" style={{ color: GOLD }}>{ROLLOVER}</span> still counts for today — and for this season.
-        </Outro>
-      </Stage>
-    );
-  }
-
   // champion
   const scored = table.filter((s) => s.points > 0);
   const champ = scored[0];
@@ -1040,19 +659,4 @@ export function SeasonMoment({
       </Outro>
     </Stage>
   );
-}
-
-/**
- * The clock's target. Outside production, when a card is forced with ?moment=,
- * the preview pretends it's mid-afternoon on the last day so the clock shows a
- * realistic reading instead of the weeks still to go.
- */
-function useLockPreview(lockAt: number): number {
-  const [target] = useState(() => {
-    if (process.env.NODE_ENV === "production") return lockAt;
-    if (!new URLSearchParams(window.location.search).get("moment")) return lockAt;
-    // 12h 42m 18s to go, counting down from when the card opened.
-    return Date.now() + (12 * 3600 + 42 * 60 + 18) * 1000;
-  });
-  return target;
 }
