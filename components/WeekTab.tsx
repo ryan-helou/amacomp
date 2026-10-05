@@ -358,7 +358,7 @@ export function WeekTab({
                   type="button"
                   onClick={() => toggle(row.athlete.id)}
                   aria-expanded={isOpen}
-                  className="relative flex w-full items-center gap-3 overflow-hidden px-3 py-1 text-left"
+                  className="relative flex w-full items-center gap-3 overflow-hidden px-3 py-1.5 text-left"
                   style={flag ? flagInk(flag) : undefined}
                 >
                   {/* Same flag wash as the board lane — the two lists show the
