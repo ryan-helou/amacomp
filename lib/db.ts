@@ -19,7 +19,7 @@ import {
   type StepDay,
   type StepsLink,
 } from "./types";
-import { leagueHourNow, toDayKey } from "./dates";
+import { leagueHourNow, logDayAt, toDayKey } from "./dates";
 
 /**
  * Storage. Railway Postgres when DATABASE_URL is set, otherwise an in-memory
@@ -90,6 +90,8 @@ export interface Store {
   findOrCreateAthlete(name: string): Promise<Athlete>;
   getAthlete(id: string): Promise<Athlete | null>;
   listAthletes(): Promise<Athlete[]>;
+  /** The league day this athlete's account was made, or null if unknown. */
+  athleteJoinedOn(id: string): Promise<string | null>;
   /** Persist an athlete's avatar picks. Either field may be null to clear it. */
   setAvatar(athleteId: string, color: string | null, glyph: string | null): Promise<void>;
   /** Store an uploaded profile photo (base64, no data: prefix). `version` cache-busts. */
@@ -737,6 +739,14 @@ class PgStore implements Store {
       [id],
     );
     return r.rows[0] ? toAthlete(r.rows[0]) : null;
+  }
+
+  async athleteJoinedOn(id: string): Promise<string | null> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT extract(epoch FROM created_at) * 1000 AS ms FROM athletes WHERE id = $1`, [id]);
+    // The LEAGUE day he joined, by the same clock that files a session.
+    return r.rows[0] ? logDayAt(Number(r.rows[0].ms)) : null;
   }
 
   async listAthletes(): Promise<Athlete[]> {
@@ -1449,6 +1459,12 @@ class MemoryStore implements Store {
 
   async getAthlete(id: string) {
     return this.athletes.find((a) => a.id === id) ?? null;
+  }
+
+  async athleteJoinedOn(): Promise<string | null> {
+    // The in-memory store is for QA and local play; it keeps no join dates,
+    // so nothing is held back from a seeded league.
+    return null;
   }
 
   async listAthletes() {

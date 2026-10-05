@@ -1,7 +1,8 @@
 import "server-only";
 import type { NewActivity, Store, StravaConn, StravaTokens } from "./db";
 import { SPORT_UNIT, type Sport } from "./types";
-import { RESET_HOUR } from "./dates";
+import { RESET_HOUR, type DayKey } from "./dates";
+import { firstDayIn } from "./waiting";
 import { effortsFor, type Streams } from "./efforts";
 
 /**
@@ -302,9 +303,18 @@ export async function importActivities(
   acts: StravaActivity[],
 ): Promise<string[]> {
   const created: string[] = [];
+  // Nothing from before his first day in the league. Both the connect-time
+  // backfill (14 days) and the half-hourly sync (3) come through here, and
+  // both reach back past a season's start for a man who has just joined.
+  const [joined, { seasonStart }] = await Promise.all([
+    store.athleteJoinedOn(athleteId),
+    store.getSettings(),
+  ]);
+  const firstDay = joined ? firstDayIn(joined as DayKey, seasonStart as DayKey) : null;
   for (const a of acts) {
     const mapped = toImport(athleteId, a);
     if (!mapped) continue;
+    if (firstDay && mapped.input.occurredOn < firstDay) continue;
     const row = await store.importStravaActivity(mapped.input, mapped.stravaId);
     if (row) created.push(row.id);
   }
