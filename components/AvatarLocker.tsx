@@ -96,6 +96,16 @@ export function AvatarLocker({
    * kit. Ryan, 2026-10-05: "you shouldn't have to click save, it auto saves."
    */
   const hydrated = useRef(false);
+  /**
+   * What the league already has, as JSON.
+   *
+   * Without this the autosave below is a loop that never stops: it saves, the
+   * route answers with the whole fresh state, the restore effect builds a NEW
+   * loadout object out of it, the new object looks like a change, and it saves
+   * again. Comparing the content rather than the object identity is what makes
+   * "nothing has changed" expressible at all.
+   */
+  const savedJson = useRef<string | null>(null);
   // Headwear, not Skin: you open the shop to dress, and your face is already
   // sorted. The You shelves are a tap away on the same row.
   const [tab, setTab] = useState<Slot>("head");
@@ -106,8 +116,13 @@ export function AvatarLocker({
     // What the server has is the real outfit; the local copy is only a
     // convenience for someone who hasn't saved yet.
     if (state.myLoadout) {
+      const next = { ...DEFAULT_LOADOUT, ...state.myLoadout };
+      const json = JSON.stringify(next);
+      savedJson.current = json;
+      // Same outfit, different object: keep the one we have, or every reply
+      // from the server looks like the man got dressed again.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot, restoring the saved outfit
-      setFit({ ...DEFAULT_LOADOUT, ...state.myLoadout });
+      setFit((f) => (JSON.stringify(f) === json ? f : next));
       hydrated.current = true;
       return;
     }
@@ -225,9 +240,13 @@ export function AvatarLocker({
    */
   useEffect(() => {
     if (!hydrated.current || tryingOn > 0) return;
+    const json = JSON.stringify(loadout);
+    // Already what the league has. Saying so costs a request and buys nothing.
+    if (json === savedJson.current) return;
     setSavedState("saving");
     const t = setTimeout(async () => {
       const err = await send("/api/club", { method: "POST", body: JSON.stringify({ wear: loadout }) });
+      if (!err) savedJson.current = json;
       setProblem(err);
       setSavedState(err ? "clean" : "saved");
     }, 700);
