@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import type { League } from "./useLeague";
-import { BOUNTY_MAX, BOUNTY_MIN, isOpen, sortBounties, type Bounty } from "@/lib/bounties";
+import { BOUNTY_MAX, BOUNTY_MIN, bountyFor, isOpen, sortBounties, type Bounty } from "@/lib/bounties";
+import { ruleLabel } from "@/lib/bountyRules";
 import { COIN } from "@/lib/club";
 import { fmtCoins } from "@/lib/coins";
 import { Avatar } from "./Avatar";
@@ -36,7 +37,12 @@ export function ArenaBounties({
   const [busy, setBusy] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
 
-  const board = useMemo(() => sortBounties(state.bounties, refDay), [state.bounties, refDay]);
+  // The league, for the bounties that settle themselves off the board.
+  const league = useMemo(
+    () => ({ athleteIds: state.athletes.map((a) => a.id), activities: state.activities, settings: state.settings }),
+    [state.athletes, state.activities, state.settings],
+  );
+  const board = useMemo(() => sortBounties(state.bounties, refDay, league), [state.bounties, refDay, league]);
 
   async function act(id: string, action: string) {
     setBusy(id);
@@ -101,14 +107,22 @@ function BountyCard({
   busy: boolean;
   onAct: (id: string, action: string) => void;
 }) {
-  const live = isOpen(bounty, refDay);
-  const claimer = state.athletes.find((a) => a.id === bounty.claimedBy);
-  const mine = bounty.claimedBy === state.me?.id;
+  const league = {
+    athleteIds: state.athletes.map((a) => a.id),
+    activities: state.activities,
+    settings: state.settings,
+  };
+  // A self-awarding bounty has no claimant — it has a winner, worked out from
+  // the board. Everything below reads the same either way.
+  const won = bounty.rule ? bountyFor(bounty, league, refDay) : null;
+  const live = isOpen(bounty, refDay, league);
+  const claimer = state.athletes.find((a) => a.id === (won?.athleteId ?? bounty.claimedBy));
+  const mine = (won?.athleteId ?? bounty.claimedBy) === state.me?.id;
   const expired = bounty.state === "open" && !live;
 
   const tone = live ? "border-gold/40"
     : bounty.state === "claimed" ? "border-cyan/40"
-    : bounty.state === "paid" ? "border-mint/40"
+    : won || bounty.state === "paid" ? "border-mint/40"
     : "border-line";
 
   return (
@@ -117,8 +131,16 @@ function BountyCard({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-ink">{bounty.title}</p>
           {bounty.detail && <p className="mt-0.5 text-xs text-ink-2">{bounty.detail}</p>}
+          {bounty.rule && (
+            // Say the rule in the board's own words, so nobody has to guess
+            // what the app is actually watching for.
+            <p className="mt-1 font-mono text-[0.65rem] text-cyan">
+              {ruleLabel(bounty.rule)} · the board awards it
+            </p>
+          )}
           <p className="mt-1 font-mono text-[0.7rem] text-ink-3">
-            {bounty.state === "paid" ? `Paid to ${claimer?.name ?? "someone"}`
+            {won ? `Won by ${claimer?.name ?? "someone"} on ${won.day}`
+              : bounty.state === "paid" ? `Paid to ${claimer?.name ?? "someone"}`
               : bounty.state === "claimed" ? `Claimed by ${claimer?.name ?? "someone"}`
               : bounty.state === "void" ? "Taken down"
               : expired ? "Expired"

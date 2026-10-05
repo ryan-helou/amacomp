@@ -1,6 +1,7 @@
 import type { Pool as PgPool } from "pg";
 import type { Bet, BetState } from "./bets";
 import type { Bounty, BountyState } from "./bounties";
+import { parseRule } from "./bountyRules";
 import type { Transfer } from "./transfers";
 import {
   DEFAULT_SETTINGS,
@@ -694,6 +695,10 @@ class PgStore implements Store {
             expires_on DATE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )`);
+        // A self-awarding bounty's rule. Added 2026-10-05, so it has to be an
+        // ALTER as well as a column: the table already exists in production.
+        await this.pool.query(
+          `ALTER TABLE club_bounties ADD COLUMN IF NOT EXISTS rule JSONB`);
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS step_days (
             athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
@@ -1354,11 +1359,12 @@ class PgStore implements Store {
       claimedBy: (x.claimed_by as string) ?? null,
       claimedAt: (x.claimed_at as string) ?? null,
       expiresOn: (x.expires_on as string) ?? null,
+      rule: parseRule(x.rule) ?? null,
       createdAt: x.created_at as string,
     };
   }
 
-  private static readonly BOUNTY_COLS = `id, title, detail, coins, state, posted_by, claimed_by,
+  private static readonly BOUNTY_COLS = `id, title, detail, coins, state, posted_by, claimed_by, rule,
             to_char(claimed_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS claimed_at,
             to_char(expires_on, 'YYYY-MM-DD') AS expires_on,
             to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at`;
@@ -1376,9 +1382,10 @@ class PgStore implements Store {
   ): Promise<Bounty> {
     await this.init();
     const r = await this.pool.query(
-      `INSERT INTO club_bounties (id, title, detail, coins, posted_by, expires_on)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${PgStore.BOUNTY_COLS}`,
-      [newId(), b.title, b.detail, Math.round(b.coins), b.postedBy, b.expiresOn],
+      `INSERT INTO club_bounties (id, title, detail, coins, posted_by, expires_on, rule)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${PgStore.BOUNTY_COLS}`,
+      [newId(), b.title, b.detail, Math.round(b.coins), b.postedBy, b.expiresOn,
+       b.rule ? JSON.stringify(b.rule) : null],
     );
     return this.bountyRow(r.rows[0]);
   }

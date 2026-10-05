@@ -10,6 +10,7 @@ import {
 } from "@/lib/bets";
 import { TRANSFER_MAX, TRANSFER_MIN } from "@/lib/transfers";
 import { AVATAR_ITEM_BY_ID } from "@/lib/pixelAvatar";
+import { parseRule } from "@/lib/bountyRules";
 import { BOUNTY_MAX, BOUNTY_MIN } from "@/lib/bounties";
 import { monthStart, today as todayKey, weekStart, type DayKey } from "@/lib/dates";
 
@@ -244,7 +245,9 @@ export async function POST(req: Request) {
     if (!Number.isFinite(coins) || coins < BOUNTY_MIN || coins > BOUNTY_MAX) {
       return bad(`A bounty is between ${BOUNTY_MIN} and ${BOUNTY_MAX} coins.`);
     }
-    await store.addBounty({ title, detail, coins, postedBy: me.id, expiresOn });
+    // A rule makes it self-awarding; without one it stays hand-judged.
+    const rule = parseRule(body.rule);
+    await store.addBounty({ title, detail, coins, postedBy: me.id, expiresOn, rule });
     return ok();
   }
 
@@ -253,6 +256,9 @@ export async function POST(req: Request) {
     const b = (await store.listBounties()).find((x) => x.id === id);
     if (!b) return bad("No such bounty.", 404);
     if (b.expiresOn && today > b.expiresOn) return bad("That one has expired.", 409);
+    // Nobody claims a bounty the board settles. Letting a claim through would
+    // put a second, quieter answer beside the derived one.
+    if (b.rule) return bad("That one settles itself — the board awards it.", 409);
     // The race is this call. The store's UPDATE carries the state in its WHERE,
     // so the second man to tap gets null rather than a second claim.
     const done = await store.claimBounty(id, me.id);
