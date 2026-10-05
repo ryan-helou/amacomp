@@ -103,9 +103,24 @@ console.log("\na colour is a different item, not a setting on one");
   check("a loadout says what you wear and nothing else", [...keys], ["item"]);
 
   // The starter kit is items, so the same shirt in another colour still costs.
-  check("the starter shirt is yours", STARTER_ITEMS.has("torso.tee.magenta"), true);
+  check("the starter shirt is yours", STARTER_ITEMS.has("torso.tee.black"), true);
+  check("and it is free", AVATAR_ITEM_BY_ID.get("torso.tee.black")!.price === 0, true);
   check("the same shirt in white is not", STARTER_ITEMS.has("torso.tee.white"), false);
   check("and it has a price", AVATAR_ITEM_BY_ID.get("torso.tee.white")!.price > 0, true);
+
+  // Ryan, 2026-10-05: "No one should have any items. Only a black shirt and
+  // black shorts and whatever trophies you earned." A generated look used to
+  // put a 450-coin long sleeve and 600-coin shoes on a man who owned neither,
+  // so he opened the locker already in debt and could not re-pick what he had
+  // just taken off.
+  for (const name of ["George", "Jamal", "Ryan", "Philippe", "Jonah", "Alberto", "Jona"]) {
+    const unpaid = Object.values(loadoutFor(name))
+      .map((w) => AVATAR_ITEM_BY_ID.get(w.item))
+      .filter((i) => i && i.price > 0 && !STARTER_ITEMS.has(i.id));
+    check(`${name} starts owning everything he wears`, unpaid.length, 0);
+  }
+  check("and that is a black shirt", loadoutFor("George").torso.item, "torso.tee.black");
+  check("and black shorts", loadoutFor("George").legs.item, "legs.shorts.black");
 }
 
 console.log("\nthe rack is shoppable");

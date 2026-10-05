@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   AVATAR_ITEM_BY_ID,
   DEFAULT_LOADOUT,
@@ -88,6 +88,14 @@ export function AvatarLocker({
   const [paying, setPaying] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  /** "saved" once the league has this outfit; "saving" while it's in flight. */
+  const [savedState, setSavedState] = useState<"clean" | "saving" | "saved">("clean");
+  /**
+   * Autosave must not fire until the saved outfit has been restored, or the
+   * first thing it would do on open is overwrite the server with the default
+   * kit. Ryan, 2026-10-05: "you shouldn't have to click save, it auto saves."
+   */
+  const hydrated = useRef(false);
   // Headwear, not Skin: you open the shop to dress, and your face is already
   // sorted. The You shelves are a tap away on the same row.
   const [tab, setTab] = useState<Slot>("head");
@@ -100,8 +108,10 @@ export function AvatarLocker({
     if (state.myLoadout) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot, restoring the saved outfit
       setFit({ ...DEFAULT_LOADOUT, ...state.myLoadout });
+      hydrated.current = true;
       return;
     }
+    hydrated.current = true;
     try {
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) setFit(JSON.parse(raw) as Loadout);
@@ -120,6 +130,7 @@ export function AvatarLocker({
   }, [loadout]);
 
   const wear = useCallback((next: Loadout) => setFit(next), []);
+
 
   const pick = useCallback((slot: Slot, itemId: string) => {
     setFit((f) => ({ ...f, [slot]: { item: itemId } }));
@@ -172,12 +183,6 @@ export function AvatarLocker({
     setAsking(null);
   }
 
-  async function save() {
-    setPaying("save");
-    setProblem(await send("/api/club", { method: "POST", body: JSON.stringify({ wear: loadout }) }));
-    setPaying(null);
-  }
-
   // What this outfit would cost someone who only has the starter kit.
   const bill = SLOTS.reduce((sum, slot) => {
     const worn = loadout[slot];
@@ -208,6 +213,27 @@ export function AvatarLocker({
     return !!item && item.price > 0 && !owned.has(item.id);
   }).length;
 
+  /**
+   * Autosave. Ryan, 2026-10-05: "you shouldn't have to click save, it auto
+   * saves."
+   *
+   * Two guards. It waits for the restore above, or opening the locker would
+   * immediately write the default kit over whatever the league has. And it
+   * holds off while anything unpaid is on the figure, because the server
+   * strips what you haven't bought — autosaving a fitting would quietly take
+   * the clothes back off every time you tapped something.
+   */
+  useEffect(() => {
+    if (!hydrated.current || tryingOn > 0) return;
+    setSavedState("saving");
+    const t = setTimeout(async () => {
+      const err = await send("/api/club", { method: "POST", body: JSON.stringify({ wear: loadout }) });
+      setProblem(err);
+      setSavedState(err ? "clean" : "saved");
+    }, 700);
+    return () => clearTimeout(t);
+  }, [loadout, tryingOn, send]);
+
   const needle = query.trim().toLowerCase();
 
   /** What a shelf shows: everything, or just what matches the search. */
@@ -237,7 +263,7 @@ export function AvatarLocker({
           <span className="eyebrow flex items-center gap-1.5 text-ink-3">
             {state.me?.name}
             {flying?.flag && <CountryFlag id={flying.flag} />}
-            <span>· not saved yet</span>
+            <span>· {savedState === "saving" ? "saving" : savedState === "saved" ? "saved" : tryingOn > 0 ? "trying on" : "saved"}</span>
           </span>
         </div>
 
@@ -278,13 +304,9 @@ export function AvatarLocker({
               ? `trying on ${tryingOn} · ${fmtCoins(bill)} to keep`
               : "all yours"}
           </span>
-          <button
-            onClick={save}
-            disabled={paying === "save"}
-            className="eyebrow shrink-0 rounded-lg border border-gold/50 bg-gold/10 px-2.5 py-1 text-[0.5625rem] text-gold disabled:opacity-40"
-          >
-            {paying === "save" ? "saving" : "save"}
-          </button>
+          <span className="eyebrow shrink-0 rounded-lg border border-gold/30 px-2.5 py-1 text-[0.5625rem] text-gold/70">
+            {savedState === "saving" ? "saving" : tryingOn > 0 ? "unpaid" : "saved"}
+          </span>
         </div>
         {/* Your row on the Week tab, washed by the lane you've picked — the
             same flagWash the app already uses for an away week. */}
