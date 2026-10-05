@@ -4,7 +4,9 @@ import { currentAthlete, isAdmin } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { CLUB_LIVE, canSeeClub } from "@/lib/club";
 import { coinAccount } from "@/lib/coins";
-import { AVATAR_ITEM_BY_ID } from "@/lib/pixelAvatar";
+import { AVATAR_ITEM_BY_ID, STARTER_ITEMS } from "@/lib/pixelAvatar";
+import { earnedPrizes } from "@/lib/prizes";
+import { leagueToday } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -108,21 +110,31 @@ export async function POST(req: Request) {
     // You can try anything on in the shop; you can only SAVE what's yours.
     // Otherwise the locker is a fitting room and the board is a lie.
     //
-    // Except for Ryan, who has the run of the shelf while the Club is his
-    // alone — his call, 2026-09-26. Without that exception, saving QUIETLY
-    // DROPPED every slot he had not bought and stored four slots out of
-    // eleven, which is why his figure stood on the board with no clothes on:
-    // a missing slot draws nothing at all. Same door as everything else.
-    const all = canSeeClub(me.name);
+    // Ryan used to be exempt — the run of the shelf while the Club was his
+    // alone (2026-09-26). The Club is everyone's now, and he asked on
+    // 2026-10-05 to own nothing he hadn't earned, so the exemption is gone.
+    //
+    // A trophy is free, but it is not free KIT: it is a result, and it is
+    // only yours if lib/prizes says you earned it.
     const mine = new Set((await store.listPurchases()).filter((p) => p.athleteId === me.id).map((p) => p.itemId));
+    const [athletes, activities, settings] = await Promise.all([
+      store.listAthletes(), store.listActivities(), store.getSettings(),
+    ]);
+    const won = earnedPrizes(me.id, athletes, activities, settings, leagueToday());
     const clean: Record<string, { item: string }> = {};
     const dropped: string[] = [];
     for (const [slot, worn] of Object.entries(loadout)) {
       if (typeof worn?.item !== "string") continue;
       const item = AVATAR_ITEM_BY_ID.get(worn.item);
       if (!item) continue;
-      // Free kit is everyone's; everything else has to have been paid for.
-      if (!all && !mine.has(item.id) && item.price > 0) {
+      // The starter kit is his whether or not it has a price. The white
+      // running shoes cost 600 on the shelf and come with every account, and
+      // checking "free or bought" alone refused every save that had them on —
+      // which, until a man bought new shoes, was every save.
+      const yours = item.slot === "prize"
+        ? won.has(item.id)
+        : item.price === 0 || STARTER_ITEMS.has(item.id) || mine.has(item.id);
+      if (!yours) {
         dropped.push(item.label);
         continue;
       }

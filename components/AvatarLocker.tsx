@@ -12,6 +12,7 @@ import {
   type Slot,
 } from "@/lib/pixelAvatar";
 import { coinAccount, fmtCoins } from "@/lib/coins";
+import { earnedPrizes } from "@/lib/prizes";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import type { League } from "./useLeague";
@@ -143,6 +144,10 @@ export function AvatarLocker({
     ...STARTER_ITEMS,
     ...state.purchases.filter((p) => p.athleteId === state.me?.id).map((p) => p.itemId),
   ]);
+  /** The trophies he has actually won — the same answer the server gives. */
+  const won = earnedPrizes(state.me?.id ?? "", state.athletes, state.activities, state.settings, refDay);
+  const isYours = (item: AvatarItem) =>
+    item.slot === "prize" ? won.has(item.id) : owned.has(item.id) || item.price === 0;
 
   /**
    * Buy it for somebody else.
@@ -406,7 +411,7 @@ export function AvatarLocker({
                     item={item}
                     worn={loadout[slot]?.item === item.id}
                     slot={slot}
-                    owned={owned.has(item.id) || item.price === 0}
+                    owned={isYours(item)}
                     affordable={item.price <= balance}
                     saved={(state.myLoadout?.[slot]?.item ?? DEFAULT_LOADOUT[slot]?.item) === item.id}
                     busy={paying === item.id}
@@ -527,6 +532,8 @@ const ShopBox = memo(function ShopBox({
       onClick={() => {
         if (!worn) return onPick(slot, item.id);
         if (owned) return onKeep(slot, item.id);
+        // A trophy he hasn't won can be looked at, never bought.
+        if (item.earned) return;
         return onAsk(item.id);
       }}
       aria-pressed={worn}
@@ -586,7 +593,7 @@ const ShopBox = memo(function ShopBox({
         )}
         <span className="text-[0.6875rem] leading-[1.15] text-ink">{item.label}</span>
         <span className="mt-auto flex items-center gap-1 pt-0.5 font-mono text-[0.625rem]">
-          {item.earned ? (
+          {item.earned && !free ? (
             // Not a button: there is no transaction to open. It says what the
             // thing costs, and what it costs is a result.
             <span className="flex w-full items-center justify-center gap-1 rounded border border-gold/40 bg-gold/5 px-1 py-0.5 text-[0.5625rem] text-gold/80">
