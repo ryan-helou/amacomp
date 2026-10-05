@@ -324,10 +324,7 @@ export function AppShell({
     let due: Moment | null = null;
     if (forced && cur) {
       const prev = seasonByNumber(Math.max(1, cur.number - 1), state.settings.seasonStart);
-      due = forced === "champion" ? { kind: "champion", season: prev }
-        : forced === "last-day" ? { kind: "last-day", season: cur }
-        : forced === "final-stretch" ? { kind: "final-stretch", season: cur, daysLeft: 3 }
-        : null;
+      due = forced === "champion" ? { kind: "champion", season: prev } : null;
     } else {
       due = seasonMomentFor(refDay, state.settings.seasonStart);
     }
