@@ -216,7 +216,7 @@ console.log("\ncoins handed over, and items bought for somebody else");
 console.log("\nbounties pay when Ryan says so, and not before");
 const bounty = (over: Partial<Bounty> = {}): Bounty => ({
   id: "y", title: "Swim at the lake", detail: "", coins: 200, state: "open",
-  postedBy: "a", claimedBy: null, claimedAt: null, expiresOn: null,
+  postedBy: "a", claimedBy: null, claimedAt: null, expiresOn: null, rule: null,
   createdAt: "2026-09-20T10:00:00Z", ...over,
 });
 {

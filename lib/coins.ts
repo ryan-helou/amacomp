@@ -15,7 +15,7 @@ import {
 } from "./dates";
 import { seasonByNumber, seasonFor } from "./season";
 import { betCoins, BET_METRIC_BY_ID, type Bet } from "./bets";
-import { bountyCoins, type Bounty } from "./bounties";
+import { bountyCoins, bountyFor, type Bounty } from "./bounties";
 import type { Transfer } from "./transfers";
 import { AVATAR_ITEM_BY_ID } from "./pixelAvatar";
 
@@ -222,16 +222,20 @@ export function coinAccount(
     });
   }
 
-  // Bounties, which pay only once Ryan has said the task was actually done.
+  // Bounties. A hand-judged one pays once Ryan says the task was done; a
+  // self-awarding one pays whoever the board says got there first, with no
+  // row written anywhere — so it corrects itself like every other coin here.
+  const league = { athleteIds: athletes.map((a) => a.id), activities, settings };
   for (const b of bounties) {
-    const paid = bountyCoins(athleteId, b);
+    const paid = bountyCoins(athleteId, b, league, refDay);
     if (!paid) continue;
+    const won = b.rule ? bountyFor(b, league, refDay) : null;
     entries.push({
       kind: "bounty",
       label: b.title,
       detail: "Bounty",
       amount: paid,
-      day: (b.claimedAt ?? b.createdAt).slice(0, 10),
+      day: won?.day ?? (b.claimedAt ?? b.createdAt).slice(0, 10),
     });
   }
 
