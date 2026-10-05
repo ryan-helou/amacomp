@@ -7,6 +7,7 @@ import type { League } from "./useLeague";
 import {
   BET_METRICS, BET_METRIC_BY_ID, PUSH, STAKE_MAX, STAKE_MIN,
   betResult, betWhen, type Bet, type BetKind, type BetMetric, type BetResult,
+ isOpenToAll,
 } from "@/lib/bets";
 import { coinAccount, fmtCoins } from "@/lib/coins";
 import { COIN } from "@/lib/club";
@@ -42,21 +43,24 @@ export function ArenaBets({
 
   const balance = useMemo(
     () => coinAccount(meId, state.athletes, state.activities, state.settings, refDay,
-      state.coinGrants, state.purchases, state.bets, state.bounties).balance,
+      state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers).balance,
     [meId, state.athletes, state.activities, state.settings, refDay,
-     state.coinGrants, state.purchases, state.bets, state.bounties],
+     state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers],
   );
 
   const mine = useMemo(() => {
     const rows = state.bets
-      .filter((b) => b.fromId === meId || b.toId === meId)
+      .filter((b) => b.fromId === meId || b.toId === meId || isOpenToAll(b))
       .map((bet) => ({
         bet,
         result: betResult(bet, state.athletes, state.activities, state.settings, refDay),
       }));
     return {
       /** Offers waiting on me — the only thing here that needs an answer. */
-      inbox: rows.filter((r) => r.result.status === "offered" && r.bet.toId === meId),
+      inbox: rows.filter(
+        (r) => r.result.status === "offered"
+          && (r.bet.toId === meId || (isOpenToAll(r.bet) && r.bet.fromId !== meId)),
+      ),
       /** A word bet the OTHER one has called: it is on me to agree or not. */
       calls: rows.filter((r) => r.result.status === "called" && r.bet.calledBy !== meId),
       sent: rows.filter((r) => r.result.status === "offered" && r.bet.fromId === meId),
@@ -129,8 +133,12 @@ export function ArenaBets({
           <div className="flex gap-2">
             <button disabled={busy === id} onClick={() => act(id, "accept")}
               className="eyebrow flex-1 rounded-lg bg-mint/20 py-2 text-mint">Take it</button>
-            <button disabled={busy === id} onClick={() => act(id, "decline")}
-              className="eyebrow flex-1 rounded-lg border border-line py-2 text-ink-2">Decline</button>
+            {/* An offer to anyone isn't yours to decline — leave it for the
+                next man. Only an offer made to YOU gets the button. */}
+            {!state.bets.some((b) => b.id === id && isOpenToAll(b)) && (
+              <button disabled={busy === id} onClick={() => act(id, "decline")}
+                className="eyebrow flex-1 rounded-lg border border-line py-2 text-ink-2">Decline</button>
+            )}
           </div>
         )} />
 
@@ -233,7 +241,9 @@ function BetCard({
         {other && <Avatar athlete={other} className="h-8 w-8 text-xs" />}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">
-            {bet.fromId === meId ? "You" : other?.name} v {bet.fromId === meId ? other?.name : "you"}
+            {isOpenToAll(bet)
+              ? (bet.fromId === meId ? "You v anyone" : `${other?.name ?? "Someone"} v anyone`)
+              : <>{bet.fromId === meId ? "You" : other?.name} v {bet.fromId === meId ? other?.name : "you"}</>}
           </p>
           <p className="truncate font-mono text-xs text-ink-2">
             {bet.kind === "word" ? "On their word" : metric?.label} · {betWhen(bet)}
@@ -304,7 +314,9 @@ function NewBet({
   send: League["send"];
 }) {
   const others = state.athletes.filter((a) => a.id !== state.me?.id);
-  const [toId, setToId] = useState(others[0]?.id ?? "");
+  // "anyone" first and by default: Ryan, 2026-10-06 — put it up for the whole
+  // league and the first man willing to take it is the other side.
+  const [toId, setToId] = useState("anyone");
   const [kind, setKind] = useState<BetKind>("board");
   const [terms, setTerms] = useState("");
   const [metric, setMetric] = useState<BetMetric>("points");
@@ -327,6 +339,7 @@ function NewBet({
     <div className="space-y-3 rounded-2xl border border-line bg-tile p-4">
       <Field label="Against">
         <select value={toId} onChange={(e) => setToId(e.target.value)} className={INPUT}>
+          <option value="anyone">Anyone — first to take it</option>
           {others.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
       </Field>

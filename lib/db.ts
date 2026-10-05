@@ -178,6 +178,8 @@ export interface Store {
   /** Move a bet along. Returns null when the move was not legal from where it
    *  was — which is how two taps on "accept" stay one acceptance. */
   setBetState(id: string, from: BetState[], to: BetState): Promise<Bet | null>;
+  /** Accept an offer open to anyone: the first taker becomes the other side. */
+  takeBet(id: string, athleteId: string): Promise<Bet | null>;
   /** A word bet: one side calls a result. Null if it isn't theirs to call. */
   callBet(id: string, byId: string, winner: string): Promise<Bet | null>;
   /** The other side agrees (or Ryan settles outright) and the coins move. */
@@ -672,6 +674,10 @@ class PgStore implements Store {
         ]) {
           await this.pool.query(`ALTER TABLE club_bets ADD COLUMN IF NOT EXISTS ${col}`);
         }
+        // An offer open to anyone has no opponent until someone takes it.
+        // Ryan, 2026-10-06: "you can do anyone, if anyone's willing to accept
+        // it." Null here only ever means an OPEN offer — accepting fills it.
+        await this.pool.query(`ALTER TABLE club_bets ALTER COLUMN to_id DROP NOT NULL`);
         // Who PAID for a purchase, when it wasn't the man wearing it. Null
         // means he bought it himself, which is every row that already exists.
         await this.pool.query(`ALTER TABLE club_purchases ADD COLUMN IF NOT EXISTS paid_by TEXT`);
@@ -1243,7 +1249,8 @@ class PgStore implements Store {
     return {
       id: x.id as string,
       fromId: x.from_id as string,
-      toId: x.to_id as string,
+      // NULL is an offer open to anyone; the app spells that "" (lib/bets).
+      toId: (x.to_id as string | null) ?? "",
       kind: (x.kind as Bet["kind"]) ?? "board",
       terms: (x.terms as string) ?? "",
       metric: x.metric as Bet["metric"],
@@ -1280,7 +1287,7 @@ class PgStore implements Store {
     const r = await this.pool.query(
       `INSERT INTO club_bets (id, from_id, to_id, kind, terms, metric, period, starts_on, stake, note)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING ${PgStore.BET_COLS}`,
-      [newId(), bet.fromId, bet.toId, bet.kind, bet.terms, bet.metric, bet.period,
+      [newId(), bet.fromId, bet.toId || null, bet.kind, bet.terms, bet.metric, bet.period,
        bet.startsOn, Math.round(bet.stake), bet.note],
     );
     return this.betRow(r.rows[0]);
@@ -1295,6 +1302,20 @@ class PgStore implements Store {
       `UPDATE club_bets SET state = $3, decided_at = now()
         WHERE id = $1 AND state = ANY($2::text[]) RETURNING ${PgStore.BET_COLS}`,
       [id, from, to],
+    );
+    return r.rows[0] ? this.betRow(r.rows[0]) : null;
+  }
+
+  async takeBet(id: string, athleteId: string): Promise<Bet | null> {
+    await this.init();
+    // "First to accept takes it" is this one statement: the offer has to still
+    // be open AND still have nobody on the other side, both in the WHERE, so a
+    // second man tapping a moment later updates nothing and gets null.
+    const r = await this.pool.query(
+      `UPDATE club_bets SET state = 'accepted', to_id = $2, decided_at = now()
+        WHERE id = $1 AND state = 'open' AND to_id IS NULL AND from_id <> $2
+        RETURNING ${PgStore.BET_COLS}`,
+      [id, athleteId],
     );
     return r.rows[0] ? this.betRow(r.rows[0]) : null;
   }
@@ -1782,6 +1803,15 @@ class MemoryStore implements Store {
     const b = this.bets.find((x) => x.id === id);
     if (!b || !from.includes(b.state)) return null;
     b.state = to;
+    b.decidedAt = new Date().toISOString();
+    return { ...b };
+  }
+
+  async takeBet(id: string, athleteId: string): Promise<Bet | null> {
+    const b = this.bets.find((x) => x.id === id);
+    if (!b || b.state !== "open" || b.toId !== "" || b.fromId === athleteId) return null;
+    b.toId = athleteId;
+    b.state = "accepted";
     b.decidedAt = new Date().toISOString();
     return { ...b };
   }

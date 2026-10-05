@@ -6,7 +6,7 @@ import { coinAccount } from "@/lib/coins";
 import { readState } from "@/lib/state";
 import {
   BET_METRIC_BY_ID, PUSH, STAKE_MAX, STAKE_MIN, betRange, duplicateBet,
-  type BetMetric,
+  type BetMetric, ANYONE, isOpenToAll,
 } from "@/lib/bets";
 import { TRANSFER_MAX, TRANSFER_MIN } from "@/lib/transfers";
 import { AVATAR_ITEM_BY_ID } from "@/lib/pixelAvatar";
@@ -83,10 +83,13 @@ export async function POST(req: Request) {
     const stake = Math.round(Number(body.stake));
     const note = String(body.note ?? "").slice(0, 140);
     if (toId === me.id) return bad("You can't bet against yourself.");
+    // "anyone" is an offer to the whole league; the first to take it is the
+    // other side (lib/bets ANYONE).
+    const open = toId === ANYONE || toId === "anyone";
 
     const athletes = await store.listAthletes();
-    const them = athletes.find((a) => a.id === toId);
-    if (!them) return bad("No such athlete.");
+    const them = open ? null : athletes.find((a) => a.id === toId);
+    if (!open && !them) return bad("No such athlete.");
     if (!BET_METRIC_BY_ID.has(metric)) return bad("No such thing to bet on.");
     if (kind === "word" && !terms) return bad("Say what the bet is.");
     if (!Number.isFinite(stake) || stake < STAKE_MIN || stake > STAKE_MAX) {
@@ -101,16 +104,23 @@ export async function POST(req: Request) {
     const startsOn = period === "week" ? weekStart(base) : monthStart(base);
 
     const bets = await store.listBets();
-    const clash = duplicateBet(bets, me.id, toId, metric, startsOn);
-    if (clash) return bad("You two already have that one running.", 409);
+    const target = open ? ANYONE : toId;
+    const clash = duplicateBet(bets, me.id, target, metric, startsOn);
+    if (clash) {
+      return bad(open ? "You already have that one up for anyone." : "You two already have that one running.", 409);
+    }
 
     // Both sides have to be able to cover it. Checking only the proposer lets
     // a man offer a thousand coins to someone who has forty and then collect.
-    const [mine, theirs] = await Promise.all([balanceOf(me.id, today), balanceOf(toId, today)]);
+    // An open offer has no other side yet — the taker is checked when he takes it.
+    const mine = await balanceOf(me.id, today);
     if (stake > mine) return bad(`You have ${mine} coins.`);
-    if (stake > theirs) return bad(`${them.name} only has ${theirs} coins.`);
+    if (them) {
+      const theirs = await balanceOf(toId, today);
+      if (stake > theirs) return bad(`${them.name} only has ${theirs} coins.`);
+    }
 
-    await store.addBet({ fromId: me.id, toId, kind, terms, metric, period, startsOn, stake, note });
+    await store.addBet({ fromId: me.id, toId: target, kind, terms, metric, period, startsOn, stake, note });
     return ok();
   }
 
@@ -119,8 +129,14 @@ export async function POST(req: Request) {
     const bets = await store.listBets();
     const bet = bets.find((b) => b.id === id);
     if (!bet) return bad("No such bet.", 404);
-    if (bet.toId !== me.id) return bad("That one isn't yours to answer.", 403);
+    const forAnyone = isOpenToAll(bet);
+    if (!forAnyone && bet.toId !== me.id) return bad("That one isn't yours to answer.", 403);
+    if (forAnyone && bet.fromId === me.id) return bad("You can't take your own bet.");
     if (bet.state !== "open") return bad("That bet has already been answered.", 409);
+
+    // Nobody declines an open offer — there is nobody to decline it on behalf
+    // of. You leave it for someone else; the man who made it can pull it.
+    if (body.action === "decline" && forAnyone) return bad("Leave it for someone else — it's open to anyone.");
 
     if (body.action === "decline") {
       const done = await store.setBetState(id, ["open"], "declined");
@@ -136,6 +152,10 @@ export async function POST(req: Request) {
     if (bet.stake > mine) return bad(`You have ${mine} coins.`);
     if (bet.stake > theirs) return bad("They can't cover it any more.");
 
+    if (forAnyone) {
+      const taken = await store.takeBet(id, me.id);
+      return taken ? ok() : bad("Someone got there first.", 409);
+    }
     const done = await store.setBetState(id, ["open"], "accepted");
     return done ? ok() : bad("Already answered.", 409);
   }

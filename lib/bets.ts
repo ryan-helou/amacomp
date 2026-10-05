@@ -86,6 +86,19 @@ export interface Bet {
 /** The value `calledWinner`/`settledWinner` takes for a draw. */
 export const PUSH = "push";
 
+/**
+ * The `toId` of an offer open to anyone. Ryan, 2026-10-06: "for betting you
+ * can do anyone, if anyone's willing to accept it." It stays empty only while
+ * the bet is an offer; the first man to take it becomes `toId`, so every bet
+ * that is actually running — and so every bet that settles or pays — has two
+ * real sides. Stored as NULL; spelled "" here so `toId` stays a string.
+ */
+export const ANYONE = "";
+
+/** An offer nobody has taken yet, open to the whole league. */
+export const isOpenToAll = (b: Pick<Bet, "toId" | "state">): boolean =>
+  b.state === "open" && b.toId === ANYONE;
+
 export const BET_METRICS: { id: BetMetric; label: string; unit: string }[] = [
   { id: "points", label: "Points", unit: "pts" },
   { id: "km", label: "Distance", unit: "km" },
