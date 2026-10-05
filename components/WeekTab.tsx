@@ -15,6 +15,7 @@ import {
 import { SPORT_UNIT, isGrant, isExcuse, type Activity } from "@/lib/types";
 import { toGo } from "@/lib/togo";
 import { flagInk, flagWash } from "@/lib/away";
+import { laneFor, useFigures } from "./AthleteFigure";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
 import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
 import {
@@ -79,6 +80,9 @@ export function WeekTab({
   // Keyed to the week ON SCREEN, not to today — this tab pages back through
   // finished weeks, and an excuse belongs to the week it was granted for.
   const awayFlags = useAwayIn(weekRef);
+  // Whether bought flags are showing at all — the same switch the Board's
+  // lanes use, so the two lists can never disagree about who flies what.
+  const lanesOn = useFigures();
 
   // Tap a name to decompose that person's points for the viewed week.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -347,6 +351,12 @@ export function WeekTab({
             const sessions = isOpen ? weekSessions(row.athlete.id) : [];
             const grants = isOpen ? weekGrants(row.athlete.id) : [];
             const flag = awayFlags.get(row.athlete.id);
+            // The flag he bought, as the same lane the Board paints behind his
+            // row. Ryan, 2026-10-06: "make these thicker so the flags can fit,
+            // and put them there too." An away flag still wins: that one is
+            // news — he's abroad this week — and two flags must never be
+            // painted over each other.
+            const lane = !flag && lanesOn ? laneFor(row.athlete, state.loadouts) : undefined;
             return (
               <li
                 key={row.athlete.id}
@@ -358,8 +368,8 @@ export function WeekTab({
                   type="button"
                   onClick={() => toggle(row.athlete.id)}
                   aria-expanded={isOpen}
-                  className="relative flex w-full items-center gap-3 overflow-hidden px-3 py-1.5 text-left"
-                  style={flag ? flagInk(flag) : undefined}
+                  className="relative flex w-full items-center gap-3 overflow-hidden px-3 py-3 text-left"
+                  style={flag ? flagInk(flag) : lane}
                 >
                   {/* Same flag wash as the board lane — the two lists show the
                       same week and should say the same thing about it. Only the
