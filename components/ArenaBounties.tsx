@@ -156,7 +156,10 @@ function BountyCard({
         {claimer && <Avatar athlete={claimer} className="h-8 w-8 text-xs" />}
       </div>
 
-      {live && !state.isAdmin && (
+      {/* A bounty the board awards has nothing to claim — the server refuses
+          one — so it gets no "I did it". Showing it anyway was a button that
+          only ever answered with an error. Ryan can still take one down. */}
+      {live && !state.isAdmin && !bounty.rule && (
         <button disabled={busy} onClick={() => onAct(bounty.id, "claim")}
           className="eyebrow mt-3 w-full rounded-lg bg-gold/20 py-2 text-gold disabled:opacity-40">
           I did it
@@ -164,8 +167,10 @@ function BountyCard({
       )}
       {live && state.isAdmin && (
         <div className="mt-3 flex gap-2">
-          <button disabled={busy} onClick={() => onAct(bounty.id, "claim")}
-            className="eyebrow flex-1 rounded-lg bg-gold/20 py-2 text-gold">I did it</button>
+          {!bounty.rule && (
+            <button disabled={busy} onClick={() => onAct(bounty.id, "claim")}
+              className="eyebrow flex-1 rounded-lg bg-gold/20 py-2 text-gold">I did it</button>
+          )}
           <button disabled={busy} onClick={() => onAct(bounty.id, "void")}
             className="eyebrow flex-1 rounded-lg border border-line py-2 text-ink-2">Take down</button>
         </div>
