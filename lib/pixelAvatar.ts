@@ -115,6 +115,9 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "eyes.viper.red", hideBack: true, slot: "eyes", label: "Red Oakley Vipers", price: 550, tier: "epic", colour: "#C8202C", accent: "#FFB23A", sprite: "viper" },
 
   { id: "torso.bare", slot: "torso", label: "Bare chest", price: 0, tier: "common", colour: SKIN_C, accent: WHITE },
+  // The starter shirt. Free because everybody is given it; it is the one
+  // garment nobody has to buy, and the thing a new man stands in on day one.
+  { id: "torso.tee.black", slot: "torso", label: "Black running shirt", price: 0, tier: "common", colour: BLACK, accent: WHITE, sprite: "tee" },
   { id: "torso.tee.magenta", slot: "torso", label: "Magenta running shirt", price: 350, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "tee" },
   { id: "torso.tee.white", slot: "torso", label: "White running shirt", price: 350, tier: "common", colour: WHITE, accent: BLACK, sprite: "tee" },
   { id: "torso.jersey.magenta", slot: "torso", label: "Magenta cycling jersey", price: 500, tier: "rare", colour: MAGENTA, accent: WHITE, sprite: "jersey" },
@@ -212,7 +215,7 @@ export const DEFAULT_LOADOUT: Loadout = {
   face: { item: "face.clean" },
   head: { item: "head.none" },
   eyes: { item: "eyes.none" },
-  torso: { item: "torso.tee.magenta" },
+  torso: { item: "torso.tee.black" },
   legs: { item: "legs.shorts.black" },
   feet: { item: "feet.runshoes.white" },
   prize: { item: "prize.none" },
@@ -602,14 +605,18 @@ export function loadoutFor(name: string): Loadout {
   const commons = (slot: Slot) =>
     AVATAR_ITEMS.filter((i) => i.slot === slot && i.tier === "common" && !!i.sprite);
 
+  // Only the free slots vary. Ryan, 2026-10-05: "No one should have any
+  // items. Only a black shirt and black shorts and whatever trophies you
+  // earned." The hash used to dress a new man in whatever common kit it
+  // landed on — a 450-coin long sleeve, 600-coin shoes — which he did not own
+  // and could not re-select once he took it off. A man's face is who he is;
+  // his kit is what he bought.
+  const free = (slot: Slot) => commons(slot).filter((i) => i.price === 0);
   return {
     ...DEFAULT_LOADOUT,
     skin: { item: pick(AVATAR_ITEMS.filter((i) => i.slot === "skin"), 1).id },
-    hair: { item: pick(commons("hair"), 2).id },
-    face: { item: pick([...commons("face"), AVATAR_ITEM_BY_ID.get("face.clean")!], 3).id },
-    torso: { item: pick(commons("torso"), 4).id },
-    legs: { item: pick(commons("legs"), 5).id },
-    feet: { item: pick(["feet.runshoes.white", "feet.runshoes.orange"], 7) },
+    hair: { item: pick(free("hair"), 2).id },
+    face: { item: pick(free("face"), 3).id },
   };
 }
 
