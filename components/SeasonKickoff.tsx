@@ -495,27 +495,6 @@ function Cutout({ src, alt, delay = 0.3 }: { src: string; alt: string; delay?: n
   );
 }
 
-/**
- * A new man who hasn't sent a photo yet stands here as his own pixel figure —
- * the one the app already built from his name. Not a placeholder: it is
- * literally what the league will see next to him all season, and the card
- * two pages back has just finished promising him one.
- */
-function NewFigure({ name, delay = 0.3 }: { name: string; delay?: number }) {
-  return (
-    <span
-      className="relative block h-44 w-auto sm:h-52"
-      style={{ animation: `sk-slap 700ms cubic-bezier(0.2, 1.2, 0.35, 1) ${delay}s both` }}
-    >
-      <PixelAvatar
-        loadout={{ ...loadoutFor(name), flag: { item: "flag.none" } } as Loadout}
-        flat
-        className="h-full w-auto"
-      />
-    </span>
-  );
-}
-
 /** The new men, side by side, over one shared gold wash. */
 function NewMen() {
   return (
@@ -529,9 +508,7 @@ function NewMen() {
         }}
       />
       <Cutout src="/george.webp" alt="George" delay={0.3} />
-      {/* Swap for <Cutout src="/jamal.webp" alt="Jamal" delay={0.42} /> the day
-          there's a photo to cut out. */}
-      <NewFigure name="Jamal" delay={0.42} />
+      <Cutout src="/jamal.webp" alt="Jamal" delay={0.42} />
     </div>
   );
 }
