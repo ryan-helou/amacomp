@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
   AVATAR_ITEM_BY_ID,
   DEFAULT_LOADOUT,
@@ -88,24 +88,6 @@ export function AvatarLocker({
   const [paying, setPaying] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  /** "saved" once the league has this outfit; "saving" while it's in flight. */
-  const [savedState, setSavedState] = useState<"clean" | "saving" | "saved">("clean");
-  /**
-   * Autosave must not fire until the saved outfit has been restored, or the
-   * first thing it would do on open is overwrite the server with the default
-   * kit. Ryan, 2026-10-05: "you shouldn't have to click save, it auto saves."
-   */
-  const hydrated = useRef(false);
-  /**
-   * What the league already has, as JSON.
-   *
-   * Without this the autosave below is a loop that never stops: it saves, the
-   * route answers with the whole fresh state, the restore effect builds a NEW
-   * loadout object out of it, the new object looks like a change, and it saves
-   * again. Comparing the content rather than the object identity is what makes
-   * "nothing has changed" expressible at all.
-   */
-  const savedJson = useRef<string | null>(null);
   // Headwear, not Skin: you open the shop to dress, and your face is already
   // sorted. The You shelves are a tap away on the same row.
   const [tab, setTab] = useState<Slot>("head");
@@ -114,19 +96,16 @@ export function AvatarLocker({
   // in a row while the art is being judged. Per-browser only, and never required.
   useEffect(() => {
     // What the server has is the real outfit; the local copy is only a
-    // convenience for someone who hasn't saved yet.
+    // convenience for someone who has never saved one.
     if (state.myLoadout) {
       const next = { ...DEFAULT_LOADOUT, ...state.myLoadout };
       const json = JSON.stringify(next);
-      savedJson.current = json;
-      // Same outfit, different object: keep the one we have, or every reply
-      // from the server looks like the man got dressed again.
+      // Same outfit in a different object is not a change. Without this, every
+      // reply from the server looks like the man got dressed again.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot, restoring the saved outfit
       setFit((f) => (JSON.stringify(f) === json ? f : next));
-      hydrated.current = true;
       return;
     }
-    hydrated.current = true;
     try {
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) setFit(JSON.parse(raw) as Loadout);
@@ -182,28 +161,41 @@ export function AvatarLocker({
     setPaying(null);
   }
 
+  /**
+   * Put it on for good.
+   *
+   * Ryan, 2026-10-06: "every time someone clicks an item it shows them how it
+   * would look, and if they click it one more time it saves their person."
+   * So the figure changes on the first tap and nothing is written; the second
+   * tap is the whole transaction. There is no save button and no autosave —
+   * the only thing that writes is a man deciding twice.
+   */
+  async function equip(slot: Slot, itemId: string) {
+    const next = { ...loadout, [slot]: { item: itemId } };
+    setFit(next);
+    setPaying(itemId);
+    setProblem(await send("/api/club", { method: "POST", body: JSON.stringify({ wear: next }) }));
+    setPaying(null);
+  }
+
   async function buy(itemId: string) {
     setPaying(itemId);
     setProblem(null);
     // The balance and the owned list come back in the state the till returns,
     // so nothing here has to guess what the purchase did.
     const error = await send("/api/club", { method: "POST", body: JSON.stringify({ buy: itemId }) });
-    setPaying(null);
     if (error) {
+      setPaying(null);
       setProblem(error);
       return;
     }
-    const item = AVATAR_ITEM_BY_ID.get(itemId);
-    if (item) pick(item.slot, item.id); // you bought it to wear it
     setAsking(null);
+    const item = AVATAR_ITEM_BY_ID.get(itemId);
+    setPaying(null);
+    // You bought it to wear it — so it goes on and stays on, with no second
+    // decision to make. Ryan, 2026-10-06: "then it auto-equips it for them."
+    if (item) await equip(item.slot, item.id);
   }
-
-  // What this outfit would cost someone who only has the starter kit.
-  const bill = SLOTS.reduce((sum, slot) => {
-    const worn = loadout[slot];
-    if (!worn || owned.has(worn.item)) return sum;
-    return sum + (AVATAR_ITEM_BY_ID.get(worn.item)?.price ?? 0);
-  }, 0);
 
   // Worn = anything that isn't the slot's default, which is what the take-off
   // strip lists. It can't be "anything that cost coins": a prize is free and
@@ -218,40 +210,6 @@ export function AvatarLocker({
   const askedItem = asking ? AVATAR_ITEM_BY_ID.get(asking) : undefined;
   // The flag you fly is also the lane behind your row: one country, one buy.
   const lane = flagLane(flying?.flag ?? "");
-
-  /** Things on the figure that he hasn't paid for — a fitting, not a fit. */
-  const tryingOn = SLOTS.filter((slot) => {
-    const worn = loadout[slot];
-    if (!worn) return false;
-    const item = AVATAR_ITEM_BY_ID.get(worn.item);
-    // Free kit and prizes aren't a fitting — there's nothing left to pay.
-    return !!item && item.price > 0 && !owned.has(item.id);
-  }).length;
-
-  /**
-   * Autosave. Ryan, 2026-10-05: "you shouldn't have to click save, it auto
-   * saves."
-   *
-   * Two guards. It waits for the restore above, or opening the locker would
-   * immediately write the default kit over whatever the league has. And it
-   * holds off while anything unpaid is on the figure, because the server
-   * strips what you haven't bought — autosaving a fitting would quietly take
-   * the clothes back off every time you tapped something.
-   */
-  useEffect(() => {
-    if (!hydrated.current || tryingOn > 0) return;
-    const json = JSON.stringify(loadout);
-    // Already what the league has. Saying so costs a request and buys nothing.
-    if (json === savedJson.current) return;
-    setSavedState("saving");
-    const t = setTimeout(async () => {
-      const err = await send("/api/club", { method: "POST", body: JSON.stringify({ wear: loadout }) });
-      if (!err) savedJson.current = json;
-      setProblem(err);
-      setSavedState(err ? "clean" : "saved");
-    }, 700);
-    return () => clearTimeout(t);
-  }, [loadout, tryingOn, send]);
 
   const needle = query.trim().toLowerCase();
 
@@ -282,7 +240,7 @@ export function AvatarLocker({
           <span className="eyebrow flex items-center gap-1.5 text-ink-3">
             {state.me?.name}
             {flying?.flag && <CountryFlag id={flying.flag} />}
-            <span>· {savedState === "saving" ? "saving" : savedState === "saved" ? "saved" : tryingOn > 0 ? "trying on" : "saved"}</span>
+            <span>· locker</span>
           </span>
         </div>
 
@@ -319,12 +277,7 @@ export function AvatarLocker({
           <img src="/tri-coin.png" alt="" aria-hidden className="h-4 w-4 shrink-0 object-contain" />
           <span className="stamp text-sm leading-none tabular-nums text-gold">{fmtCoins(balance)}</span>
           <span className="min-w-0 flex-1 truncate font-mono text-[0.625rem] text-ink-3">
-            {tryingOn > 0
-              ? `trying on ${tryingOn} · ${fmtCoins(bill)} to keep`
-              : "all yours"}
-          </span>
-          <span className="eyebrow shrink-0 rounded-lg border border-gold/30 px-2.5 py-1 text-[0.5625rem] text-gold/70">
-            {savedState === "saving" ? "saving" : tryingOn > 0 ? "unpaid" : "saved"}
+            tap to see it on, tap again to keep it
           </span>
         </div>
         {/* Your row on the Week tab, washed by the lane you've picked — the
@@ -455,7 +408,10 @@ export function AvatarLocker({
                     slot={slot}
                     owned={owned.has(item.id) || item.price === 0}
                     affordable={item.price <= balance}
+                    saved={(state.myLoadout?.[slot]?.item ?? DEFAULT_LOADOUT[slot]?.item) === item.id}
+                    busy={paying === item.id}
                     onPick={pick}
+                    onKeep={equip}
                     onAsk={setAsking}
                   />
                 ))}
@@ -537,17 +493,26 @@ const ShopBox = memo(function ShopBox({
   item,
   slot,
   worn,
+  saved,
   owned,
   affordable,
+  busy,
   onPick,
+  onKeep,
   onAsk,
 }: {
   item: AvatarItem;
   slot: Slot;
+  /** On the figure right now — which may only be a look, not a decision. */
   worn: boolean;
+  /** What the league actually has him in. */
+  saved: boolean;
   owned: boolean;
   affordable: boolean;
+  busy: boolean;
   onPick: (slot: Slot, itemId: string) => void;
+  /** Put it on for good. */
+  onKeep: (slot: Slot, itemId: string) => void;
   /** Opens the till for something you don't own yet. */
   onAsk: (itemId: string) => void;
 }) {
@@ -556,7 +521,14 @@ const ShopBox = memo(function ShopBox({
   const tier = TIER[item.tier];
   return (
     <button
-      onClick={() => onPick(slot, item.id)}
+      // One tap shows it on the figure. A second tap on the same thing is the
+      // decision: keep it if it's his, open the till if it isn't. Nothing is
+      // written until that second tap. Ryan, 2026-10-06.
+      onClick={() => {
+        if (!worn) return onPick(slot, item.id);
+        if (owned) return onKeep(slot, item.id);
+        return onAsk(item.id);
+      }}
       aria-pressed={worn}
       className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-colors ${
         worn ? "border-gold bg-gold/10" : `${tier.ring} bg-deck-2/40`
@@ -596,9 +568,11 @@ const ShopBox = memo(function ShopBox({
             nothing
           </span>
         )}
-        {worn && (
-          <span className="eyebrow absolute right-1 top-1 rounded bg-gold px-1.5 py-0.5 text-[0.5rem] text-on-gold">
-            worn
+        {(saved || worn) && (
+          <span className={`eyebrow absolute right-1 top-1 rounded px-1.5 py-0.5 text-[0.5rem] ${
+            saved ? "bg-gold text-on-gold" : "bg-deck-2/90 text-ink-2"
+          }`}>
+            {saved ? "worn" : "trying"}
           </span>
         )}
       </span>
@@ -619,11 +593,9 @@ const ShopBox = memo(function ShopBox({
               {item.earned}
             </span>
           ) : free ? (
-            // Ryan, 2026-10-05: something you own should have an Equip button
-            // on it, the same way something you don't has a price. "yours" was
-            // a label — true, and no use to anybody. The tile itself still
-            // works, so this is a second, obvious target for the same thing.
-            worn ? (
+            // Owned. "yours" was a label that did nothing; this is the second
+            // tap, spelled out, so nobody has to know the tile is tappable.
+            saved ? (
               <span className="flex w-full items-center justify-center gap-1 rounded border border-gold/50 bg-gold/10 px-1 py-0.5 text-[0.5625rem] text-gold">
                 worn
               </span>
@@ -632,16 +604,18 @@ const ShopBox = memo(function ShopBox({
                 role="button"
                 tabIndex={0}
                 aria-label={`Equip ${item.label}`}
-                onClick={(e) => { e.stopPropagation(); onPick(slot, item.id); }}
+                onClick={(e) => { e.stopPropagation(); onKeep(slot, item.id); }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.stopPropagation();
-                    onPick(slot, item.id);
+                    onKeep(slot, item.id);
                   }
                 }}
-                className="flex w-full items-center justify-center gap-1 rounded border border-line bg-deck-2/60 px-1 py-0.5 text-[0.5625rem] text-ink-2"
+                className={`flex w-full items-center justify-center gap-1 rounded border px-1 py-0.5 text-[0.5625rem] ${
+                  worn ? "border-gold/50 bg-gold/10 text-gold" : "border-line bg-deck-2/60 text-ink-2"
+                }`}
               >
-                equip
+                {busy ? "…" : "equip"}
               </span>
             )
           ) : (
