@@ -120,6 +120,12 @@ export interface Store {
   importStravaActivity(input: NewActivity, stravaId: number): Promise<Activity | null>;
   /** Body weight in kg for the W/kg records; null clears it back to unknown. */
   setWeight(athleteId: string, kg: number | null): Promise<void>;
+  /**
+   * Change a man's name, at most once per league day. "taken" if another
+   * athlete already has it (case-insensitive), "too-soon" if he already
+   * renamed today.
+   */
+  renameAthlete(id: string, name: string, today: string): Promise<"ok" | "taken" | "too-soon">;
   // Personal bests, extracted from Strava streams — see lib/efforts.ts.
   listEfforts(): Promise<ActivityEfforts[]>;
   /**
@@ -674,6 +680,9 @@ class PgStore implements Store {
         ]) {
           await this.pool.query(`ALTER TABLE club_bets ADD COLUMN IF NOT EXISTS ${col}`);
         }
+        // The league day a man last changed his name. Ryan, 2026-10-06: once a
+        // day. A DATE rather than a time, so "today" is a string compare.
+        await this.pool.query(`ALTER TABLE athletes ADD COLUMN IF NOT EXISTS renamed_on DATE`);
         // An offer open to anyone has no opponent until someone takes it.
         // Ryan, 2026-10-06: "you can do anyone, if anyone's willing to accept
         // it." Null here only ever means an OPEN offer — accepting fills it.
@@ -978,6 +987,24 @@ class PgStore implements Store {
     );
     if ((ledger.rowCount ?? 0) === 0) return null;
     return this.createActivity(input, "strava");
+  }
+
+  async renameAthlete(id: string, name: string, today: string): Promise<"ok" | "taken" | "too-soon"> {
+    await this.init();
+    try {
+      // The day check is in the WHERE, so two quick saves are one rename.
+      const r = await this.pool.query(
+        `UPDATE athletes SET name = $2, name_lower = lower($2), renamed_on = $3::date
+          WHERE id = $1 AND (renamed_on IS NULL OR renamed_on <> $3::date)
+          RETURNING id`,
+        [id, name, today],
+      );
+      return r.rowCount ? "ok" : "too-soon";
+    } catch (e) {
+      // name_lower is UNIQUE: somebody already answers to it.
+      if ((e as { code?: string }).code === "23505") return "taken";
+      throw e;
+    }
   }
 
   async setWeight(athleteId: string, kg: number | null): Promise<void> {
@@ -1639,6 +1666,17 @@ class MemoryStore implements Store {
   }
 
   private efforts = new Map<number, ActivityEfforts>(); // strava id → bests
+
+  private renamedOn = new Map<string, string>();
+  async renameAthlete(id: string, name: string, today: string): Promise<"ok" | "taken" | "too-soon"> {
+    const a = this.athletes.find((x) => x.id === id);
+    if (!a) return "too-soon";
+    if (this.athletes.some((x) => x.id !== id && x.name.toLowerCase() === name.toLowerCase())) return "taken";
+    if (this.renamedOn.get(id) === today) return "too-soon";
+    a.name = name;
+    this.renamedOn.set(id, today);
+    return "ok";
+  }
 
   async setWeight(athleteId: string, kg: number | null) {
     const a = this.athletes.find((x) => x.id === athleteId);

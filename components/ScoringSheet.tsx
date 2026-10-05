@@ -192,6 +192,8 @@ export function ScoringSheet({
 
         <PalettePicker />
 
+        <NameField league={league} />
+
         {/* Weight — only ever used to divide watts into W/kg for the Records
             tab. Pulled from Strava on connect where it's set; this is the
             override, and the only way in for anyone Strava has nothing for. */}
@@ -628,4 +630,58 @@ function resizeToSquare(file: File, size: number): Promise<string> {
     };
     img.src = url;
   });
+}
+
+/**
+ * Change your name, once a league day. Ryan, 2026-10-06.
+ *
+ * A button, not save-on-blur like the weight beside it: a rename spends the
+ * day's one change, and tapping out of the box by accident shouldn't. The
+ * server owns every rule (lib/rename, /api/session PATCH) — this just says
+ * what it said back.
+ */
+function NameField({ league }: { league: League }) {
+  const { state, send, busy } = league;
+  const current = state.me?.name ?? "";
+  const [draft, setDraft] = useState(current);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const admin = state.isAdmin;
+  const changed = draft.trim() !== "" && draft.trim() !== current;
+
+  async function save() {
+    const err = await send("/api/session", { method: "PATCH", body: JSON.stringify({ name: draft.trim() }) });
+    setNote(err ? { ok: false, text: err } : { ok: true, text: `Done. Sign in as ${draft.trim()} from now on.` });
+  }
+
+  return (
+    <div className="mt-4 rounded-xl pane border border-line bg-tile px-4 py-3">
+      <label htmlFor="rename" className="eyebrow block text-ink">Your name</label>
+      <p className="mt-0.5 text-[0.8125rem] text-ink-2">
+        {admin
+          ? "The admin is whoever's called Ryan, so yours stays."
+          : "Once a day. It's also how you sign in, so use the new one next time."}
+      </p>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          id="rename"
+          value={draft}
+          maxLength={40}
+          disabled={busy || admin}
+          onChange={(e) => { setDraft(e.target.value); setNote(null); }}
+          className="min-w-0 flex-1 rounded-lg pane border border-line-2 bg-tile px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none disabled:opacity-60"
+        />
+        <button
+          type="button"
+          onClick={save}
+          disabled={busy || admin || !changed}
+          className="eyebrow shrink-0 rounded-lg border border-line-2 px-3 py-2 text-ink disabled:opacity-40"
+        >
+          Save
+        </button>
+      </div>
+      {note && (
+        <p className={`mt-2 text-[0.8125rem] ${note.ok ? "text-mint" : "text-magenta"}`}>{note.text}</p>
+      )}
+    </div>
+  );
 }
