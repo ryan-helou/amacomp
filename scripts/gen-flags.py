@@ -47,6 +47,7 @@ SOURCES = {
     "jo": ("Jordan", "c/c0/Flag_of_Jordan.svg"),
     "br": ("Brazil", "0/05/Flag_of_Brazil.svg"),
     "ke": ("Kenya", "4/49/Flag_of_Kenya.svg"),
+    "ps": ("Palestine", "0/00/Flag_of_Palestine.svg"),
 }
 
 W, H = 30, 20
@@ -75,6 +76,11 @@ FIELDS = {
            # The red band is a PATH, not a rect: it carries the notch the
            # shield sits in, so it reads as field and must go with the rest.
            '<path fill="#b00" d="M-120-24v48h101c3 8 13 24 19 24s16-16 19-24h101v-48H19C16-32 6-48 0-48s-16 16-19 24z"/>'],
+    # Three rects stacked: green the whole flag, white over the top two
+    # thirds, black over the top third. The red triangle is all that is left.
+    "ps": ['<rect fill="#009639" width="6" height="3"/>',
+           '<rect fill="#FFF" width="6" height="2"/>',
+           '<rect width="6" height="1"/>'],
 }
 
 

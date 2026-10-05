@@ -84,7 +84,8 @@ export interface CountryFlag {
 }
 
 /**
- * Nine, chosen by Ryan on 2026-09-30, and no filler. The fifteen that went
+ * Nine, chosen by Ryan on 2026-09-30, and no filler — and Palestine, added at
+ * his request on 2026-10-06. The fifteen that went
  * were mostly plain tricolours, which as a LANE all read the same — a left
  * band, a pale middle and a red right — so you were paying four hundred coins
  * for a row somebody else already had. What is left either carries an emblem
@@ -123,6 +124,14 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
   {
     id: "jo", label: "Jordan", bands: ["#000000", "#FFFFFF", "#007A3D"], rows: true,
     art: FLAG_ART.jo, laneWeights: [1, 2, 1], laneAt: 0, laneFit: 1, laneStretchX: 1.4,
+  },
+  // Palestine is built exactly like Jordan — black, white and green thirds
+  // with a red triangle at the hoist, and no star — so its lane is set the
+  // same way: the triangle hard at the left edge and full height, and the
+  // lane's bands 1:2:1 so the name sits on the white.
+  {
+    id: "ps", label: "Palestine", bands: ["#000000", "#FFFFFF", "#009639"], rows: true,
+    art: FLAG_ART.ps, laneWeights: [1, 2, 1], laneAt: 0, laneFit: 1, laneStretchX: 1.4,
   },
   { id: "br", label: "Brazil", bands: ["#009440"], weights: [1], art: FLAG_ART.br },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
