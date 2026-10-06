@@ -49,6 +49,7 @@ SOURCES = {
     "ke": ("Kenya", "4/49/Flag_of_Kenya.svg"),
     "ps": ("Palestine", "0/00/Flag_of_Palestine.svg"),
     "ht": ("Haiti", "5/56/Flag_of_Haiti.svg"),
+    "il": ("Israel", "d/d4/Flag_of_Israel.svg"),
 }
 
 # Files that arrive as raw Inkscape output, and need compacting before they
@@ -88,6 +89,11 @@ FIELDS = {
            '<path fill="#b00" d="M-120-24v48h101c3 8 13 24 19 24s16-16 19-24h101v-48H19C16-32 6-48 0-48s-16 16-19 24z"/>'],
     # Three rects stacked: green the whole flag, white over the top two
     # thirds, black over the top third. The red triangle is all that is left.
+    # Israel: the white field and the two blue stripes. The Star of David is
+    # all that is left.
+    "il": ['<path d="M 0,0 H 1100 V 800 H 0 Z" fill="#fff"/>',
+           '<path d="M 0,75 H 1100 V 200 H 0 Z" fill="#0038b8"/>',
+           '<path d="M 0,600 H 1100 V 725 H 0 Z" fill="#0038b8"/>'],
     # Haiti: red the whole flag, blue over the top half. What is left is the
     # white panel and the arms on it.
     "ht": ['<path d="M0 0h1000v600H0z" fill="#d21034" />',

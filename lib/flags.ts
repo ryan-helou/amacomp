@@ -84,8 +84,8 @@ export interface CountryFlag {
 }
 
 /**
- * Nine, chosen by Ryan on 2026-09-30, and no filler — then Palestine and
- * Haiti, added at his request on 2026-10-06. The fifteen that went
+ * Nine, chosen by Ryan on 2026-09-30, and no filler — then Palestine, Haiti
+ * and Israel, added at his request on 2026-10-06. The fifteen that went
  * were mostly plain tricolours, which as a LANE all read the same — a left
  * band, a pale middle and a red right — so you were paying four hundred coins
  * for a row somebody else already had. What is left either carries an emblem
@@ -138,6 +138,13 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
   // which is why it is by far the heaviest drawing here (scripts/gen-flags.py
   // COMPACT). The lane keeps the bands as bands and centres the panel.
   { id: "ht", label: "Haiti", bands: ["#00209F", "#D21034"], rows: true, weights: [1, 1], art: FLAG_ART.ht },
+  // White with two blue stripes — 75, 125, 400, 125, 75 down an 800-high flag
+  // — and the Star of David between them. The stripes are bands, so they
+  // stretch across the lane; the star keeps its shape in the middle.
+  {
+    id: "il", label: "Israel", bands: ["#FFFFFF", "#0038B8", "#FFFFFF", "#0038B8", "#FFFFFF"],
+    rows: true, weights: [3, 5, 16, 5, 3], art: FLAG_ART.il,
+  },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
   // The one flag with nothing to copy. Magenta, black and mint are the app's
   // own colours and the star is the only shape here anybody drew.
