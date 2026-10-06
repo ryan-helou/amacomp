@@ -9,7 +9,7 @@ import {
   betResult, betWhen, type Bet, type BetKind, type BetMetric, type BetResult,
  isOpenToAll,
 } from "@/lib/bets";
-import { coinAccount, fmtCoins } from "@/lib/coins";
+import { freeCoins, fmtCoins } from "@/lib/coins";
 import { COIN } from "@/lib/club";
 import { Avatar } from "./Avatar";
 import { Glyph } from "./Glyph";
@@ -41,9 +41,11 @@ export function ArenaBets({
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
+  // What he can STAKE: his balance less what's already riding on unfinished
+  // bets — the same number the server checks (lib/coins freeCoins).
   const balance = useMemo(
-    () => coinAccount(meId, state.athletes, state.activities, state.settings, refDay,
-      state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers).balance,
+    () => freeCoins(meId, state.athletes, state.activities, state.settings, refDay,
+      state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers).free,
     [meId, state.athletes, state.activities, state.settings, refDay,
      state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers],
   );

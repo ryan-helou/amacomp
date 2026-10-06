@@ -3,7 +3,7 @@ import { getStore } from "@/lib/db";
 import { currentAthlete, isAdmin } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { CLUB_LIVE, canSeeClub } from "@/lib/club";
-import { coinAccount } from "@/lib/coins";
+import { freeCoins } from "@/lib/coins";
 import { AVATAR_ITEM_BY_ID, STARTER_ITEMS } from "@/lib/pixelAvatar";
 import { earnedPrizes } from "@/lib/prizes";
 import { leagueToday } from "@/lib/dates";
@@ -65,11 +65,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `You already own ${item.label}.` }, { status: 409 });
     }
 
-    const { balance } = coinAccount(me.id, athletes, activities, settings, undefined,
-      grants, purchases, bets, bounties);
-    if (item.price > balance) {
+    // Coins riding on unfinished bets aren't his to spend (lib/coins freeCoins),
+    // and coins sent and received count — they used to be left out here.
+    const transfers = await store.listTransfers();
+    const { free, staked } = freeCoins(me.id, athletes, activities, settings, undefined,
+      grants, purchases, bets, bounties, transfers);
+    if (item.price > free) {
+      const f = Math.max(free, 0);
       return NextResponse.json(
-        { error: `${item.label} costs ${item.price}. You have ${balance}.` },
+        { error: staked > 0
+          ? `${item.label} costs ${item.price}. You have ${f} free — ${staked} more ${staked === 1 ? "is" : "are"} riding on bets that haven't finished.`
+          : `${item.label} costs ${item.price}. You have ${f}.` },
         { status: 402 },
       );
     }

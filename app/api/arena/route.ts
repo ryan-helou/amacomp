@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
 import { currentAthlete, isAdmin } from "@/lib/session";
 import { CLUB_LIVE, canSeeClub } from "@/lib/club";
-import { coinAccount } from "@/lib/coins";
+import { freeCoins } from "@/lib/coins";
 import { readState } from "@/lib/state";
 import {
   BET_METRIC_BY_ID, PUSH, STAKE_MAX, STAKE_MIN, betRange, duplicateBet,
@@ -43,7 +43,17 @@ const bad = (msg: string, status = 400) => NextResponse.json({ error: msg }, { s
  */
 const ok = async () => NextResponse.json(await readState());
 
-async function balanceOf(athleteId: string, refDay: DayKey): Promise<number> {
+/**
+ * What a man can put on the line: his balance less what's already riding on
+ * unfinished bets (lib/coins freeCoins). `exceptId` keeps the bet being
+ * accepted from counting against itself.
+ */
+async function balanceOf(athleteId: string, refDay: DayKey, exceptId?: string): Promise<number> {
+  return (await coinsOf(athleteId, refDay, exceptId)).free;
+}
+
+/** The same, with what's staked, so a refusal can say WHY he's short. */
+async function coinsOf(athleteId: string, refDay: DayKey, exceptId?: string) {
   const store = getStore();
   const [athletes, activities, settings, grants, purchases, bets, bounties, transfers] =
     await Promise.all([
@@ -51,8 +61,16 @@ async function balanceOf(athleteId: string, refDay: DayKey): Promise<number> {
       store.listCoinGrants(), store.listPurchases(), store.listBets(), store.listBounties(),
       store.listTransfers(),
     ]);
-  return coinAccount(athleteId, athletes, activities, settings, refDay,
-    grants, purchases, bets, bounties, transfers).balance;
+  return freeCoins(athleteId, athletes, activities, settings, refDay,
+    grants, purchases, bets, bounties, transfers, exceptId);
+}
+
+/** "You have 40 coins free" — and why, when bets are the reason. */
+function short(free: number, staked: number): string {
+  const f = Math.max(free, 0);
+  return staked > 0
+    ? `You have ${f} coins free — ${staked} more ${staked === 1 ? "is" : "are"} riding on bets that haven't finished.`
+    : `You have ${f} coins.`;
 }
 
 export async function POST(req: Request) {
@@ -113,11 +131,11 @@ export async function POST(req: Request) {
     // Both sides have to be able to cover it. Checking only the proposer lets
     // a man offer a thousand coins to someone who has forty and then collect.
     // An open offer has no other side yet — the taker is checked when he takes it.
-    const mine = await balanceOf(me.id, today);
-    if (stake > mine) return bad(`You have ${mine} coins.`);
+    const mineC = await coinsOf(me.id, today);
+    if (stake > mineC.free) return bad(short(mineC.free, mineC.staked));
     if (them) {
       const theirs = await balanceOf(toId, today);
-      if (stake > theirs) return bad(`${them.name} only has ${theirs} coins.`);
+      if (stake > theirs) return bad(`${them.name} only has ${Math.max(theirs, 0)} coins free.`);
     }
 
     await store.addBet({ fromId: me.id, toId: target, kind, terms, metric, period, startsOn, stake, note });
@@ -147,9 +165,12 @@ export async function POST(req: Request) {
     // agreeing to a race that has been run.
     if (today > betRange(bet)[1]) return bad("That window has already closed.", 409);
     const [mine, theirs] = await Promise.all([
-      balanceOf(me.id, today), balanceOf(bet.fromId, today),
+      balanceOf(me.id, today, id), balanceOf(bet.fromId, today, id),
     ]);
-    if (bet.stake > mine) return bad(`You have ${mine} coins.`);
+    if (bet.stake > mine) {
+      const c = await coinsOf(me.id, today, id);
+      return bad(`You can't cover ${bet.stake}. ${short(c.free, c.staked)}`);
+    }
     if (bet.stake > theirs) return bad("They can't cover it any more.");
 
     if (forAnyone) {
@@ -223,8 +244,8 @@ export async function POST(req: Request) {
     if (!Number.isFinite(amount) || amount < TRANSFER_MIN || amount > TRANSFER_MAX) {
       return bad(`Send between ${TRANSFER_MIN} and ${TRANSFER_MAX} coins.`);
     }
-    const mine = await balanceOf(me.id, today);
-    if (amount > mine) return bad(`You have ${mine} coins.`);
+    const mineC = await coinsOf(me.id, today);
+    if (amount > mineC.free) return bad(short(mineC.free, mineC.staked));
     await store.addTransfer(me.id, toId, amount, note);
     return ok();
   }
@@ -245,8 +266,8 @@ export async function POST(req: Request) {
       return bad(`${them.name} already owns ${item.label}.`, 409);
     }
     // The price comes from the catalogue, never from the request.
-    const mine = await balanceOf(me.id, today);
-    if (item.price > mine) return bad(`${item.label} costs ${item.price}. You have ${mine}.`);
+    const mineC = await coinsOf(me.id, today);
+    if (item.price > mineC.free) return bad(`${item.label} costs ${item.price}. ${short(mineC.free, mineC.staked)}`);
 
     const bought = await store.addPurchase(toId, item.id, item.price, me.id);
     if (!bought) return bad(`${them.name} already owns ${item.label}.`, 409);

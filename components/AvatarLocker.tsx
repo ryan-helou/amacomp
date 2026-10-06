@@ -11,7 +11,7 @@ import {
   type Loadout,
   type Slot,
 } from "@/lib/pixelAvatar";
-import { coinAccount, fmtCoins } from "@/lib/coins";
+import { fmtCoins, freeCoins } from "@/lib/coins";
 import { earnedPrizes } from "@/lib/prizes";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
@@ -133,11 +133,12 @@ export function AvatarLocker({
 
   // What he can actually spend: earned, plus anything granted, less what the
   // shop has already taken.
-  const account = coinAccount(
+  // What he can actually SPEND: the balance less coins riding on unfinished
+  // bets — the same number the till checks (lib/coins freeCoins).
+  const balance = freeCoins(
     state.me?.id ?? "", state.athletes, state.activities, state.settings, refDay,
     state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers,
-  );
-  const balance = account.balance;
+  ).free;
 
   /** What he owns: the starter kit, plus everything he's paid for. */
   const owned = new Set([
