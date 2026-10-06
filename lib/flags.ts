@@ -81,6 +81,8 @@ export interface CountryFlag {
    * is ours.
    */
   laneMotif?: string;
+  /** Its price in the shop, when it isn't the 400 every country costs. */
+  price?: number;
 }
 
 /**
@@ -144,6 +146,7 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
   {
     id: "il", label: "Israel", bands: ["#FFFFFF", "#0038B8", "#FFFFFF", "#0038B8", "#FFFFFF"],
     rows: true, weights: [3, 5, 16, 5, 3], art: FLAG_ART.il,
+    price: 600, // Ryan, 2026-10-06
   },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
   // The one flag with nothing to copy. Magenta, black and mint are the app's
