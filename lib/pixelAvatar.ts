@@ -196,7 +196,7 @@ export const FLAG_ITEMS: AvatarItem[] = COUNTRY_FLAGS.map((f) => ({
   label: f.label,
   // One purchase, two places it shows: the tag by your name and the lane
   // behind your row.
-  price: f.id === "ama" ? 1500 : 400,
+  price: f.price ?? (f.id === "ama" ? 1500 : 400),
   tier: f.id === "ama" ? "legendary" : "rare",
   colour: f.bands[0],
   accent: f.bands[1] ?? f.bands[0],
