@@ -105,6 +105,9 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "head.aero.gold", slot: "head", label: "Gold aero helmet", price: 1200, tier: "legendary", colour: GOLD, accent: BLACK, sprite: "aero", spriteBack: "aero_back", coversEyes: true },
   { id: "head.beanie.black", slot: "head", label: "Black beanie", price: 150, tier: "common", colour: BLACK, accent: WHITE, sprite: "beanie" },
   { id: "head.visor.white", slot: "head", label: "White visor", price: 250, tier: "common", colour: WHITE, accent: BLACK, sprite: "visor" },
+  { id: "head.kippa.navy", slot: "head", label: "Navy kippa", price: 150, tier: "common", colour: "#1F3A68", accent: WHITE, sprite: "kippa" },
+  { id: "head.kippa.black", slot: "head", label: "Black kippa", price: 150, tier: "common", colour: BLACK, accent: "#3A3F49", sprite: "kippa" },
+  { id: "head.kippa.white", slot: "head", label: "White kippa", price: 150, tier: "common", colour: WHITE, accent: "#1F3A68", sprite: "kippa" },
 
   { id: "eyes.none", slot: "eyes", label: "No eyewear", price: 0, tier: "common", colour: BLACK, accent: WHITE },
   { id: "eyes.shades.black", hideBack: true, slot: "eyes", label: "Black Ray-Bans", price: 400, tier: "rare", colour: BLACK, accent: "#39404b", sprite: "shades" },
