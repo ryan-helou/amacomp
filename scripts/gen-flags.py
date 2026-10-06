@@ -48,7 +48,17 @@ SOURCES = {
     "br": ("Brazil", "0/05/Flag_of_Brazil.svg"),
     "ke": ("Kenya", "4/49/Flag_of_Kenya.svg"),
     "ps": ("Palestine", "0/00/Flag_of_Palestine.svg"),
+    "ht": ("Haiti", "5/56/Flag_of_Haiti.svg"),
 }
+
+# Files that arrive as raw Inkscape output, and need compacting before they
+# are fit to ship. Haiti's is 177 KB — the whole coat of arms, 299 paths, and
+# the editor's own bookkeeping — against 45 KB for every other flag together.
+# compact() strips the editor's data and rounds PATH coordinates to a tenth
+# of a unit. Drawn 30 wide, a unit of this file is 0.03 of a pixel, so the
+# rounding cannot be seen. Transforms are left exactly as they are: rounding
+# the matrix that places the coat of arms would resize it.
+COMPACT = {"ht"}
 
 W, H = 30, 20
 
@@ -78,6 +88,10 @@ FIELDS = {
            '<path fill="#b00" d="M-120-24v48h101c3 8 13 24 19 24s16-16 19-24h101v-48H19C16-32 6-48 0-48s-16 16-19 24z"/>'],
     # Three rects stacked: green the whole flag, white over the top two
     # thirds, black over the top third. The red triangle is all that is left.
+    # Haiti: red the whole flag, blue over the top half. What is left is the
+    # white panel and the arms on it.
+    "ht": ['<path d="M0 0h1000v600H0z" fill="#d21034" />',
+           '<path d="M0 0h1000v300H0z" fill="#00209f" />'],
     "ps": ['<rect fill="#009639" width="6" height="3"/>',
            '<rect fill="#FFF" width="6" height="2"/>',
            '<rect width="6" height="1"/>'],
@@ -98,6 +112,28 @@ def fetch(path: str) -> str:
         f.write(body)
     time.sleep(1)
     return body
+
+
+def _round_path(m: "re.Match[str]") -> str:
+    def one(n: "re.Match[str]") -> str:
+        v = round(float(n.group(0)), 1)
+        t = f"{v:.1f}".rstrip("0").rstrip(".")
+        return "0" if t in ("", "-0") else t
+    return m.group(1) + re.sub(r"-?\d+\.\d+", one, m.group(2)) + m.group(3)
+
+
+def compact(svg: str) -> str:
+    """Strip an editor's bookkeeping and round path data. See COMPACT."""
+    s = re.sub(r"<sodipodi:namedview\b.*?(/>|</sodipodi:namedview>)", "", svg, flags=re.S)
+    s = re.sub(r"<metadata\b.*?</metadata>", "", s, flags=re.S)
+    s = re.sub(r'\s(?:inkscape|sodipodi):[\w-]+="[^"]*"', "", s)
+    s = re.sub(r'\sxmlns:(?:inkscape|sodipodi|svg)="[^"]*"', "", s)
+    # Inkscape's own serial ids (path12, g7): nothing references them.
+    s = re.sub(r'\sid="(?:path|g|circle|ellipse|defs|svg)\d+[^"]*"', "", s)
+    # Only the d="" of a path is rounded — never a transform.
+    s = re.sub(r'(\sd=")([^"]*)(")', _round_path, s)
+    s = re.sub(r"\s{2,}", " ", s)
+    return s
 
 
 def normalise(fid: str, svg: str) -> str:
@@ -145,7 +181,8 @@ def main() -> None:
     parts = []
     motifs = []
     for fid, (label, path) in SOURCES.items():
-        art = normalise(fid, fetch(path))
+        raw = fetch(path)
+        art = normalise(fid, compact(raw) if fid in COMPACT else raw)
         parts.append((fid, label, path, art))
         note = ""
         if fid in FIELDS:
