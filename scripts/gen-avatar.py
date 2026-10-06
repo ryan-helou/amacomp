@@ -249,6 +249,12 @@ def build(P):
         c.disc(40, HC-1.5, HRX+0.9, HRY-0.4, "K", y1=HC-HRY*0.04),
         c.rect(40-HRX-0.6, HC-HRY*0.26, 40+HRX+0.6, HC-HRY*0.02, "A"),
         c.disc(40, HC-HRY*1.02, 2.6, 2.6, "A")))
+    # A kippa: a small round cap on the crown, narrower than the head and only
+    # a slice of it, sitting a touch proud of the hair. The band near its edge
+    # is the accent — the stitched ring on a knitted one.
+    item("kippa", 4, lambda c: (
+        c.disc(40, HC-1.4, HRX*0.60, HRY, "K", y1=HC-HRY*0.74),
+        c.disc(40, HC-1.4, HRX*0.60, HRY, "A", y0=HC-HRY*0.84, y1=HC-HRY*0.77)))
     item("visor", 4, lambda c: (
         c.disc(40, HC-1.0, HRX+0.7, HRY-0.2, "K", y0=HC-HRY*0.46, y1=HC-HRY*0.14),
         c.poly([(40+HRX*0.75, HC-HRY*0.36), (40+HRX+7.5, HC-HRY*0.30), (40+HRX+9.5, HC-HRY*0.16),
