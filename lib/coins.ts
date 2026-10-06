@@ -14,7 +14,7 @@ import {
   type DayKey,
 } from "./dates";
 import { seasonByNumber, seasonFor } from "./season";
-import { betCoins, BET_METRIC_BY_ID, type Bet } from "./bets";
+import { betCoins, BET_METRIC_BY_ID, onTheLine, type Bet } from "./bets";
 import { bountyCoins, bountyFor, type Bounty } from "./bounties";
 import type { Transfer } from "./transfers";
 import { AVATAR_ITEM_BY_ID } from "./pixelAvatar";
@@ -292,6 +292,34 @@ export function coinAccount(
   const earned = entries.filter((e) => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
   const spent = entries.filter((e) => e.amount < 0).reduce((sum, e) => sum - e.amount, 0);
   return { balance: earned - spent, earned, spent, entries };
+}
+
+/**
+ * What a man can actually spend right now: his balance, less the coins he
+ * already has riding on bets that haven't finished (lib/bets onTheLine).
+ *
+ * Every place coins LEAVE a wallet asks this rather than the balance — a new
+ * bet, taking a bet, sending coins, buying something for yourself or for
+ * someone else. Otherwise a man takes a 200-coin bet and then spends the 200,
+ * and the bet he can't pay is back by another door.
+ */
+export function freeCoins(
+  athleteId: string,
+  athletes: Athlete[],
+  activities: Activity[],
+  settings: Settings,
+  refDay: DayKey = todayKey(),
+  grants: CoinGrant[] = [],
+  purchases: Purchase[] = [],
+  bets: Bet[] = [],
+  bounties: Bounty[] = [],
+  transfers: Transfer[] = [],
+  exceptBetId?: string,
+): { free: number; balance: number; staked: number } {
+  const { balance } = coinAccount(athleteId, athletes, activities, settings, refDay,
+    grants, purchases, bets, bounties, transfers);
+  const staked = onTheLine(athleteId, bets, athletes, activities, settings, refDay, exceptBetId);
+  return { free: balance - staked, balance, staked };
 }
 
 /** Everyone's balance, for the Club's rich list. */

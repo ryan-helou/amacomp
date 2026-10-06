@@ -255,3 +255,43 @@ export function duplicateBet(
       && ((b.fromId === fromId && b.toId === toId) || (b.fromId === toId && b.toId === fromId)),
   );
 }
+
+/**
+ * Coins a man already has riding on bets that haven't finished.
+ *
+ * Ryan, 2026-10-06: "you should not be able to accept a bet you can't pay."
+ * The check used to compare a stake against his whole balance, and a balance
+ * only counts bets that have SETTLED — so a man with 200 coins could take on
+ * five 200-coin bets, each one passing "200 <= 200". These are the coins that
+ * are spoken for:
+ *
+ *   - his own standing offers (to one man or to anyone) — if somebody takes
+ *     one, he has to be able to pay it;
+ *   - every accepted bet he's in that hasn't been settled yet.
+ *
+ * An offer made TO him isn't counted until he takes it. `exceptId` leaves one
+ * bet out, so a bet being accepted isn't counted against itself.
+ */
+export function onTheLine(
+  athleteId: string,
+  bets: Bet[],
+  athletes: Athlete[],
+  activities: Activity[],
+  settings: Settings,
+  today: DayKey,
+  exceptId?: string,
+): number {
+  let sum = 0;
+  for (const b of bets) {
+    if (b.id === exceptId) continue;
+    if (b.state === "open") {
+      if (b.fromId === athleteId) sum += b.stake;
+      continue;
+    }
+    if (b.state !== "accepted") continue;
+    if (b.fromId !== athleteId && b.toId !== athleteId) continue;
+    const { status } = betResult(b, athletes, activities, settings, today);
+    if (status === "live" || status === "called") sum += b.stake;
+  }
+  return sum;
+}

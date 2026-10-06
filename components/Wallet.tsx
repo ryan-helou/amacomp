@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { coinAccount, coinBoard, fmtCoins, type CoinEntry } from "@/lib/coins";
+import { coinAccount, coinBoard, fmtCoins, type CoinEntry, freeCoins } from "@/lib/coins";
 import type { AppState } from "@/lib/types";
 import type { DayKey } from "@/lib/dates";
 import { Avatar } from "./Avatar";
@@ -52,6 +52,13 @@ export function Wallet({
     [meId, state.athletes, state.activities, state.settings, refDay, state.coinGrants,
      state.purchases, state.bets, state.bounties, state.transfers],
   );
+  // Coins riding on bets that haven't finished: still his, not his to spend.
+  const { free, staked } = useMemo(
+    () => freeCoins(meId, state.athletes, state.activities, state.settings, refDay,
+      state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers),
+    [meId, state.athletes, state.activities, state.settings, refDay, state.coinGrants,
+     state.purchases, state.bets, state.bounties, state.transfers],
+  );
   const board = useMemo(
     () => coinBoard(state.athletes, state.activities, state.settings, refDay,
       state.coinGrants, state.purchases, state.bets, state.bounties, state.transfers),
@@ -90,6 +97,12 @@ export function Wallet({
             <div className="eyebrow mt-1 text-ink-3">
               tri coins{myRank > 0 ? ` · ${ordinal(myRank)} richest` : ""}
             </div>
+            {staked > 0 && (
+              // The Shop and the Bets tab show the smaller number; say why.
+              <div className="mt-1 font-mono text-[0.6875rem] text-ink-2">
+                {fmtCoins(staked)} on the line · {fmtCoins(Math.max(free, 0))} free to spend
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -108,7 +121,7 @@ export function Wallet({
           {sending && (
             <SendCoins
               state={state}
-              balance={account.balance}
+              balance={Math.max(free, 0)}
               send={send}
               onDone={(err) => { if (!err) setSending(false); }}
             />
