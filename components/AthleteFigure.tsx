@@ -65,17 +65,19 @@ export function LoadoutsProvider({
 }
 
 /**
- * What the champion wears, for a figure that hasn't been told otherwise.
+ * How the reigning champion is marked: a gold edge and a gold glow, on every
+ * figure of him in the app.
  *
- * Both halves of one mark. The crown is the mark on the full figure; the gold
- * edge is the half that survives the crop to a 36px bust, which is how most of
- * this app actually sees a man. An explicit `prize` still wins — the sheet
- * hands second and third their circlets through it.
+ * It used to put the crown on his head as well, whether or not he wore it —
+ * Ryan, 2026-10-07: "why's the crown on my head when I took it off? Just add
+ * a gold glow around me." The crown is his to wear (lib/prizes says he earned
+ * it), so it's in his locker like anything else; the glow is what the app
+ * adds, because that one isn't a choice.
  */
 function useCrowned(athlete: Who, prize?: string) {
   const champion = useContext(Champion);
   const is = champion != null && champion === athlete.id;
-  return { prize: prize ?? (is ? "prize.crown" : undefined), gilded: is };
+  return { prize, gilded: is };
 }
 
 /** True when this viewer should be shown figures instead of initials. */

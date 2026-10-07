@@ -20,7 +20,7 @@ export function PixelAvatar({
   loadout: Loadout;
   view?: "front" | "back";
   bust?: boolean;
-  /** The reigning champion: the same figure with a gold edge. */
+  /** The reigning champion: the same figure with a gold edge and a gold glow. */
   gilded?: boolean;
   /**
    * Draw it as an image rather than as live SVG.
@@ -38,6 +38,13 @@ export function PixelAvatar({
     [loadout, view, bust, gilded],
   );
 
+  // The champion's glow. Ryan, 2026-10-07: "just add a gold glow around me."
+  // Two drop-shadows: a tight one that hugs the outline and a wide soft one,
+  // so it reads as light round him rather than a second outline.
+  const glow = gilded
+    ? { filter: "drop-shadow(0 0 1.5px rgba(240,198,75,0.95)) drop-shadow(0 0 7px rgba(226,181,61,0.6))" }
+    : undefined;
+
   if (flat) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- a data: URI built here, not a file
@@ -45,6 +52,7 @@ export function PixelAvatar({
         src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
         alt=""
         className={`pixel-avatar block ${className ?? ""}`}
+        style={glow}
       />
     );
   }
@@ -52,6 +60,7 @@ export function PixelAvatar({
   return (
     <span
       className={`pixel-avatar block ${className ?? ""}`}
+      style={glow}
       // The sprite is built here, not fetched: no user input reaches it.
       dangerouslySetInnerHTML={{ __html: svg }}
     />

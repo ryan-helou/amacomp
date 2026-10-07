@@ -49,7 +49,6 @@ export function ProfileProvider({
   state,
   refDay,
   championId = null,
-  podium,
   send,
   children,
 }: {
@@ -57,7 +56,6 @@ export function ProfileProvider({
   refDay: DayKey;
   championId?: string | null;
   /** Last finished season's top three, in order. The sheet draws the prize. */
-  podium?: string[];
   /** Passed through so an admin can strike a bad session off someone's card. */
   send?: (url: string, init?: RequestInit) => Promise<string | null>;
   children: ReactNode;
@@ -78,7 +76,6 @@ export function ProfileProvider({
             athleteId={selected}
             refDay={refDay}
             reigning={championId}
-            podium={podium}
             send={send}
             onClose={() => setSelected(null)}
           />

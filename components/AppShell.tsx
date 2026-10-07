@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, logToday, parseDayKey, today, weekStart, type DayKey } from "@/lib/dates";
 import { fmtPoints, goalFor, standingsFor, standingsForRange } from "@/lib/scoring";
-import { reigningChampionId, reigningPodium, seasonByNumber, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
+import { reigningChampionId, seasonByNumber, seasonChampions, seasonFor, seasonOpensOn } from "@/lib/season";
 import type { AppState } from "@/lib/types";
 import { announcementIsDue, rateAnnouncementFor, type RateAnnouncement } from "@/lib/announce";
 import { useLeague } from "./useLeague";
@@ -281,22 +281,6 @@ export function AppShell({
     ),
     [state.athletes, state.activities, state.settings, refDay, state.me],
   );
-  // Second and third of the last finished season wear a circlet. Computed
-  // here beside the champion so both come off the same reference day.
-  const podium = useMemo(() => {
-    const real = reigningPodium(state.athletes, state.activities, state.settings, refDay);
-    if (real.length || !championId) return real;
-    // Test mode: the champion is standing on a podium of one, so second and
-    // third come off the live season's table — otherwise the circlets have
-    // nobody to sit on and half the thing can't be looked at.
-    // Read the live table here rather than leaning on the one the header
-    // uses: that one is a fresh array every render, which the compiler
-    // refuses to accept as a dependency.
-    const live = standingsFor(state.athletes, state.activities, state.settings, "all", refDay)
-      .filter((r) => r.athlete.id !== championId)
-      .slice(0, 2);
-    return [championId, ...live.map((r) => r.athlete.id)];
-  }, [state.athletes, state.activities, state.settings, refDay, championId]);
   /**
    * The season's own moments — the champion card that closes a season, and the
    * two that count it down. Siblings of the kickoff: same ink ground, same
@@ -433,7 +417,7 @@ export function AppShell({
   }
 
   return (
-    <ProfileProvider state={state} refDay={refDay} championId={championId} podium={podium} send={send}>
+    <ProfileProvider state={state} refDay={refDay} championId={championId} send={send}>
     <LoadoutsProvider loadouts={state.loadouts} showFigures={newShape} champion={championId}>
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
