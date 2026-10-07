@@ -348,6 +348,22 @@ def build(P):
         c.rect(39.3, SH+2, 40.7, SH+12, "A", only="K")
 
     item("trisuit", 2, trisuit)
+    # The full-length one. Ryan, 2026-10-07: "an all black tri suit that is
+    # full long sleeve and pants, all black." Sleeves to the wrist and legs to
+    # the ankle, like the wetsuit — but no cuffs and no collar, which are what
+    # make the wetsuit a wetsuit. What keeps it a TRI suit is the same panel
+    # down each flank and the short zip, drawn in the accent.
+    def trisuit_long(c):
+        END = LY0 + (LY1-LY0)*0.97
+        torso(c, HIP+4, (AY1-AY0)*0.96, False, None)
+        c.poly([(AX-AHW-0.6, AY0), (40-TT+1, SH-2), (40-TT+1, SH+8), (AX-AHW-0.6, AY0+9)], "K")
+        c.poly([(80-AX+AHW+0.6, AY0), (40+TT-1, SH-2), (40+TT-1, SH+8), (80-AX+AHW+0.6, AY0+9)], "K")
+        c.capsule(L, LY0, END, LHW+0.5, "K"); c.capsule(R, LY0, END, LHW+0.5, "K")
+        c.rect(40-TW_-0.9, SH+4, 40-TW_+1.9, HIP+4, "A", only="K")
+        c.rect(40+TW_-1.9, SH+4, 40+TW_+0.9, HIP+4, "A", only="K")
+        c.rect(39.3, SH+2, 40.7, SH+12, "A", only="K")
+
+    item("trisuit_long", 2, trisuit_long)
     # legs
     def shorts(c):
         """ONE pair of shorts, Ryan's call: the bibs, the jammers and the
