@@ -156,7 +156,7 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "feet.runshoes.orange", slot: "feet", label: "Orange running shoes", price: 600, tier: "rare", colour: ORANGE, accent: WHITE, sprite: "runshoes" },
   // Ryan, 2026-10-07: "a black pair of shoes". Laces and sole in a charcoal,
   // so the pair reads black and is still a pair of shoes, not a black block.
-  { id: "feet.runshoes.black", slot: "feet", label: "Black running shoes", price: 600, tier: "rare", colour: BLACK, accent: "#3A3F49", sprite: "runshoes" },
+  { id: "feet.runshoes.black", slot: "feet", label: "Black running shoes", price: 400, tier: "rare", colour: BLACK, accent: "#3A3F49", sprite: "runshoes" },
   { id: "feet.bikeshoes.black", slot: "feet", label: "Black cycling shoes", price: 500, tier: "rare", colour: BLACK, accent: GOLD, sprite: "bikeshoes" },
   { id: "feet.carbon.gold", slot: "feet", label: "Gold carbon plate", price: 1500, tier: "legendary", colour: GOLD, accent: BLACK, sprite: "carbon" },
   { id: "feet.carbon.mint", slot: "feet", label: "Mint carbon plate", price: 1500, tier: "legendary", colour: MINT, accent: BLACK, sprite: "carbon" },
