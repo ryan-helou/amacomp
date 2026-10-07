@@ -132,10 +132,12 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "torso.trisuit.cyan", slot: "torso", label: "Cyan tri suit", price: 900, tier: "epic", colour: CYAN, accent: WHITE, sprite: "trisuit" },
   // Full-length, all black: the panels and zip are a charcoal you have to look
   // for, so it reads black from across the Board. Ryan, 2026-10-07.
-  { id: "torso.trisuit.long", slot: "torso", label: "Black long tri suit", price: 600, tier: "epic", colour: BLACK, accent: "#2A2E36", sprite: "trisuit_long" },
+  { id: "torso.trisuit.long", slot: "torso", label: "Black long tri suit", price: 800, tier: "epic", colour: BLACK, accent: "#2A2E36", sprite: "trisuit_long" },
   { id: "torso.singlet.magenta", slot: "torso", label: "Magenta singlet", price: 300, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "singlet" },
   { id: "torso.singlet.white", slot: "torso", label: "White singlet", price: 300, tier: "common", colour: WHITE, accent: BLACK, sprite: "singlet" },
-  { id: "torso.longsleeve.black", slot: "torso", label: "Black long sleeve", price: 450, tier: "common", colour: BLACK, accent: MINT, sprite: "longsleeve" },
+  // Orange-red cuffs, the same as the black aero helmet's visor — Ryan, 2026-10-07.
+  // On this sprite the accent is the cuffs and nothing else.
+  { id: "torso.longsleeve.black", slot: "torso", label: "Black long sleeve", price: 450, tier: "common", colour: BLACK, accent: "#FF4A1C", sprite: "longsleeve" },
   { id: "torso.jacket.orange", slot: "torso", label: "Orange rain jacket", price: 700, tier: "rare", colour: ORANGE, accent: BLACK, sprite: "jacket" },
   { id: "torso.wetsuit.black", slot: "torso", label: "Black wetsuit", price: 1100, tier: "epic", colour: BLACK, accent: CYAN, sprite: "wetsuit" },
 
@@ -152,9 +154,16 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "feet.barefoot", slot: "feet", label: "Barefoot", price: 0, tier: "common", colour: SKIN_C, accent: WHITE, sprite: "barefoot" },
   { id: "feet.runshoes.white", slot: "feet", label: "White running shoes", price: 600, tier: "rare", colour: WHITE, accent: MAGENTA, sprite: "runshoes" },
   { id: "feet.runshoes.orange", slot: "feet", label: "Orange running shoes", price: 600, tier: "rare", colour: ORANGE, accent: WHITE, sprite: "runshoes" },
+  // Ryan, 2026-10-07: "a black pair of shoes". Laces and sole in a charcoal,
+  // so the pair reads black and is still a pair of shoes, not a black block.
+  { id: "feet.runshoes.black", slot: "feet", label: "Black running shoes", price: 600, tier: "rare", colour: BLACK, accent: "#3A3F49", sprite: "runshoes" },
   { id: "feet.bikeshoes.black", slot: "feet", label: "Black cycling shoes", price: 500, tier: "rare", colour: BLACK, accent: GOLD, sprite: "bikeshoes" },
   { id: "feet.carbon.gold", slot: "feet", label: "Gold carbon plate", price: 1500, tier: "legendary", colour: GOLD, accent: BLACK, sprite: "carbon" },
   { id: "feet.carbon.mint", slot: "feet", label: "Mint carbon plate", price: 1500, tier: "legendary", colour: MINT, accent: BLACK, sprite: "carbon" },
+  // "Some cool black race shoes." The carbon racer in black, with the sole and
+  // tongue in the orange-red of the black aero helmet's visor, so the two go
+  // together.
+  { id: "feet.carbon.black", slot: "feet", label: "Black carbon racers", price: 1500, tier: "legendary", colour: BLACK, accent: "#FF4A1C", sprite: "carbon" },
   { id: "feet.trail.lime", slot: "feet", label: "Lime trail shoes", price: 650, tier: "rare", colour: LIME, accent: BLACK, sprite: "trail" },
   { id: "feet.slides.cyan", slot: "feet", label: "Cyan recovery slides", price: 120, tier: "common", colour: CYAN, accent: WHITE, sprite: "slides" },
 
