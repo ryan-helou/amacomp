@@ -34,7 +34,6 @@ export function AthleteSheet({
   athleteId,
   refDay,
   reigning,
-  podium,
   send,
   onClose,
 }: {
@@ -42,7 +41,6 @@ export function AthleteSheet({
   athleteId: string;
   refDay: DayKey;
   reigning?: string | null;
-  podium?: string[];
   send?: (url: string, init?: RequestInit) => Promise<string | null>;
   onClose: () => void;
 }) {
@@ -51,11 +49,9 @@ export function AthleteSheet({
   const figures = useFigures();
   const athlete = state.athletes.find((a) => a.id === athleteId);
   const isChampion = !!athlete && reigning === athlete.id;
-  // The podium, as a prize. Only the champion is gilded elsewhere in the app;
-  // second and third get the circlet on the figure and nothing more.
-  const place = athlete ? (podium ?? []).indexOf(athlete.id) : -1;
-  const podiumPrize =
-    isChampion ? "prize.crown" : place === 1 ? "prize.silver" : place === 2 ? "prize.bronze" : undefined;
+  // The figure shows what he's wearing. The crown and the circlets are his to
+  // put on (lib/prizes); the sheet used to force them on, which is how the
+  // champion ended up crowned after taking it off. Ryan, 2026-10-07.
 
   const data = useMemo(() => {
     if (!athlete) return null;
@@ -203,13 +199,11 @@ export function AthleteSheet({
 
             Everywhere else in the app crops at the shoulders, so this is the
             only place the shoes and the bottom half of a tri suit
-            can be seen at all. A champion is drawn in the crown whether or
-            not he saved it: the prize belongs to the season, not the shop. */}
+            can be seen at all. */}
         {figures && (
         <div className="mt-5 overflow-hidden rounded-2xl border border-line bg-tile">
           <TurnAround
             athlete={athlete}
-            prize={podiumPrize}
             className="w-24"
           />
         </div>
