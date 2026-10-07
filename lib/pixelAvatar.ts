@@ -132,7 +132,7 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "torso.trisuit.cyan", slot: "torso", label: "Cyan tri suit", price: 900, tier: "epic", colour: CYAN, accent: WHITE, sprite: "trisuit" },
   // Full-length, all black: the panels and zip are a charcoal you have to look
   // for, so it reads black from across the Board. Ryan, 2026-10-07.
-  { id: "torso.trisuit.long", slot: "torso", label: "Black long tri suit", price: 1000, tier: "epic", colour: BLACK, accent: "#2A2E36", sprite: "trisuit_long" },
+  { id: "torso.trisuit.long", slot: "torso", label: "Black long tri suit", price: 600, tier: "epic", colour: BLACK, accent: "#2A2E36", sprite: "trisuit_long" },
   { id: "torso.singlet.magenta", slot: "torso", label: "Magenta singlet", price: 300, tier: "common", colour: MAGENTA, accent: WHITE, sprite: "singlet" },
   { id: "torso.singlet.white", slot: "torso", label: "White singlet", price: 300, tier: "common", colour: WHITE, accent: BLACK, sprite: "singlet" },
   { id: "torso.longsleeve.black", slot: "torso", label: "Black long sleeve", price: 450, tier: "common", colour: BLACK, accent: MINT, sprite: "longsleeve" },
