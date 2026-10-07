@@ -101,7 +101,9 @@ export const AVATAR_ITEMS: AvatarItem[] = [
   { id: "head.helmet.black", slot: "head", label: "Black helmet", price: 400, tier: "rare", colour: BLACK, accent: WHITE, sprite: "helmet" },
   { id: "head.swimcap.cyan", slot: "head", label: "Cyan swim cap", price: 150, tier: "common", colour: CYAN, accent: WHITE, sprite: "swimcap" },
   { id: "head.runcap.white", slot: "head", label: "White run cap", price: 200, tier: "common", colour: WHITE, accent: BLACK, sprite: "runcap" },
-  { id: "head.aero.black", slot: "head", label: "Black aero helmet", price: 900, tier: "epic", colour: BLACK, accent: GOLD, sprite: "aero", spriteBack: "aero_back", coversEyes: true },
+  // Orange-red visor, not gold — Ryan, 2026-10-07. The accent is the visor and
+  // nothing else on this sprite, so this is the only thing it changes.
+  { id: "head.aero.black", slot: "head", label: "Black aero helmet", price: 900, tier: "epic", colour: BLACK, accent: "#FF4A1C", sprite: "aero", spriteBack: "aero_back", coversEyes: true },
   { id: "head.aero.gold", slot: "head", label: "Gold aero helmet", price: 1200, tier: "legendary", colour: GOLD, accent: BLACK, sprite: "aero", spriteBack: "aero_back", coversEyes: true },
   { id: "head.beanie.black", slot: "head", label: "Black beanie", price: 150, tier: "common", colour: BLACK, accent: WHITE, sprite: "beanie" },
   { id: "head.visor.white", slot: "head", label: "White visor", price: 250, tier: "common", colour: WHITE, accent: BLACK, sprite: "visor" },
