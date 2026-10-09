@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  activityPoints, elevationPointsFor, fmtKm, fmtPoints, pointsFor, unscoredGymIds,
+  activityPoints, elevationPointsFor, fmtKm, fmtPoints, pointsFor, ratesOn, unscoredGymIds,
 } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { RESET_HOUR, formatDay, formatDayRelative, weekStart, type DayKey } from "@/lib/dates";
@@ -46,10 +46,17 @@ export function LogTab({
     () => state.activities.filter((a) => a.athleteId === state.me?.id && !isGrant(a)),
     [state.activities, state.me?.id],
   );
-  // Only worth asking when the two rates actually differ; if they are equal the
-  // distinction changes nothing and the buttons are noise.
-  const waterMatters =
-    (state.settings.openWaterPerKm ?? 0) !== (state.settings.multipliers.swim ?? 0);
+  // Only worth asking when the two rates actually differ on THAT swim's day; if
+  // they are equal the distinction changes nothing and the buttons are noise.
+  //
+  // It used to compare against the base swim rate, which is stale: the base
+  // says 20 and open water is 20, but swim has been 15 since 31 August
+  // (a dated rate change), so open water is worth 5 more per km and the
+  // buttons were hidden anyway. Ryan, 2026-10-09: "how do I modify a pool swim
+  // to open water". Same rule the scoring uses — ratesOn the session's day.
+  const waterMatters = (day: string) =>
+    (state.settings.openWaterPerKm ?? 0) !==
+      (ratesOn(day as DayKey, state.settings).multipliers.swim ?? 0);
 
   const unscored = useMemo(() => unscoredGymIds(state.activities), [state.activities]);
 
@@ -250,7 +257,7 @@ export function LogTab({
                           Past the {MAX_SCORING_GYM_PER_DAY}-a-day gym cap — logged, not scored.
                         </p>
                       )}
-                      {a.sport === "swim" && waterMatters && (
+                      {a.sport === "swim" && waterMatters(a.occurredOn) && (
                         <div className="mt-1.5 flex items-center gap-1.5">
                           {([false, true] as const).map((v) => {
                             const on = a.openWater === v;
