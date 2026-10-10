@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { SPORT_UNIT, UNIT_ABBR } from "@/lib/types";
+import { SPORT_UNIT, UNIT_ABBR, elevationRateLabel } from "@/lib/types";
 import { SPORT_UI } from "@/lib/ui";
 import { formatDay } from "@/lib/dates";
 import type { RateAnnouncement } from "@/lib/announce";
@@ -29,8 +29,21 @@ const T_OUTRO = 0.35; // added after the last row
 
 const TITLE_SIZE = "clamp(1.9rem, 9.5vw, 2.9rem)";
 
+/**
+ * What an all-time change rescored, in the word the lads use for it: "ride"
+ * when only cycling moved, and so on. Ryan, 2026-10-10 — "every session" was
+ * true but vague when the only thing rescored was the bike.
+ */
+function retroNoun(announcement: RateAnnouncement): string {
+  const sports = new Set(announcement.moves.map((m) => m.sport));
+  if (sports.size !== 1) return "session";
+  const only = [...sports][0];
+  return only === "bike" ? "ride" : only === "run" ? "run" : only === "swim" ? "swim" : "workout";
+}
+
 function rateText(value: number, sport: keyof typeof SPORT_UNIT, climb: boolean): string {
-  return climb ? `${value}/100m` : `${value}/${UNIT_ABBR[SPORT_UNIT[sport]]}`;
+  // Climbing reads the way it was set — "1/33m", not "3.0303/100m".
+  return climb ? elevationRateLabel(value) || "0" : `${value}/${UNIT_ABBR[SPORT_UNIT[sport]]}`;
 }
 
 export function PointsChange({
@@ -140,7 +153,9 @@ export function PointsChange({
             className="relative mt-2 font-mono text-xs tracking-[0.2em] text-white/45"
             style={{ animation: `sk-rise 600ms ease-out ${T_DATE}s both` }}
           >
-            FROM {formatDay(announcement.from).toUpperCase()}
+            {announcement.retroactive
+              ? `FOR EVERY ${retroNoun(announcement).toUpperCase()}, BACK TO THE START`
+              : `FROM ${formatDay(announcement.from).toUpperCase()}`}
           </p>
         </div>
 
@@ -194,12 +209,26 @@ export function PointsChange({
           style={{ animation: `sk-rise 640ms ease-out ${outro}s both` }}
         >
           <p className="text-center text-[0.9375rem] leading-relaxed text-white/60">
-            Everything you&apos;ve already logged keeps the points it earned. Only
-            sessions from{" "}
-            <span className="font-semibold text-white/85">
-              {formatDay(announcement.from)}
-            </span>{" "}
-            onward score at the new rates.
+            {announcement.retroactive ? (
+              // Ryan, 2026-10-10: "fix cycling to 33 ... and all past data". The
+              // usual line below would be untrue about this one, so say what
+              // actually happened.
+              <>
+                This one counts backwards.{" "}
+                <span className="font-semibold text-white/85">Every {retroNoun(announcement)}{" "}
+                you&apos;ve ever logged</span>{" "}
+                has been rescored at the new rate, all the way back to the start.
+              </>
+            ) : (
+              <>
+                Everything you&apos;ve already logged keeps the points it earned. Only
+                sessions from{" "}
+                <span className="font-semibold text-white/85">
+                  {formatDay(announcement.from)}
+                </span>{" "}
+                onward score at the new rates.
+              </>
+            )}
           </p>
           <button
             onClick={onDismiss}

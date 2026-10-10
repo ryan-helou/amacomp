@@ -232,7 +232,9 @@ export function AppShell({
 
     if (!forced) {
       if (!announcementIsDue(announcement, refDay, new Date().getHours())) return;
-      const key = `amacomp-rates-${state.me.id}-${announcement.from}`;
+      // An all-time change gets its own key, so one made on the same day as a
+      // dated change is still shown.
+      const key = `amacomp-rates-${state.me.id}-${announcement.from}${announcement.retroactive ? "-retro" : ""}`;
       try {
         if (localStorage.getItem(key)) return;
         localStorage.setItem(key, "1");

@@ -34,9 +34,16 @@ export function rateLabel(multiplier: number, unit: Unit): string {
 }
 
 /** Compact climb-rate label — "1/100m". Empty string when the sport earns none,
- *  so call sites can drop it from a list without a conditional of their own. */
+ *  so call sites can drop it from a list without a conditional of their own.
+ *
+ *  A rate set as "a point every N metres" is stored per 100 m, which makes 33 m
+ *  a point 3.0303… — Ryan, 2026-10-10. Said the way it was set: "1/33m". */
 export function elevationRateLabel(rate: number): string {
-  return rate > 0 ? `${rate}/100m` : "";
+  if (!(rate > 0)) return "";
+  if (Number.isInteger(rate)) return `${rate}/100m`;
+  const perPoint = 100 / rate;
+  if (Math.abs(perPoint - Math.round(perPoint)) < 1e-6) return `1/${Math.round(perPoint)}m`;
+  return `${Math.round(rate * 100) / 100}/100m`;
 }
 
 export interface Athlete {
@@ -217,6 +224,26 @@ export interface RateChange {
   elevationPer100m?: Partial<Record<Sport, number>>;
 }
 
+/**
+ * A rate changed for ALL time — past sessions rescored, not just future ones.
+ *
+ * Most rate changes are dated (`RateChange`) and leave the past alone. A few
+ * are retroactive by Ryan's instruction: the open water and run-ascent rates
+ * from the start, and the bike climbing rate on 2026-10-10 ("fix cycling to 33
+ * and ... all past data"). Those are written straight into the base rates, so
+ * nothing in the data says they ever moved — this record is what lets the app
+ * still announce one, with the right words.
+ */
+export interface RetroChange {
+  /** The day it was made. Also what keeps the announcement shown only once. */
+  on: string;
+  sport: Sport;
+  /** The climbing rate (per 100 m), rather than the distance rate. */
+  climb: boolean;
+  before: number;
+  after: number;
+}
+
 export interface Settings {
   /**
    * The BASE rates — points per km for distance sports, per workout for gym.
@@ -269,6 +296,8 @@ export interface Settings {
    * 0 turns it off.
    */
   runAscentMetresPerKm: number;
+  /** Rate changes made for all time, kept so they can be announced. See RetroChange. */
+  retroChanges?: RetroChange[];
   /** Points every athlete is expected to hit each week, unless `goalChanges`
    *  lowers or raises it for them. */
   weeklyGoal: number;

@@ -36,6 +36,13 @@ export interface RateAnnouncement {
    *  is shown once and only once per athlete per device. */
   from: DayKey;
   moves: RateMove[];
+  /**
+   * True when the change applies to every session ever logged, not just the
+   * ones from `from` on (Settings.retroChanges). The card's usual reassurance —
+   * "everything you've already logged keeps the points it earned" — would be a
+   * lie about one of these, so it says the opposite.
+   */
+  retroactive?: boolean;
 }
 
 /**
@@ -50,6 +57,28 @@ export function rateAnnouncementFor(
   day: DayKey,
   settings: Settings,
 ): RateAnnouncement | null {
+  const dated = datedAnnouncementFor(day, settings);
+  const retro = retroAnnouncementFor(day, settings);
+  if (!dated) return retro;
+  if (!retro) return dated;
+  // Both in their window: the more recent one is the news. On a tie the
+  // all-time change wins, because it's the one that rewrote the past.
+  return retro.from >= dated.from ? retro : dated;
+}
+
+/** The latest all-time change still in its window, as an announcement. */
+function retroAnnouncementFor(day: DayKey, settings: Settings): RateAnnouncement | null {
+  const started = (settings.retroChanges ?? []).filter((c) => c.on <= day);
+  if (!started.length) return null;
+  const on = started.map((c) => c.on).sort().pop()!;
+  if (day > addDays(on as DayKey, ANNOUNCE_WINDOW_DAYS)) return null;
+  const moves = started
+    .filter((c) => c.on === on && c.before !== c.after)
+    .map((c) => ({ sport: c.sport, before: c.before, after: c.after, climb: c.climb }));
+  return moves.length ? { from: on as DayKey, moves, retroactive: true } : null;
+}
+
+function datedAnnouncementFor(day: DayKey, settings: Settings): RateAnnouncement | null {
   const started = (settings.rateChanges ?? []).filter((c) => c.from <= day);
   const latest = started[started.length - 1];
   if (!latest) return null;

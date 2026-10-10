@@ -125,6 +125,9 @@ export async function PUT(req: Request) {
     goalChanges: current.goalChanges,
     openWaterPerKm,
     runAscentMetresPerKm,
+    // This sheet doesn't edit them; carried through so a save here can't erase
+    // the record of an all-time change before it has been announced.
+    retroChanges: current.retroChanges,
     weeklyGoal: Math.round(weeklyGoal * 10) / 10,
     seasonStart: body.seasonStart,
     forfeit,

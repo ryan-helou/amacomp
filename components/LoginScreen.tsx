@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SPORT_ORDER, ratesOn } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
-import { SPORT_UNIT, UNIT_LABEL, type Settings } from "@/lib/types";
+import { SPORT_UNIT, UNIT_LABEL, elevationRateLabel, type Settings } from "@/lib/types";
 import { formatDay, type DayKey } from "@/lib/dates";
 import { SportMark } from "./SportMark";
 
@@ -58,7 +58,7 @@ export function LoginScreen({
               {rates.multipliers[sport]} pt{rates.multipliers[sport] === 1 ? "" : "s"} / {UNIT_LABEL[SPORT_UNIT[sport]]}
               {(rates.elevationPer100m?.[sport] ?? 0) > 0 && (
                 <span className="text-ink-3">
-                  {" "}+ {rates.elevationPer100m[sport]} / 100m up
+                  {" "}+ {elevationRateLabel(rates.elevationPer100m[sport])} up
                 </span>
               )}
             </span>
