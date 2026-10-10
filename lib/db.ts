@@ -1,6 +1,7 @@
 import type { Pool as PgPool } from "pg";
 import type { Bet, BetState } from "./bets";
 import type { Bounty, BountyState } from "./bounties";
+import { migrateSettings } from "./migrations";
 import { parseRule } from "./bountyRules";
 import type { Transfer } from "./transfers";
 import {
@@ -18,6 +19,7 @@ import {
   type Sport,
   type StepDay,
   type StepsLink,
+  type RetroChange,
 } from "./types";
 import { leagueHourNow, logDayAt, toDayKey } from "./dates";
 
@@ -303,6 +305,14 @@ function mergeSettings(raw: unknown): Settings {
     openWaterPerKm: num(value.openWaterPerKm, DEFAULT_SETTINGS.openWaterPerKm),
     runAscentMetresPerKm: num(
       value.runAscentMetresPerKm, DEFAULT_SETTINGS.runAscentMetresPerKm),
+    // Kept, or the record of an all-time change vanishes on the next read and
+    // the change can no longer be announced. Anything malformed is dropped.
+    retroChanges: (Array.isArray(value.retroChanges) ? value.retroChanges : []).filter(
+      (c): c is RetroChange =>
+        !!c && isDay((c as RetroChange).on) && SPORTS.includes((c as RetroChange).sport)
+        && typeof (c as RetroChange).climb === "boolean"
+        && Number.isFinite((c as RetroChange).before) && Number.isFinite((c as RetroChange).after),
+    ),
     weeklyGoal: num(value.weeklyGoal, DEFAULT_SETTINGS.weeklyGoal),
     seasonStart: isDay(value.seasonStart) ? value.seasonStart : DEFAULT_SETTINGS.seasonStart,
     forfeit:
@@ -724,6 +734,17 @@ class PgStore implements Store {
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             PRIMARY KEY (athlete_id, day)
           )`);
+        // One-off changes to the settings row (lib/migrations). Each checks
+        // whether it has already happened, so this is a no-op after the first
+        // start that applies it.
+        const row = await this.pool.query("SELECT data FROM settings WHERE id = 1");
+        const migrated = migrateSettings(mergeSettings(row.rows[0]?.data));
+        if (migrated) {
+          await this.pool.query(
+            "UPDATE settings SET data = $1::jsonb, updated_at = now() WHERE id = 1",
+            [JSON.stringify(migrated)],
+          );
+        }
       })();
     }
     return this.ready;
@@ -1483,7 +1504,7 @@ class PgStore implements Store {
 class MemoryStore implements Store {
   private athletes: Athlete[] = [];
   private activities: Activity[] = [];
-  private settings: Settings = { ...DEFAULT_SETTINGS };
+  private settings: Settings = migrateSettings(mergeSettings(DEFAULT_SETTINGS)) ?? mergeSettings(DEFAULT_SETTINGS);
 
   async init() {}
 
