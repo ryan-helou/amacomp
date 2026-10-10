@@ -21,15 +21,20 @@
 
 2. **The database settings override `DEFAULT_SETTINGS` in `lib/types.ts`, which is
    stale.** Read the `settings` row before quoting any rate. Live base as of
-   2026-08-30: swim 20 · bike 1 · run 5 · gym 5, climb 1/100m on the bike,
-   quota 100.
+   2026-08-30: swim 20 · bike 1 · run 5 · gym 5, quota 100. Bike climbing is
+   **1 point per 33 m** (stored as 100/33 per 100 m) since 2026-10-10, for all
+   time; run ascent counts 100 m as 1 km run.
 
 3. **Scoring rates are DATED.** Points are still derived at read time, but from
    the rates in force on the session's own day — `Settings.rateChanges` +
    `ratesOn(day, settings)`, resolved from each activity's `occurredOn`. A rate
    change moves the weeks ahead of it and leaves the weeks behind it exactly as
    scored, so it can't retroactively hand out or take away a forfeit. Live
-   change: **run 4/km and swim 15/km from Mon 2026-08-31**. Each change is a
+   change: **run 4/km and swim 15/km from Mon 2026-08-31**. The exceptions are
+   retroactive by Ryan's instruction and live in the BASE rates, not in
+   `rateChanges`: the open water rate, run ascent, and bike climbing (1 per 33 m,
+   set 2026-10-10 by the one-off in `lib/migrations.ts`). A retroactive change is
+   recorded in `settings.retroChanges` so the app can announce it. Each change is a
    PARTIAL override — never write all four rates into one entry, or you reset
    bike and gym to the stale code defaults. `pointsFor` requires a day argument
    on purpose.
