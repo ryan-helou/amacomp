@@ -22,6 +22,19 @@ export const dynamic = "force-dynamic";
  *   ?job=results  — Monday: last week's champion + forfeit list
  *   ?job=deadline — Sunday: who still hasn't hit quota
  */
+/**
+ * League-wide announcements, newest last. `job=announce` sends the newest one,
+ * once. Add a new entry to announce something new.
+ */
+const ANNOUNCEMENTS: { id: string; title: string; body: string }[] = [
+  {
+    // Ryan, 2026-10-10: "Push" — to go with the in-app card for the change.
+    id: "bike-climb-33",
+    title: "Bike climbing: 1 point per 33 m",
+    body: "Up from 1 per 100 m — and it counts backwards. Every ride you've ever logged has been rescored, so check your points.",
+  },
+];
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const key = url.searchParams.get("key");
@@ -48,6 +61,22 @@ export async function GET(req: Request) {
   const state = await readState();
   const now = leagueToday();
   const activities = state.activities;
+
+  // One-off messages to the whole league. The text lives here, in git — it is
+  // never taken from the request — and each id sends once, behind a marker,
+  // so a second call (or a retry) can't send it twice.
+  if (job === "announce") {
+    const a = ANNOUNCEMENTS[ANNOUNCEMENTS.length - 1];
+    const marker = `announce-${a.id}`;
+    if (await store.getMeta(marker)) {
+      return NextResponse.json({ ok: true, skipped: "already sent", id: a.id });
+    }
+    await store.setMeta(marker, "1");
+    for (const athlete of state.athletes) {
+      await sendToAthlete(athlete.id, { title: a.title, body: a.body, url: "/", tag: `announce-${a.id}` });
+    }
+    return NextResponse.json({ ok: true, id: a.id, athletes: state.athletes.length });
+  }
 
   if (job === "results") {
     const recap = lastWeekRecap(state.athletes, activities, state.settings, now);
