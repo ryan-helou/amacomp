@@ -121,14 +121,51 @@ export function AppShell({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRefDay(today());
     setLogDay(logToday());
+    // Ryan, 2026-10-12: "amacomp is stale on my phone", then "the pfps are not
+    // loading and the island is floating". All three are the same thing: iOS
+    // keeps a home-screen app frozen for hours and RESUMES it rather than
+    // loading it. The refetch below fired the instant the app woke, while the
+    // radio was still waking too, so it failed silently and the old board
+    // stayed; the photos failed in the same moment and a failed <img> is never
+    // retried; and iOS can hand the page back with the old viewport height, so
+    // the fixed tab bar sits where the bottom used to be.
+    //
+    // So: back after a real absence -> reload, which fixes all three and picks
+    // up a new deploy too. Back after a short switch -> refetch, retrying while
+    // the connection comes back. Never reload over an open sheet: a half-typed
+    // session is worth more than a fresh board.
+    const AWAY_MS = 5 * 60_000;
+    let hiddenAt = 0;
+    async function refetch() {
+      for (const wait of [0, 1500, 4000]) {
+        if (wait) await new Promise((r) => setTimeout(r, wait));
+        if (!(await send("/api/session"))) return; // null error = it worked
+      }
+    }
     function onVisible() {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible") {
+        hiddenAt = Date.now();
+        return;
+      }
+      const away = hiddenAt ? Date.now() - hiddenAt : 0;
+      if (away > AWAY_MS && !document.querySelector('[role="dialog"]')) {
+        window.location.reload();
+        return;
+      }
       setRefDay(today());
       setLogDay(logToday());
-      send("/api/session");
+      void refetch();
+    }
+    // Restored from the back/forward cache: a frozen page by another route.
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted) window.location.reload();
     }
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, [send]);
 
   // Pull-to-refresh + resume both do the same thing: re-read the calendar day
