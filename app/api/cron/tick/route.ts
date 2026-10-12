@@ -33,6 +33,12 @@ const ANNOUNCEMENTS: { id: string; title: string; body: string }[] = [
     title: "Bike climbing: 1 point per 33 m",
     body: "Up from 1 per 100 m — and it counts backwards. Every ride you've ever logged has been rescored, so check your points.",
   },
+  {
+    // Ryan, 2026-10-12: "push it" — the forfeit changed in the settings row.
+    id: "forfeit-iron",
+    title: "New forfeit",
+    body: "Miss quota and you owe a 42 km run, a 3.8 km swim or a 180 km ride. Your pick.",
+  },
 ];
 
 export async function GET(req: Request) {
