@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { athleteColor } from "@/lib/avatar";
 import { initials } from "@/lib/ui";
 import type { Athlete } from "@/lib/types";
@@ -20,6 +23,36 @@ export function Avatar({
 }) {
   const color = athlete.avatarColor ?? athleteColor(athlete);
   const url = athlete.avatarUrl ?? null;
+  // A photo that failed (say, requested the moment a frozen app woke and the
+  // connection wasn't back) shows initials rather than a broken-image "?", and
+  // tries again the next time the app comes to the front. The browser never
+  // retries a failed <img> by itself, so without this it stays broken.
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!failed) return;
+    function retry() {
+      if (document.visibilityState !== "visible") return;
+      setFailed(false);
+      setAttempt((n) => n + 1);
+    }
+    document.addEventListener("visibilitychange", retry);
+    const t = setTimeout(retry, 5000);
+    return () => {
+      document.removeEventListener("visibilitychange", retry);
+      clearTimeout(t);
+    };
+  }, [failed]);
+  const src = url && attempt > 0 ? `${url}${url.includes("?") ? "&" : "?"}retry=${attempt}` : url;
+  // The photo is in the server-rendered HTML, so the browser can try it — and
+  // fail — before React is listening; that error never reaches onError. Check
+  // for an image that already finished broken the moment we take over.
+  const img = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const el = img.current;
+     
+    if (el && el.complete && el.naturalWidth === 0) setFailed(true);
+  }, [src]);
   return (
     <div
       aria-hidden
@@ -28,9 +61,9 @@ export function Avatar({
         me ? "ring-2 ring-ink ring-offset-2 ring-offset-deck" : ""
       } ${className}`}
     >
-      {url ? (
+      {src && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element -- tiny same-origin/CDN avatar, next/image is overkill
-        <img src={url} alt="" className="h-full w-full object-cover" />
+        <img ref={img} src={src} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
       ) : (
         initials(athlete.name)
       )}
