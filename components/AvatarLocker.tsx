@@ -45,8 +45,8 @@ const SHELF: Record<Slot, string> = {
  */
 const TIER: Record<AvatarItem["tier"], { ring: string; tag: string | null; glow?: string }> = {
   common: { ring: "border-line", tag: null },
-  rare: { ring: "border-[#3d7fd6]/60", tag: "rare", glow: "#3d7fd6" },
-  epic: { ring: "border-[#9a5cf0]/60", tag: "epic", glow: "#9a5cf0" },
+  rare: { ring: "border-rare/60", tag: "rare", glow: "var(--color-rare)" },
+  epic: { ring: "border-epic/60", tag: "epic", glow: "var(--color-epic)" },
   legendary: { ring: "border-gold/70", tag: "legendary", glow: "var(--color-gold)" },
 };
 
@@ -361,7 +361,7 @@ export function AvatarLocker({
                     : "border-line bg-deck-2/40 text-ink-2"
                 }`}
               >
-                {SHELF[slot]} <span className={open ? "text-gold/70" : "text-ink-3"}>{n}</span>
+                {SHELF[slot]} <span className={open ? "text-gold/80" : "text-ink-2"}>{n}</span>
               </button>
             );
           })}
@@ -588,7 +588,7 @@ const ShopBox = memo(function ShopBox({
         {/* The tier gets its own line: "legendary" beside a price doesn't fit a
             third of a phone, and a truncated tier is worse than none. */}
         {tier.tag && (
-          <span className="eyebrow text-[0.4375rem]" style={{ color: tier.glow }}>
+          <span className="eyebrow text-[0.5rem]" style={{ color: tier.glow }}>
             {tier.tag}
           </span>
         )}
@@ -597,14 +597,14 @@ const ShopBox = memo(function ShopBox({
           {item.earned && !free ? (
             // Not a button: there is no transaction to open. It says what the
             // thing costs, and what it costs is a result.
-            <span className="flex w-full items-center justify-center gap-1 rounded border border-gold/40 bg-gold/5 px-1 py-0.5 text-[0.5625rem] text-gold/80">
+            <span className="flex w-full items-center justify-center gap-1 rounded border border-gold/40 bg-deck/60 px-1 py-0.5 text-[0.5625rem] text-gold">
               {item.earned}
             </span>
           ) : free ? (
             // Owned. "yours" was a label that did nothing; this is the second
             // tap, spelled out, so nobody has to know the tile is tappable.
             saved ? (
-              <span className="flex w-full items-center justify-center gap-1 rounded border border-gold/50 bg-gold/10 px-1 py-0.5 text-[0.5625rem] text-gold">
+              <span className="flex w-full items-center justify-center gap-1 rounded border border-gold/50 bg-deck/60 px-1 py-0.5 text-[0.5625rem] text-gold">
                 worn
               </span>
             ) : (
@@ -620,7 +620,7 @@ const ShopBox = memo(function ShopBox({
                   }
                 }}
                 className={`flex w-full items-center justify-center gap-1 rounded border px-1 py-0.5 text-[0.5625rem] ${
-                  worn ? "border-gold/50 bg-gold/10 text-gold" : "border-line bg-deck-2/60 text-ink-2"
+                  worn ? "border-gold/50 bg-deck/60 text-gold" : "border-line bg-deck-2/60 text-ink-2"
                 }`}
               >
                 {busy ? "…" : "equip"}
@@ -644,7 +644,7 @@ const ShopBox = memo(function ShopBox({
                 }
               }}
               className={`flex w-full items-center justify-center gap-1 rounded border px-1 py-0.5 ${
-                affordable ? "border-gold/50 bg-gold/10 text-gold" : "border-line text-ink-3"
+                affordable ? "border-gold/50 bg-deck/60 text-gold" : "border-line text-ink-3"
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- one cached file, many boxes */}
