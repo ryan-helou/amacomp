@@ -79,7 +79,7 @@
   --tile: rgb(255 255 255 / 0.8);
   --ink: #101112;
   --ink-2: #45484b;
-  --ink-3: #74787c;
+  --ink-3: #5f6367;
   --line: rgb(16 17 18 / 0.13);
   --line-2: rgb(16 17 18 / 0.26);
   --accent: #101112;
@@ -88,12 +88,15 @@
   --accent-soft: rgb(16 17 18 / 0.1);
   --accent-2: #6b6f73;
   --on-accent: #f4f4f5;
-  --gold: #8a6a3a;
+  --gold: #735528;
+  --on-gold: #ffffff;
+  --rare: #2563c0;
+  --epic: #7a3fd6;
   --good: #0a8f66;
   --lamp: rgb(255 255 255 / 0.95);
   --floor: rgb(16 17 18 / 0.16);
   --raised: rgb(255 255 255 / 0.95);
-  --island: rgb(255 255 255 / 0.97);
+  --island: rgb(255 255 255);
 }
 
 :root[data-palette="dark"] {
@@ -102,7 +105,7 @@
   --tile: rgb(241 242 243 / 0.07);
   --ink: #f1f2f3;
   --ink-2: #b8babd;
-  --ink-3: #8a8d90;
+  --ink-3: #a5a8ab;
   --line: rgb(241 242 243 / 0.12);
   --line-2: rgb(241 242 243 / 0.22);
   --accent: #f1f2f3;
@@ -111,12 +114,15 @@
   --accent-soft: rgb(241 242 243 / 0.14);
   --accent-2: #a0a3a6;
   --on-accent: #101112;
-  --gold: #c9a45e;
+  --gold: #dcb66c;
+  --on-gold: #101112;
+  --rare: #6fa8f2;
+  --epic: #b993ff;
   --good: #16d39a;
   --lamp: rgb(241 242 243 / 0.1);
   --floor: rgb(0 0 0 / 0.55);
   --raised: rgb(30 31 33 / 0.96);
-  --island: rgb(34 35 37 / 0.97);
+  --island: rgb(34 35 37);
 
   /* The same four hues, brightened for a black ground. */
   --color-swim: #16d39a;
@@ -168,6 +174,9 @@
   --color-on-ink: var(--on-ink);
   --color-scrim: var(--scrim);
   --color-gold: var(--gold);
+  --color-on-gold: var(--on-gold);
+  --color-rare: var(--rare);
+  --color-epic: var(--epic);
   --color-good: var(--good);
 }
 
