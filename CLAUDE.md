@@ -30,7 +30,8 @@
    `ratesOn(day, settings)`, resolved from each activity's `occurredOn`. A rate
    change moves the weeks ahead of it and leaves the weeks behind it exactly as
    scored, so it can't retroactively hand out or take away a forfeit. Live
-   change: **run 4/km and swim 15/km from Mon 2026-08-31**. The exceptions are
+   changes: **run 4/km and swim 15/km from Mon 2026-08-31**, **swim 20/km from
+   2026-11-01**, **run 5/km from Mon 2026-11-02** (Ryan: "dont change the past"). The exceptions are
    retroactive by Ryan's instruction and live in the BASE rates, not in
    `rateChanges`: the open water rate, run ascent, and bike climbing (1 per 33 m,
    set 2026-10-10 by the one-off in `lib/migrations.ts`). A retroactive change is
