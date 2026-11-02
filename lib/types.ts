@@ -165,6 +165,11 @@ export interface Activity {
    */
   points: number | null;
   /**
+   * Set when the athlete hadn't ticked "I read the Bible today" for this
+   * session's day (lib/bible). Derived on read, never stored. Scores zero.
+   */
+  bibleMissing?: boolean;
+  /**
    * Metres of ascent, when we know it. Strava reports it per activity; a
    * hand-logged session only has it if the athlete typed it in. `null` means
    * unknown (and so scores no climb points) — deliberately distinct from `0`,
@@ -441,6 +446,8 @@ export interface AppState {
   bounties: Bounty[];
   /** Coins moved between athletes, everyone's. */
   transfers: Transfer[];
+  /** Every "I read the Bible today" tick, everyone's (lib/bible). */
+  bibleDays: { athleteId: string; day: string }[];
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {

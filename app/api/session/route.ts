@@ -33,8 +33,18 @@ export async function PATCH(req: Request) {
     avatarGlyph?: unknown;
     weightKg?: unknown;
     name?: unknown;
+    bibleRead?: unknown;
   };
   const store = getStore();
+
+  // "I read the Bible today" (lib/bible). Only ever for TODAY's league day —
+  // the box is a promise about today, so there is no ticking last Tuesday.
+  if (Object.prototype.hasOwnProperty.call(body, "bibleRead")) {
+    if (typeof body.bibleRead !== "boolean") {
+      return NextResponse.json({ error: "Tick it or untick it." }, { status: 400 });
+    }
+    await store.setBibleDay(me.id, leagueLogToday(), body.bibleRead);
+  }
 
   // Avatar fields come through this endpoint so the settings sheet doesn't need
   // a second route. Each field is optional; whichever was sent gets applied, and

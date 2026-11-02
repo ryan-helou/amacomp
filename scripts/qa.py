@@ -125,6 +125,11 @@ def seed(browser):
                 problems.append(f"seed: {n} {r.status} {r.text()[:80]}")
                 break
             made += 1
+    # The Bible box (lib/bible): without a tick for today, nothing logged today
+    # scores and every "did the number move" check below reads as broken.
+    for n in NAMES:
+        ctx[n].request.patch(U + "/api/session", data=json.dumps({"bibleRead": True}),
+                             headers={"content-type": "application/json"})
     print(f"seeded {len(NAMES)} athletes, {made} sessions")
     for c in ctx.values():
         c.close()

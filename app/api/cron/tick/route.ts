@@ -39,6 +39,12 @@ const ANNOUNCEMENTS: { id: string; title: string; body: string }[] = [
     title: "New forfeit",
     body: "Miss quota and you owe a 42 km run, a 3.8 km swim or a 180 km ride. Your pick.",
   },
+  {
+    // Ryan, 2026-11-02 — the Bible rule (lib/bible) and run going to 5/km.
+    id: "bible-and-run-5",
+    title: "Two new rules",
+    body: "From Tue 3 Nov, a day's sessions only score if you tick \"I read the Bible today\" on the Week tab. And runs are now 5 pts/km.",
+  },
 ];
 
 export async function GET(req: Request) {

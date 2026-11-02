@@ -25,6 +25,7 @@ import {
   streakFor,
 } from "@/lib/achievements";
 import { PaceClock } from "./PaceClock";
+import { BibleCheck } from "./BibleCheck";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
@@ -154,6 +155,8 @@ export function WeekTab({
             <Chevron dir="right" />
           </button>
         </div>
+
+        {isCurrentWeek && <BibleCheck league={league} logDay={logDay} />}
 
         {inWeekGrace && isCurrentWeek && (
           <p className="mt-3 w-full rounded-xl pane border border-line bg-tile px-4 py-2.5 text-center text-[0.8125rem] text-ink-2">
