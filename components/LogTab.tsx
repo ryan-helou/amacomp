@@ -291,12 +291,16 @@ export function LogTab({
                     <div className="text-right">
                       <div
                         className={`stamp text-xl ${
-                          unscored.has(a.id) ? "text-ink-3 line-through" : ui.text
+                          unscored.has(a.id) || a.bibleMissing ? "text-ink-3 line-through" : ui.text
                         }`}
                       >
-                        {fmtPoints(activityPoints(a, state.settings, unscored))}
+                        {fmtPoints(
+                          a.bibleMissing
+                            ? activityPoints({ ...a, bibleMissing: false }, state.settings, unscored)
+                            : activityPoints(a, state.settings, unscored),
+                        )}
                       </div>
-                      <div className="eyebrow text-ink-3">pts</div>
+                      <div className="eyebrow text-ink-3">{a.bibleMissing ? "no Bible tick" : "pts"}</div>
                     </div>
                   </div>
 

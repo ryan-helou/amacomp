@@ -51,6 +51,7 @@ function byDay(
   for (const a of activities) {
     if (a.athleteId !== athleteId) continue;
     if (a.occurredOn < from) continue;
+    if (a.bibleMissing) continue;
     const day = a.occurredOn as DayKey;
     const list = out.get(day);
     if (list) list.push(a);

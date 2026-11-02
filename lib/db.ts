@@ -4,6 +4,7 @@ import type { Bounty, BountyState } from "./bounties";
 import { migrateSettings } from "./migrations";
 import { parseRule } from "./bountyRules";
 import type { Transfer } from "./transfers";
+import { markBible, type BibleDay } from "./bible";
 import {
   DEFAULT_SETTINGS,
   SPORTS,
@@ -194,6 +195,10 @@ export interface Store {
   settleBet(id: string, winner: string): Promise<Bet | null>;
   /** They don't agree: the call comes off and it is live again. */
   clearBetCall(id: string): Promise<Bet | null>;
+  /** Every day anyone ticked "I read the Bible today", as athleteId + day. */
+  listBibleDays(): Promise<BibleDay[]>;
+  /** Tick or untick one athlete's day. */
+  setBibleDay(athleteId: string, day: string, read: boolean): Promise<void>;
   listTransfers(): Promise<Transfer[]>;
   addTransfer(fromId: string, toId: string, amount: number, note: string): Promise<Transfer>;
   listBounties(): Promise<Bounty[]>;
@@ -734,6 +739,15 @@ class PgStore implements Store {
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             PRIMARY KEY (athlete_id, day)
           )`);
+        // "I read the Bible today" — one row per athlete per day ticked. Added
+        // 2026-11-02; a session on a day with no row scores nothing (lib/bible).
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS bible_days (
+            athlete_id TEXT NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            day DATE NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            PRIMARY KEY (athlete_id, day)
+          )`);
         // One-off changes to the settings row (lib/migrations). Each checks
         // whether it has already happened, so this is a no-op after the first
         // start that applies it.
@@ -853,7 +867,7 @@ class PgStore implements Store {
     const r = await this.pool.query(
       `SELECT ${ACTIVITY_COLS} FROM activities ORDER BY occurred_on DESC, created_at DESC`,
     );
-    return (r.rows as ActivityRow[]).map(toActivity);
+    return markBible((r.rows as ActivityRow[]).map(toActivity), await this.listBibleDays());
   }
 
   async getActivity(id: string): Promise<Activity | null> {
@@ -1404,6 +1418,26 @@ class PgStore implements Store {
     return r.rows[0] ? this.betRow(r.rows[0]) : null;
   }
 
+  async listBibleDays(): Promise<BibleDay[]> {
+    await this.init();
+    const r = await this.pool.query(
+      `SELECT athlete_id, to_char(day, 'YYYY-MM-DD') AS day FROM bible_days`,
+    );
+    return r.rows.map((x) => ({ athleteId: x.athlete_id as string, day: x.day as string }));
+  }
+
+  async setBibleDay(athleteId: string, day: string, read: boolean): Promise<void> {
+    await this.init();
+    if (read) {
+      await this.pool.query(
+        `INSERT INTO bible_days (athlete_id, day) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [athleteId, day],
+      );
+    } else {
+      await this.pool.query(`DELETE FROM bible_days WHERE athlete_id = $1 AND day = $2`, [athleteId, day]);
+    }
+  }
+
   async listTransfers(): Promise<Transfer[]> {
     await this.init();
     const r = await this.pool.query(
@@ -1580,11 +1614,11 @@ class MemoryStore implements Store {
   }
 
   async listActivities() {
-    return [...this.activities].sort(
+    return markBible([...this.activities].sort(
       (a, b) =>
         b.occurredOn.localeCompare(a.occurredOn) ||
         b.createdAt.localeCompare(a.createdAt),
-    );
+    ), this.bibleDays);
   }
 
   async getActivity(id: string) {
@@ -1899,6 +1933,17 @@ class MemoryStore implements Store {
     b.calledBy = null;
     b.calledWinner = null;
     return { ...b };
+  }
+
+  private bibleDays: BibleDay[] = [];
+
+  async listBibleDays(): Promise<BibleDay[]> {
+    return [...this.bibleDays];
+  }
+
+  async setBibleDay(athleteId: string, day: string, read: boolean): Promise<void> {
+    this.bibleDays = this.bibleDays.filter((b) => !(b.athleteId === athleteId && b.day === day));
+    if (read) this.bibleDays.push({ athleteId, day });
   }
 
   private transfers: Transfer[] = [];

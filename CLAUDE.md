@@ -50,7 +50,13 @@
 6. **Push to `main` and deploy, every change** (Ryan, 2026-08-30: "ALWAYS DEPLOY
    MAIN ALL CHANGES"). No PRs here. The push alone deploys nothing — see rule 1.
 
-7. **The day rolls over at 3 AM, league-wide** (`RESET_HOUR` in `lib/dates.ts`).
+7. **The Bible rule (lib/bible), from 2026-11-03.** A session scores only if
+   its athlete ticked "I read the Bible today" for that day (`bible_days`).
+   Applied in the STORE's `listActivities` (stamps `bibleMissing`), so every
+   scoring path agrees; `activityPoints` returns 0 for it. Grants are exempt.
+   Ticks are today-only. The QA seed ticks everyone for today.
+
+8. **The day rolls over at 3 AM, league-wide** (`RESET_HOUR` in `lib/dates.ts`).
    The board turns over at midnight (`viewDayAt`) but a session logged before
    3 AM still counts for the day, and week, that is ending (`logDayAt`). The old
    per-athlete `resetHour` is gone; `athletes.reset_hour` is a vestigial column.

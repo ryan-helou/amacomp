@@ -164,6 +164,8 @@ export function activityPoints(
   // An admin grant carries its points directly — no sport, no distance.
   if (isGrant(a)) return a.points ?? 0;
   if (unscored?.has(a.id)) return 0;
+  // No Bible tick for the day, no points (lib/bible).
+  if (a.bibleMissing) return 0;
   // The day the session happened picks the rates — not today's.
   return (
     pointsFor(a.km, a.sport, settings, a.occurredOn, a.openWater) +
