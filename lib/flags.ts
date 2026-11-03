@@ -191,12 +191,6 @@ export function flagSvg(id: string): string {
   );
 }
 
-/** How light a colour is, 0 (black) to 1 (white). */
-function lum(hex: string): number {
-  const n = parseInt(hex.slice(1), 16);
-  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-}
-
 /**
  * The lane: the country's flag behind a whole row.
  *
@@ -210,6 +204,9 @@ function lum(hex: string): number {
  * flag, light text on a dark one, chosen from whichever band actually lands
  * under the writing.
  */
+/** How strongly a flown flag is painted behind a lane (0–1). */
+export const LANE_STRENGTH = 0.3;
+
 export function flagLane(id: string): {
   backgroundImage: string;
   backgroundSize: string;
@@ -259,7 +256,6 @@ export function flagLane(id: string): {
   // the row's width. It used to read the FIRST band on a vertical flag,
   // which was right only while the middle faded away to the deck: with the
   // fade gone that put white text on Canada's white stripe.
-  const light = lum(flag.bands[Math.floor(flag.bands.length / 2)]) > 0.5;
 
   const fid = `${flag.id}-fade`;
   // A mask rather than a stack of gradients: the bands are one drawing and
@@ -267,7 +263,15 @@ export function flagLane(id: string): {
   // like a flag with one.
   // Ryan, 2026-09-30: no middle shading. The wash is FLAT — the flag is the
   // same strength across the whole row, with no dip under the name.
-  const stops = [[0, 0.95], [1, 0.95]];
+  // Ryan, 2026-11-03: Philippe's and Jona's names were "hard to read" — on a
+  // 1:2:1 flag the name and points sit on the TOP band and the sport line on
+  // the bottom, so ink picked for the middle band landed dark-on-dark on
+  // Israel's blue and Palestine's black. A dark plate behind the text fixed
+  // it and was "too overstimulating". So the flag itself is held back: at
+  // this strength every band, white included, stays close enough to the deck
+  // that the palette's own ink reads on all of them, in both palettes. Still
+  // flat across the row — no dip under the name.
+  const stops = [[0, LANE_STRENGTH], [1, LANE_STRENGTH]];
   const fade =
     `<defs><linearGradient id="${fid}" x1="0" y1="0" x2="1" y2="0">` +
     stops.map(([o, a2]) => `<stop offset="${o}" stop-color="#fff" stop-opacity="${a2}"/>`).join("") +
@@ -284,7 +288,7 @@ export function flagLane(id: string): {
   const sx = flag.laneStretchX ?? 1;
   const motifUrl = url(
     `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} width="${30 * sx}" height="20" ` +
-      `viewBox="0 0 ${30 * sx} 20"><g opacity="0.6" transform="scale(${sx},1)">` +
+      `viewBox="0 0 ${30 * sx} 20"><g opacity="${LANE_STRENGTH + 0.12}" transform="scale(${sx},1)">` +
       `${flag.laneMotif ?? FLAG_MOTIF[flag.id] ?? ""}</g></svg>`,
   );
 
@@ -303,6 +307,5 @@ export function flagLane(id: string): {
     backgroundSize: sizes.slice().reverse().join(", "),
     backgroundRepeat: layers.map(() => "no-repeat").join(", "),
     backgroundPosition: spots.slice().reverse().join(", "),
-    ...(light ? { "--ink": "#0b1f2d", "--ink-2": "#3f5f74", "--ink-3": "#4e6d80" } : {}),
   };
 }
