@@ -222,12 +222,12 @@ function lum(hex: string): number {
  * is quiet enough for light ink. He wanted that on the Board ONLY — the Week
  * rows keep the full flag.
  */
-export const LANE_STRENGTH = 0.3;
+export const LANE_STRENGTH = 0.42;
 const FULL_STRENGTH = 0.95;
 
 /** Light ink for a soft lane, which always sits on a dark ground (see `soft`). */
 const SOFT_INK = {
-  "--ink": "#f1f2f3", "--ink-2": "#c9cbce", "--ink-3": "#b3b6b9",
+  "--ink": "#ffffff", "--ink-2": "#eceef0", "--ink-3": "#dfe1e3",
   // And the dark palette's gold and sport hues — the light palette's deeper
   // ones are made for a white ground and sink on this one.
   "--gold": "#dcb66c", "--good": "#16d39a",
@@ -243,6 +243,7 @@ export function flagLane(id: string, opts: { soft?: boolean } = {}): {
   "--ink-2"?: string;
   "--ink-3"?: string;
   backgroundColor?: string;
+  textShadow?: string;
 } | null {
   const flag = FLAG_BY_ID.get(id);
   if (!flag) return null;
@@ -345,7 +346,11 @@ export function flagLane(id: string, opts: { soft?: boolean } = {}): {
     // over white, a flag goes pastel and its black band turns grey (Ryan,
     // 2026-11-03: "looks weird ... in light mode"). Over dark it stays deep,
     // and light ink reads on every band.
-    ...(soft ? { backgroundColor: "#141517", ...SOFT_INK } : {}),
+    // A tight drop shadow under the text — not a glow — keeps it off the
+    // brighter bands now the flag is at half strength.
+    ...(soft
+      ? { backgroundColor: "#141517", textShadow: "0 1px 2px rgb(0 0 0 / 0.7)", ...SOFT_INK }
+      : {}),
     ...(light ? { "--ink": "#0b1f2d", "--ink-2": "#3f5f74", "--ink-3": "#4e6d80" } : {}),
   };
 }
