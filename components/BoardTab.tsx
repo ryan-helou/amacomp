@@ -355,8 +355,7 @@ function Lane({
   // one is news — he is abroad this week — and the bought one is decoration,
   // so they must never be painted over each other.
   const figures = useFigures();
-  // The Board's lanes fly the flag softly (lib/flags LANE_STRENGTH).
-  const lane = useLane(row.athlete, { soft: true });
+  const lane = useLane(row.athlete);
   const flying = awayFlag ? undefined : lane;
 
   return (

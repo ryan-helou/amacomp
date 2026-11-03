@@ -210,31 +210,7 @@ function lum(hex: string): number {
  * flag, light text on a dark one, chosen from whichever band actually lands
  * under the writing.
  */
-/**
- * How strongly a flown flag is painted behind a BOARD lane (0–1). Everywhere
- * else the flag runs at FULL_STRENGTH.
- *
- * Ryan, 2026-11-03: Philippe's and Jona's Board lanes were "hard to read" — on
- * a 1:2:1 flag the name and points sit on the TOP band and the sport line on
- * the bottom, so ink chosen for the middle band went dark-on-dark on Israel's
- * blue and Palestine's black. A dark plate behind the text was "too
- * overstimulating"; held back to this strength over a dark ground, every band
- * is quiet enough for light ink. He wanted that on the Board ONLY — the Week
- * rows keep the full flag.
- */
-export const LANE_STRENGTH = 0.42;
-const FULL_STRENGTH = 0.95;
-
-/** Light ink for a soft lane, which always sits on a dark ground (see `soft`). */
-const SOFT_INK = {
-  "--ink": "#ffffff", "--ink-2": "#eceef0", "--ink-3": "#dfe1e3",
-  // And the dark palette's gold and sport hues — the light palette's deeper
-  // ones are made for a white ground and sink on this one.
-  "--gold": "#dcb66c", "--good": "#16d39a",
-  "--color-swim": "#16d39a", "--color-bike": "#9ad21f", "--color-run": "#ff3aa5", "--color-gym": "#00c6c8",
-} as const;
-
-export function flagLane(id: string, opts: { soft?: boolean } = {}): {
+export function flagLane(id: string): {
   backgroundImage: string;
   backgroundSize: string;
   backgroundRepeat: string;
@@ -242,8 +218,6 @@ export function flagLane(id: string, opts: { soft?: boolean } = {}): {
   "--ink"?: string;
   "--ink-2"?: string;
   "--ink-3"?: string;
-  backgroundColor?: string;
-  textShadow?: string;
 } | null {
   const flag = FLAG_BY_ID.get(id);
   if (!flag) return null;
@@ -285,6 +259,7 @@ export function flagLane(id: string, opts: { soft?: boolean } = {}): {
   // the row's width. It used to read the FIRST band on a vertical flag,
   // which was right only while the middle faded away to the deck: with the
   // fade gone that put white text on Canada's white stripe.
+  const light = lum(flag.bands[Math.floor(flag.bands.length / 2)]) > 0.5;
 
   const fid = `${flag.id}-fade`;
   // A mask rather than a stack of gradients: the bands are one drawing and
@@ -292,21 +267,7 @@ export function flagLane(id: string, opts: { soft?: boolean } = {}): {
   // like a flag with one.
   // Ryan, 2026-09-30: no middle shading. The wash is FLAT — the flag is the
   // same strength across the whole row, with no dip under the name.
-  // Ryan, 2026-11-03: Philippe's and Jona's names were "hard to read" — on a
-  // 1:2:1 flag the name and points sit on the TOP band and the sport line on
-  // the bottom, so ink picked for the middle band landed dark-on-dark on
-  // Israel's blue and Palestine's black. A dark plate behind the text fixed
-  // it and was "too overstimulating". So the flag itself is held back: at
-  // this strength every band, white included, stays close enough to the deck
-  // that the palette's own ink reads on all of them, in both palettes. Still
-  // flat across the row — no dip under the name.
-  const soft = opts.soft === true;
-  const strength = soft ? LANE_STRENGTH : FULL_STRENGTH;
-  // The ink follows the band the NAME sits on, and with a flat wash that is
-  // the middle band. (Only for the full-strength flag — a soft lane is dark
-  // all over and always takes light ink.)
-  const light = !soft && lum(flag.bands[Math.floor(flag.bands.length / 2)]) > 0.5;
-  const stops = [[0, strength], [1, strength]];
+  const stops = [[0, 0.95], [1, 0.95]];
   const fade =
     `<defs><linearGradient id="${fid}" x1="0" y1="0" x2="1" y2="0">` +
     stops.map(([o, a2]) => `<stop offset="${o}" stop-color="#fff" stop-opacity="${a2}"/>`).join("") +
@@ -323,7 +284,7 @@ export function flagLane(id: string, opts: { soft?: boolean } = {}): {
   const sx = flag.laneStretchX ?? 1;
   const motifUrl = url(
     `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} width="${30 * sx}" height="20" ` +
-      `viewBox="0 0 ${30 * sx} 20"><g opacity="${soft ? LANE_STRENGTH + 0.12 : 0.6}" transform="scale(${sx},1)">` +
+      `viewBox="0 0 ${30 * sx} 20"><g opacity="0.6" transform="scale(${sx},1)">` +
       `${flag.laneMotif ?? FLAG_MOTIF[flag.id] ?? ""}</g></svg>`,
   );
 
@@ -342,15 +303,6 @@ export function flagLane(id: string, opts: { soft?: boolean } = {}): {
     backgroundSize: sizes.slice().reverse().join(", "),
     backgroundRepeat: layers.map(() => "no-repeat").join(", "),
     backgroundPosition: spots.slice().reverse().join(", "),
-    // A soft lane is painted over the DARK deck in both palettes: held back
-    // over white, a flag goes pastel and its black band turns grey (Ryan,
-    // 2026-11-03: "looks weird ... in light mode"). Over dark it stays deep,
-    // and light ink reads on every band.
-    // A tight drop shadow under the text — not a glow — keeps it off the
-    // brighter bands now the flag is at half strength.
-    ...(soft
-      ? { backgroundColor: "#141517", textShadow: "0 1px 2px rgb(0 0 0 / 0.7)", ...SOFT_INK }
-      : {}),
     ...(light ? { "--ink": "#0b1f2d", "--ink-2": "#3f5f74", "--ink-3": "#4e6d80" } : {}),
   };
 }
