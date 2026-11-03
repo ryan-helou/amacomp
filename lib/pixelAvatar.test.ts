@@ -419,7 +419,7 @@ console.log("\none country, one purchase, one drawing");
   // with light ink on every flag in either palette — dark ink chosen for the
   // middle band is what landed on Israel's blue and Palestine's black.
   check("a soft lane always takes the light ink",
-    COUNTRY_FLAGS.filter((f) => flagLane(f.id, { soft: true })?.["--ink"] !== "#f1f2f3").map((f) => f.id), []);
+    COUNTRY_FLAGS.filter((f) => flagLane(f.id, { soft: true })?.["--ink"] !== "#ffffff").map((f) => f.id), []);
   check("over a dark ground", flagLane("il", { soft: true })?.backgroundColor, "#141517");
   check("painted well under full strength",
     decodeURIComponent(flagLane("il", { soft: true })!.backgroundImage).includes(`stop-opacity="${LANE_STRENGTH}"`), true);
