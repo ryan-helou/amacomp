@@ -763,3 +763,25 @@ input[type="number"] {
 .pixel-avatar svg { display: block; width: 100%; height: auto; image-rendering: pixelated; }
 .pixel-avatar .avatar-breath { animation: avatar-breath 3s steps(1) infinite; will-change: transform; }
 @media (prefers-reduced-motion: reduce) { .pixel-avatar .avatar-breath { animation: none; } }
+
+/* A flown flag runs at full strength behind a Board lane, and on a 1:2:1 flag
+   the name and points sit on the top band and the sport line on the bottom —
+   Israel's blue and Palestine's black put the text on a dark stripe (Ryan,
+   2026-11-03: "hard to read"). No one ink colour survives every band, so the
+   text gets a plate: a dark, slightly translucent panel that the flag frames,
+   with the dark palette's ink on it whatever the flag. The ink is set here,
+   on the plate, because the lane's inline style sets it for the whole row. */
+.flag-plate {
+  --ink: #f1f2f3;
+  --ink-2: #c9cbce;
+  --ink-3: #b3b6b9;
+  --gold: #dcb66c;
+  --good: #16d39a;
+  --color-swim: #16d39a;
+  --color-bike: #9ad21f;
+  --color-run: #ff4fae;
+  --color-gym: #00c6c8;
+  background-color: rgb(14 15 16 / 0.66);
+  border-radius: 0.625rem;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
+}
