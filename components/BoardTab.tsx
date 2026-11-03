@@ -398,7 +398,9 @@ function Lane({
         </>
       )}
       <div className="relative flex items-center gap-3">
-        <div className="flex w-8 shrink-0 flex-col items-center">
+        <div
+          className={`flex shrink-0 flex-col items-center ${flying ? "flag-plate -mx-1 w-10 py-1" : "w-8"}`}
+        >
           <span
             className={`stamp text-2xl ${
               row.rank === 1 && scored ? "text-gold" : "text-ink-3"
@@ -425,7 +427,7 @@ function Lane({
           <Avatar athlete={row.athlete} me={isMe} />
         )}
 
-        <div className="min-w-0 flex-1">
+        <div className={`min-w-0 flex-1 ${flying ? "flag-plate px-2 py-1" : ""}`}>
           <div className="flex items-baseline justify-between gap-2">
             <span
               className={`truncate text-[0.9375rem] font-semibold ${champion ? "text-gold" : "text-ink"}`}
