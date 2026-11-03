@@ -80,6 +80,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
         ? body.openWater
         : null;
   }
+  if (body.treadmill !== undefined) {
+    patch.treadmill =
+      effectiveSport === "run" && typeof body.treadmill === "boolean" ? body.treadmill : null;
+  }
 
   await getStore().updateActivity(id, patch);
   return NextResponse.json(await readState());

@@ -31,7 +31,10 @@
    change moves the weeks ahead of it and leaves the weeks behind it exactly as
    scored, so it can't retroactively hand out or take away a forfeit. Live
    changes: **run 4/km and swim 15/km from Mon 2026-08-31**, **swim 20/km from
-   2026-11-01**, **run 5/km from Mon 2026-11-02** (Ryan: "dont change the past"). The exceptions are
+   2026-11-01**, and from Mon 2026-11-02 **5/km for TREADMILL runs only** (`TREADMILL` in
+   lib/scoring; outdoor runs stay 4/km). A Strava run is a treadmill run if it is
+   a VirtualRun, flagged indoor, or recorded with no map (Ryan: "when theres no
+   map then its indoor"); each run can be flipped from the log. The exceptions are
    retroactive by Ryan's instruction and live in the BASE rates, not in
    `rateChanges`: the open water rate, run ascent, and bike climbing (1 per 33 m,
    set 2026-10-10 by the one-off in `lib/migrations.ts`). A retroactive change is

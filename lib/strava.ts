@@ -138,6 +138,12 @@ export interface StravaActivity {
   name?: string;
   type?: string; // legacy category, e.g. "Run"
   sport_type?: string; // newer + more granular, e.g. "TrailRun"
+  /** Strava's "indoor" flag — a treadmill run or a trainer ride. */
+  trainer?: boolean;
+  /** Typed into Strava by hand rather than recorded — it never has a map. */
+  manual?: boolean;
+  /** The route. An empty `summary_polyline` means no GPS was recorded. */
+  map?: { summary_polyline?: string | null } | null;
   start_date?: string; // UTC ISO
   start_date_local?: string; // athlete-local ISO
   utc_offset?: number; // seconds east of UTC
@@ -175,6 +181,26 @@ export function isOpenWater(a: StravaActivity, sport: Sport | null): boolean | n
   const hasFix =
     Array.isArray(ll) && ll.length === 2 && Number.isFinite(ll[0]) && Number.isFinite(ll[1]);
   return hasFix ? true : null;
+}
+
+/**
+ * Was this run on a treadmill? Strava says so outright for a VirtualRun or an
+ * activity marked indoor (`trainer`). Otherwise it is the MAP: a recorded run
+ * with no route on it was indoors (Ryan, 2026-11-03: "when theres no map then
+ * its indoor"). A run typed into Strava by hand has no map either, and says
+ * nothing about where it happened, so that one stays unknown — which scores as
+ * outside, the lower rate, the way an unknown swim scores as a pool. The
+ * athlete can flip any of these from the log.
+ */
+export function isTreadmill(a: StravaActivity, sport: Sport | null): boolean | null {
+  if (sport !== "run") return null;
+  if ((a.sport_type || a.type || "").toLowerCase() === "virtualrun" || a.trainer === true) return true;
+  if (a.manual === true) return null;
+  const ll = a.start_latlng;
+  const hasFix =
+    Array.isArray(ll) && ll.length === 2 && Number.isFinite(ll[0]) && Number.isFinite(ll[1]);
+  const hasRoute = !!a.map?.summary_polyline;
+  return hasFix || hasRoute ? false : true;
 }
 
 export async function fetchRecentActivities(
@@ -289,6 +315,7 @@ export function toImport(
     input: {
       athleteId, sport, km, occurredOn: day, note, elevationM, movingSeconds, localHour,
       openWater: isOpenWater(a, sport),
+      treadmill: isTreadmill(a, sport),
     },
     stravaId: a.id,
   };

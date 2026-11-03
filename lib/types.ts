@@ -160,6 +160,12 @@ export interface Activity {
    */
   openWater: boolean | null;
   /**
+   * On a treadmill rather than outside, for runs only. `null` is unknown and
+   * scores as outside. Strava runs are classified on the way in (an indoor
+   * run, or a VirtualRun). See TREADMILL in lib/scoring.
+   */
+  treadmill?: boolean | null;
+  /**
    * A flat points override. Non-null only for admin grants, where it is the
    * awarded amount; null for logged activities, which score from km × multiplier.
    */
