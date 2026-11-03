@@ -2,7 +2,7 @@ import {
   AVATAR_ITEMS, AVATAR_ITEM_BY_ID, DEFAULT_LOADOUT, STARTER_ITEMS,
   avatarSvg, itemImage, itemSvg, loadoutFor, lookFor, rackFor, type Loadout,
 } from "./pixelAvatar";
-import { LANE_STRENGTH, COUNTRY_FLAGS, FLAG_BY_ID, flagLane, flagSvg } from "./flags";
+import { COUNTRY_FLAGS, FLAG_BY_ID, flagLane, flagSvg } from "./flags";
 import sprites from "./avatar/sprites.json";
 
 /**
@@ -404,27 +404,20 @@ console.log("\none country, one purchase, one drawing");
   check("Italy has no emblem layer — it is only stripes",
     flagLane("it")!.backgroundImage.split('url("').length, 2);
 
-  // At full strength (the Week rows and everywhere but the Board) the ink is
-  // the ONLY thing keeping a row readable. It follows the band under the text:
-  // the middle one across, the first one down.
+  // With nothing softening the flag, the ink is the ONLY thing keeping a row
+  // readable, so it matters more than it did, not less. It follows the band
+  // under the text: the middle one across, the first one down.
   check("a white flag takes dark ink", !!flagLane("jp")?.["--ink"], true);
   check("a white middle stripe does too", !!flagLane("jo")?.["--ink"], true);
   check("and Lebanon's", !!flagLane("lb")?.["--ink"], true);
+  // The one the flat wash broke: Canada's name sits on the WHITE band, so it
+  // needs dark ink even though the flag's first band is red.
   check("and Canada's white centre", !!flagLane("ca")?.["--ink"], true);
   check("Italy's too", !!flagLane("it")?.["--ink"], true);
   check("a dark flag keeps the light ink", flagLane("br")?.["--ink"], undefined);
   check("and Quebec's blue", flagLane("qc")?.["--ink"], undefined);
-
-  // The Board flies it SOFT (Ryan, 2026-11-03): held back over a dark ground,
-  // with light ink on every flag in either palette — dark ink chosen for the
-  // middle band is what landed on Israel's blue and Palestine's black.
-  check("a soft lane always takes the light ink",
-    COUNTRY_FLAGS.filter((f) => flagLane(f.id, { soft: true })?.["--ink"] !== "#ffffff").map((f) => f.id), []);
-  check("over a dark ground", flagLane("il", { soft: true })?.backgroundColor, "#141517");
-  check("painted well under full strength",
-    decodeURIComponent(flagLane("il", { soft: true })!.backgroundImage).includes(`stop-opacity="${LANE_STRENGTH}"`), true);
-  check("while the Week's flag is full strength",
-    decodeURIComponent(flagLane("il")!.backgroundImage).includes('stop-opacity="0.95"'), true);
+  check("a red field leaves it alone", flagLane("vn")?.["--ink"], undefined);
+  check("and so does a dark middle stripe", flagLane("de")?.["--ink"], undefined);
 
   // No two countries may draw the same.
   const drawn = new Set(COUNTRY_FLAGS.map((f) => flagSvg(f.id)));
