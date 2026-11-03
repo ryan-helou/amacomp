@@ -96,9 +96,19 @@ export function pointsFor(
   settings: Settings,
   day: DayKey,
   openWater: boolean | null = null,
+  treadmill: boolean | null = null,
 ): number {
-  return km * rateFor(sport, settings, day, openWater);
+  return km * rateFor(sport, settings, day, openWater, treadmill);
 }
+
+/**
+ * Treadmill runs. Ryan, 2026-11-02: run went to 5 pts/km "from nov2 (dont
+ * change the past)", then the same night: "for the 5pts per km it only applies
+ * on days where youre on the treadmill". So a run marked as a treadmill run on
+ * or after `from` scores `perKm`; every other run keeps the ordinary dated run
+ * rate. Dated like the rest, so no treadmill run before it changes.
+ */
+export const TREADMILL = { from: "2026-11-02", perKm: 5 } as const;
 
 /**
  * The points-per-unit a session earns.
@@ -114,9 +124,13 @@ export function rateFor(
   settings: Settings,
   day: DayKey,
   openWater: boolean | null = null,
+  treadmill: boolean | null = null,
 ): number {
   if (sport === "swim" && openWater === true) {
     return settings.openWaterPerKm ?? 0;
+  }
+  if (sport === "run" && treadmill === true && day >= TREADMILL.from) {
+    return TREADMILL.perKm;
   }
   return ratesOn(day, settings).multipliers[sport] ?? 0;
 }
@@ -168,7 +182,7 @@ export function activityPoints(
   if (a.bibleMissing) return 0;
   // The day the session happened picks the rates — not today's.
   return (
-    pointsFor(a.km, a.sport, settings, a.occurredOn, a.openWater) +
+    pointsFor(a.km, a.sport, settings, a.occurredOn, a.openWater, a.treadmill ?? null) +
     elevationPointsFor(a.elevationM, a.sport, settings, a.occurredOn)
   );
 }

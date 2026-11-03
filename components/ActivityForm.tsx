@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SPORT_ORDER, elevationPointsFor, fmtPoints, pointsFor, ratesOn } from "@/lib/scoring";
+import { SPORT_ORDER, elevationPointsFor, fmtPoints, pointsFor, ratesOn, TREADMILL } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { today, type DayKey } from "@/lib/dates";
 import { BIG_SESSION_KM, MAX_ELEVATION_M, MAX_NOTE } from "@/lib/validate";
@@ -21,10 +21,12 @@ export interface ActivityDraft {
   elevation: string;
   /** Swims only: open water rather than a pool. */
   openWater: boolean;
+  /** Runs only: on a treadmill rather than outside. Optional so older drafts still type-check. */
+  treadmill?: boolean;
 }
 
 export function emptyDraft(ref: DayKey = today()): ActivityDraft {
-  return { sport: "run", km: "", occurredOn: ref, note: "", elevation: "", openWater: false };
+  return { sport: "run", km: "", occurredOn: ref, note: "", elevation: "", openWater: false, treadmill: false };
 }
 
 /** Trim float noise off a typed distance for the confirm copy. */
@@ -85,13 +87,17 @@ export function ActivityForm({
     ? elevationPointsFor(elevationM, draft.sport, settings, draft.occurredOn)
     : 0;
   const points = valid
-    ? pointsFor(km, draft.sport, settings, draft.occurredOn, draft.openWater) + climbPoints
+    ? pointsFor(km, draft.sport, settings, draft.occurredOn, draft.openWater, draft.treadmill ?? false) + climbPoints
     : 0;
   // The open water question only exists for swims, and only when it actually
   // changes the score — if both rates are equal there is nothing to ask about.
   const openWaterRate = settings.openWaterPerKm ?? 0;
   const poolRate = rates.multipliers.swim ?? 0;
   const asksOpenWater = draft.sport === "swim" && openWaterRate !== poolRate;
+  // Same for a run: only asked on a day the treadmill rate exists and differs.
+  const runRate = rates.multipliers.run ?? 0;
+  const asksTreadmill =
+    draft.sport === "run" && draft.occurredOn >= TREADMILL.from && TREADMILL.perKm !== runRate;
 
   // A distance well past what one session plausibly holds is far more often a
   // typo (100 typed as 1000) than a real ride. One extra tap to confirm — the
@@ -125,6 +131,7 @@ export function ActivityForm({
       ...draft, sport, km,
       elevation: keepClimb ? draft.elevation : "",
       openWater: sport === "swim" ? draft.openWater : false,
+      treadmill: sport === "run" ? draft.treadmill : false,
     });
   }
 
@@ -249,6 +256,34 @@ export function ActivityForm({
             {elevationRateLabel(climbRate)} on top of the distance. Strava fills
             this in on its own — leave it blank if you don&apos;t know.
           </p>
+        </div>
+      )}
+
+      {asksTreadmill && (
+        <div className="rounded-xl pane border border-line bg-tile px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="eyebrow block text-ink">Treadmill</span>
+              <p className="mt-0.5 text-[0.8125rem] text-ink-2">
+                On a treadmill — {TREADMILL.perKm}/km instead of {runRate}.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-1 rounded-lg border border-line bg-deck-2 p-1">
+              {([false, true] as const).map((v) => (
+                <button
+                  key={String(v)}
+                  type="button"
+                  aria-pressed={(draft.treadmill ?? false) === v}
+                  onClick={() => setDraft({ ...draft, treadmill: v })}
+                  className={`eyebrow rounded-md px-3 py-1.5 transition-colors ${
+                    (draft.treadmill ?? false) === v ? "bg-ink text-on-ink" : "text-ink-2"
+                  }`}
+                >
+                  {v ? "Treadmill" : "Outside"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

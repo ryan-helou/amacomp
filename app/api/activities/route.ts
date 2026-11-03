@@ -74,6 +74,9 @@ export async function POST(req: Request) {
     // column never claims a ride happened in a lake.
     openWater:
       body.sport === "swim" && typeof body.openWater === "boolean" ? body.openWater : null,
+    // Likewise only for a run.
+    treadmill:
+      body.sport === "run" && typeof body.treadmill === "boolean" ? body.treadmill : null,
   });
 
   const state = await readState();

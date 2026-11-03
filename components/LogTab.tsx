@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  activityPoints, elevationPointsFor, fmtKm, fmtPoints, pointsFor, ratesOn, unscoredGymIds,
+  activityPoints, elevationPointsFor, fmtKm, fmtPoints, pointsFor, ratesOn, unscoredGymIds, TREADMILL,
 } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { RESET_HOUR, formatDay, formatDayRelative, weekStart, type DayKey } from "@/lib/dates";
@@ -71,6 +71,7 @@ export function LogTab({
         note: draft.note,
         elevationM: draft.elevation.trim() === "" ? null : Number(draft.elevation),
         openWater: draft.sport === "swim" ? draft.openWater : null,
+        treadmill: draft.sport === "run" ? (draft.treadmill ?? false) : null,
       }),
     });
     if (err) {
@@ -78,7 +79,9 @@ export function LogTab({
       return;
     }
     const points = fmtPoints(
-      pointsFor(Number(draft.km), draft.sport, state.settings, draft.occurredOn) +
+      pointsFor(Number(draft.km), draft.sport, state.settings, draft.occurredOn,
+        draft.sport === "swim" ? draft.openWater : null,
+        draft.sport === "run" ? (draft.treadmill ?? false) : null) +
         elevationPointsFor(
           draft.elevation.trim() === "" ? null : Number(draft.elevation),
           draft.sport,
@@ -107,6 +110,15 @@ export function LogTab({
     });
   }
 
+  /** Treadmill or outside, in one tap from the list — same reasoning as the water. */
+  async function setTreadmill(a: Activity, treadmill: boolean) {
+    if (a.treadmill === treadmill) return;
+    await send(`/api/activities/${a.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ treadmill }),
+    });
+  }
+
   function startEdit(a: Activity) {
     setEditing(a.id);
     setEditError(null);
@@ -116,6 +128,7 @@ export function LogTab({
       km: String(a.km),
       occurredOn: a.occurredOn,
       openWater: a.openWater === true,
+      treadmill: a.treadmill === true,
       note: a.note ?? "",
       elevation: a.elevationM === null ? "" : String(a.elevationM),
     });
@@ -133,6 +146,7 @@ export function LogTab({
         elevationM:
           editDraft.elevation.trim() === "" ? null : Number(editDraft.elevation),
         openWater: editDraft.sport === "swim" ? editDraft.openWater : null,
+        treadmill: editDraft.sport === "run" ? (editDraft.treadmill ?? false) : null,
       }),
     });
     if (err) {
@@ -256,6 +270,34 @@ export function LogTab({
                         <p className="mt-0.5 text-[0.8125rem] text-ink-3">
                           Past the {MAX_SCORING_GYM_PER_DAY}-a-day gym cap — logged, not scored.
                         </p>
+                      )}
+                      {a.sport === "run" && a.occurredOn >= TREADMILL.from && (
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          {([false, true] as const).map((v) => {
+                            const on = a.treadmill === v;
+                            return (
+                              <button
+                                key={String(v)}
+                                type="button"
+                                aria-pressed={on}
+                                disabled={busy}
+                                onClick={() => setTreadmill(a, v)}
+                                className={`eyebrow rounded-md border px-2 py-1 text-[0.625rem] transition-colors ${
+                                  on
+                                    ? "border-run bg-run text-white"
+                                    : "border-line bg-deck-2 text-ink-3"
+                                }`}
+                              >
+                                {v ? "Treadmill" : "Outside"}
+                              </button>
+                            );
+                          })}
+                          {a.treadmill == null && (
+                            <span className="text-[0.6875rem] text-ink-3">
+                              unconfirmed — counting as outside
+                            </span>
+                          )}
+                        </div>
                       )}
                       {a.sport === "swim" && waterMatters(a.occurredOn) && (
                         <div className="mt-1.5 flex items-center gap-1.5">
