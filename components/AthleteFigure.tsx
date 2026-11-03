@@ -264,14 +264,19 @@ export function TurnAround({
 export function laneFor(
   athlete: Who,
   saved: Saved,
+  opts: { soft?: boolean } = {},
 ): React.CSSProperties | undefined {
   const flag = AVATAR_ITEM_BY_ID.get(lookFor(athlete, saved).flag?.item ?? "")?.flag;
-  return (flag ? flagLane(flag) : null) as React.CSSProperties | undefined;
+  return (flag ? flagLane(flag, opts) : null) as React.CSSProperties | undefined;
 }
 
 /** The hook form, for rows that read the lane out of context. */
-export function useLane(athlete: Who): React.CSSProperties | undefined {
+export function useLane(athlete: Who, opts: { soft?: boolean } = {}): React.CSSProperties | undefined {
   const saved = useContext(Saved);
   const showing = useContext(Showing);
-  return useMemo(() => (showing ? laneFor(athlete, saved) : undefined), [athlete, saved, showing]);
+  const soft = opts.soft === true;
+  return useMemo(
+    () => (showing ? laneFor(athlete, saved, { soft }) : undefined),
+    [athlete, saved, showing, soft],
+  );
 }

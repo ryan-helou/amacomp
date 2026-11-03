@@ -404,13 +404,27 @@ console.log("\none country, one purchase, one drawing");
   check("Italy has no emblem layer — it is only stripes",
     flagLane("it")!.backgroundImage.split('url("').length, 2);
 
-  // The flag is held back far enough that the palette's own ink reads on
-  // every band (Ryan, 2026-11-03), so no flag picks its own ink any more —
-  // picking it for the middle band is what put dark text on Israel's blue.
-  check("no flag overrides the ink",
-    COUNTRY_FLAGS.filter((f) => flagLane(f.id)?.["--ink"] !== undefined).map((f) => f.id), []);
-  check("and the field is painted well under full strength",
-    decodeURIComponent(flagLane("il")!.backgroundImage).includes(`stop-opacity="${LANE_STRENGTH}"`), true);
+  // At full strength (the Week rows and everywhere but the Board) the ink is
+  // the ONLY thing keeping a row readable. It follows the band under the text:
+  // the middle one across, the first one down.
+  check("a white flag takes dark ink", !!flagLane("jp")?.["--ink"], true);
+  check("a white middle stripe does too", !!flagLane("jo")?.["--ink"], true);
+  check("and Lebanon's", !!flagLane("lb")?.["--ink"], true);
+  check("and Canada's white centre", !!flagLane("ca")?.["--ink"], true);
+  check("Italy's too", !!flagLane("it")?.["--ink"], true);
+  check("a dark flag keeps the light ink", flagLane("br")?.["--ink"], undefined);
+  check("and Quebec's blue", flagLane("qc")?.["--ink"], undefined);
+
+  // The Board flies it SOFT (Ryan, 2026-11-03): held back over a dark ground,
+  // with light ink on every flag in either palette — dark ink chosen for the
+  // middle band is what landed on Israel's blue and Palestine's black.
+  check("a soft lane always takes the light ink",
+    COUNTRY_FLAGS.filter((f) => flagLane(f.id, { soft: true })?.["--ink"] !== "#f1f2f3").map((f) => f.id), []);
+  check("over a dark ground", flagLane("il", { soft: true })?.backgroundColor, "#141517");
+  check("painted well under full strength",
+    decodeURIComponent(flagLane("il", { soft: true })!.backgroundImage).includes(`stop-opacity="${LANE_STRENGTH}"`), true);
+  check("while the Week's flag is full strength",
+    decodeURIComponent(flagLane("il")!.backgroundImage).includes('stop-opacity="0.95"'), true);
 
   // No two countries may draw the same.
   const drawn = new Set(COUNTRY_FLAGS.map((f) => flagSvg(f.id)));
