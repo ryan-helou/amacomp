@@ -530,12 +530,21 @@ export function WeekTab({
                                   : `${fmtKm(a.km)} km ${ui.label.toLowerCase()}`}
                                 {a.note && <span className="text-ink-3"> · {a.note}</span>}
                               </span>
+                              {a.bibleMissing && (
+                                <span className="shrink-0 text-[0.625rem] uppercase tracking-wide text-ink-3">
+                                  no Bible tick
+                                </span>
+                              )}
                               <span
                                 className={`shrink-0 font-mono text-xs ${
-                                  isUnscored ? "text-ink-3 line-through" : "text-ink"
+                                  isUnscored || a.bibleMissing ? "text-ink-3 line-through" : "text-ink"
                                 }`}
                               >
-                                {fmtPoints(points)}
+                                {fmtPoints(
+                                  a.bibleMissing
+                                    ? activityPoints({ ...a, bibleMissing: false }, state.settings, unscored)
+                                    : points,
+                                )}
                               </span>
                             </li>
                           );
