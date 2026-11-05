@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  gymAmountLabel,
   SPORT_ORDER,
   activityPoints,
   fmtKm,
@@ -526,7 +527,7 @@ export function WeekTab({
                               </span>
                               <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-2">
                                 {flat
-                                  ? `${ui.label} workout`
+                                  ? `${ui.label} ${gymAmountLabel(a)}`
                                   : `${fmtKm(a.km)} km ${ui.label.toLowerCase()}`}
                                 {a.note && <span className="text-ink-3"> · {a.note}</span>}
                               </span>
@@ -878,12 +879,12 @@ function ToGo({
               title={
                 o.beyondCap
                   ? `More workouts than the ${MAX_SCORING_GYM_PER_DAY}-a-day cap allows in the days left`
-                  : `${ui.label} at ${o.rate}/${o.unit === "flat" ? "workout" : "km"}`
+                  : `${ui.label} at ${o.rate}/${o.unit === "flat" ? "workout" : o.unit === "sets" ? "set" : "km"}`
               }
             >
               <SportMark sport={o.sport} className={`h-3.5 w-3.5 ${ui.text}`} />
               <span className="font-mono text-xs text-ink">
-                {o.unit === "flat" ? `${o.amount}×` : `${o.amount} km`}
+                {o.unit === "flat" ? `${o.amount}×` : o.unit === "sets" ? `${o.amount} sets` : `${o.amount} km`}
               </span>
             </span>
           );

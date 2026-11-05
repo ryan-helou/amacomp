@@ -111,6 +111,39 @@ export function pointsFor(
 export const TREADMILL = { from: "2026-11-02", perKm: 5 } as const;
 
 /**
+ * Gym by the set. Ryan, 2026-11-05: "Gem is no longer fixed 5 points per
+ * session, but rather it's going to be calculated by the number of sets you
+ * do... Every set you do is 1 point." Dated like every other rule, so no gym
+ * session before `from` changes. The daily gym cap goes with it from the same
+ * day (Ryan: drop it): sets already measure the work, so splitting one workout
+ * into three sessions gains nothing.
+ */
+export const GYM_SETS = { from: "2026-11-05", perSet: 1 } as const;
+
+/** How a gym session reads in a list: "9 sets", "sets missing", or (before
+ *  GYM_SETS) "workout". */
+export function gymAmountLabel(a: Pick<Activity, "occurredOn" | "sets">): string {
+  if (!gymBySets(a.occurredOn)) return "workout";
+  if (a.sets == null) return "sets missing";
+  return `${a.sets} ${a.sets === 1 ? "set" : "sets"}`;
+}
+
+/** Whether a gym session on `day` scores by the set rather than flat. */
+export function gymBySets(day: DayKey): boolean {
+  return day >= GYM_SETS.from;
+}
+
+/**
+ * The quantity a session's rate multiplies: sets for a gym session on or after
+ * `GYM_SETS.from` (unknown sets count as none), otherwise the stored `km` —
+ * kilometres, or 1 for a flat gym workout.
+ */
+export function scoredQuantity(a: Pick<Activity, "sport" | "km" | "occurredOn" | "sets">): number {
+  if (a.sport === "gym" && gymBySets(a.occurredOn)) return a.sets ?? 0;
+  return a.km;
+}
+
+/**
  * The points-per-unit a session earns.
  *
  * Open water is its own rate rather than a multiplier on the swim one, and
@@ -132,6 +165,7 @@ export function rateFor(
   if (sport === "run" && treadmill === true && day >= TREADMILL.from) {
     return TREADMILL.perKm;
   }
+  if (sport === "gym" && gymBySets(day)) return GYM_SETS.perSet;
   return ratesOn(day, settings).multipliers[sport] ?? 0;
 }
 
@@ -182,7 +216,7 @@ export function activityPoints(
   if (a.bibleMissing) return 0;
   // The day the session happened picks the rates — not today's.
   return (
-    pointsFor(a.km, a.sport, settings, a.occurredOn, a.openWater, a.treadmill ?? null) +
+    pointsFor(scoredQuantity(a), a.sport, settings, a.occurredOn, a.openWater, a.treadmill ?? null) +
     elevationPointsFor(a.elevationM, a.sport, settings, a.occurredOn)
   );
 }
@@ -199,6 +233,8 @@ export function unscoredGymIds(activities: Activity[]): Set<string> {
   for (const a of activities) {
     if (isGrant(a)) continue;
     if (SPORT_UNIT[a.sport] !== "flat") continue;
+    // No cap once gym scores by the set (GYM_SETS).
+    if (gymBySets(a.occurredOn)) continue;
     const key = `${a.athleteId}|${a.occurredOn}`;
     const list = byAthleteDay.get(key);
     if (list) list.push(a);

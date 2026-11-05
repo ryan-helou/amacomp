@@ -4,6 +4,8 @@ import { SPORT_UNIT, type Sport } from "./types";
 import { RESET_HOUR, type DayKey } from "./dates";
 import { firstDayIn } from "./waiting";
 import { effortsFor, type Streams } from "./efforts";
+import { gymBySets } from "./scoring";
+import { setsFromDescription } from "./gymSets";
 
 /**
  * Strava import — OAuth, token refresh, and turning a synced activity into a
@@ -374,6 +376,7 @@ export async function importActivities(
   store: Store,
   athleteId: string,
   acts: StravaActivity[],
+  accessToken?: string,
 ): Promise<string[]> {
   const created: string[] = [];
   // Nothing from before his first day in the league. Both the connect-time
@@ -389,9 +392,36 @@ export async function importActivities(
     if (!mapped) continue;
     if (firstDay && mapped.input.occurredOn < firstDay) continue;
     const row = await store.importStravaActivity(mapped.input, mapped.stravaId);
-    if (row) created.push(row.id);
+    if (!row) continue;
+    created.push(row.id);
+    // A gym session scores by the set (GYM_SETS), and the only place Strava's
+    // API lets us read sets is the description, which the activity list leaves
+    // out. One extra request, once, for a newly imported gym session.
+    if (accessToken && row.sport === "gym" && gymBySets(row.occurredOn)) {
+      try {
+        const sets = setsFromDescription(await fetchDescription(accessToken, mapped.stravaId));
+        if (sets !== null) await store.updateActivity(row.id, { sets });
+      } catch (e) {
+        // Not worth failing the import over: the athlete can enter the sets.
+        console.error("[strava] gym description", mapped.stravaId, e);
+      }
+    }
   }
   return created;
+}
+
+/** An activity's description, which only the detailed activity carries. */
+export async function fetchDescription(
+  accessToken: string,
+  stravaId: number,
+): Promise<string | null> {
+  const res = await fetch(`${API_BASE}/activities/${stravaId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Strava activity ${res.status}`);
+  const j = (await res.json()) as { description?: unknown };
+  return typeof j.description === "string" ? j.description : null;
 }
 
 /**
@@ -549,7 +579,7 @@ export async function syncAthlete(
   const token = await validAccessToken(store, conn);
   const after = Math.floor(Date.now() / 1000) - sinceDays * 86400;
   const acts = await fetchRecentActivities(token, after, 40);
-  const created = await importActivities(store, conn.athleteId, acts);
+  const created = await importActivities(store, conn.athleteId, acts, token);
   await store.touchStravaSync(conn.athleteId);
   return created;
 }

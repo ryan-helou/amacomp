@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SPORT_ORDER, ratesOn } from "@/lib/scoring";
+import { GYM_SETS, SPORT_ORDER, gymBySets, ratesOn } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, UNIT_LABEL, elevationRateLabel, type Settings } from "@/lib/types";
 import { formatDay, type DayKey } from "@/lib/dates";
@@ -41,7 +41,7 @@ export function LoginScreen({
         AMACOMP
       </h1>
       <p className="mt-4 max-w-xs text-[0.9375rem] leading-snug text-ink-2">
-        Log every kilometre you swim, ride and run, plus every gym workout.
+        Log every kilometre you swim, ride and run, plus every set in the gym.
         Points land on the board the moment you save them.
       </p>
 
@@ -55,7 +55,9 @@ export function LoginScreen({
             </span>
             <span className="eyebrow w-12 text-ink">{SPORT_UI[sport].label}</span>
             <span className="font-mono text-sm text-ink-2">
-              {rates.multipliers[sport]} pt{rates.multipliers[sport] === 1 ? "" : "s"} / {UNIT_LABEL[SPORT_UNIT[sport]]}
+              {sport === "gym" && gymBySets(refDay)
+                ? `${GYM_SETS.perSet} pt${GYM_SETS.perSet === 1 ? "" : "s"} / set`
+                : `${rates.multipliers[sport]} pt${rates.multipliers[sport] === 1 ? "" : "s"} / ${UNIT_LABEL[SPORT_UNIT[sport]]}`}
               {(rates.elevationPer100m?.[sport] ?? 0) > 0 && (
                 <span className="text-ink-3">
                   {" "}+ {elevationRateLabel(rates.elevationPer100m[sport])} up

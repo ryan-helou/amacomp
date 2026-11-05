@@ -48,6 +48,8 @@ export interface NewActivity {
   openWater?: boolean | null;
   /** On a treadmill rather than outside, for runs. Null when unknown. */
   treadmill?: boolean | null;
+  /** Sets, for gym sessions. Null when unknown. See `Activity.sets`. */
+  sets?: number | null;
 }
 
 export type ActivityPatch = Partial<Omit<NewActivity, "athleteId">>;
@@ -339,7 +341,7 @@ function mergeSettings(raw: unknown): Settings {
 
 const ACTIVITY_COLS = `id, athlete_id, sport, km::float8 AS km,
    to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, note, source, points::float8 AS points,
-   elevation_m::float8 AS elevation_m, open_water, treadmill, moving_seconds, local_hour,
+   elevation_m::float8 AS elevation_m, open_water, treadmill, sets, moving_seconds, local_hour,
    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at`;
 
 type ActivityRow = {
@@ -354,6 +356,7 @@ type ActivityRow = {
   elevation_m: number | null;
   open_water: boolean | null;
   treadmill: boolean | null;
+  sets: number | null;
   moving_seconds: number | null;
   local_hour: number | null;
   created_at: string;
@@ -374,6 +377,7 @@ function toActivity(r: ActivityRow): Activity {
     localHour: r.local_hour == null ? null : Number(r.local_hour),
     openWater: r.open_water ?? null,
     treadmill: r.treadmill ?? null,
+    sets: r.sets == null ? null : Number(r.sets),
     createdAt: r.created_at,
   };
 }
@@ -487,6 +491,10 @@ class PgStore implements Store {
         // open_water: unknown scores as outside.
         await this.pool.query(
           `ALTER TABLE activities ADD COLUMN IF NOT EXISTS treadmill BOOLEAN`,
+        );
+        // Sets, for gym sessions (lib/scoring GYM_SETS). Null is unknown.
+        await this.pool.query(
+          `ALTER TABLE activities ADD COLUMN IF NOT EXISTS sets INT`,
         );
         // Body weight, for the cycling W/kg records. Nullable: unknown is a real
         // and common state, and it must not be confused with a light rider.
@@ -906,12 +914,13 @@ class PgStore implements Store {
   async createActivity(input: NewActivity, source: ActivitySource = "manual"): Promise<Activity> {
     await this.init();
     const r = await this.pool.query(
-      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points, elevation_m, open_water, moving_seconds, local_hour, treadmill)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `INSERT INTO activities (id, athlete_id, sport, km, occurred_on, note, source, points, elevation_m, open_water, moving_seconds, local_hour, treadmill, sets)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING ${ACTIVITY_COLS}`,
       [newId(), input.athleteId, input.sport, input.km, input.occurredOn, input.note, source,
        input.points ?? null, input.elevationM ?? null, input.openWater ?? null,
-       input.movingSeconds ?? null, input.localHour ?? leagueHourNow(), input.treadmill ?? null],
+       input.movingSeconds ?? null, input.localHour ?? leagueHourNow(), input.treadmill ?? null,
+       input.sets ?? null],
     );
     return toActivity(r.rows[0] as ActivityRow);
   }
@@ -927,6 +936,7 @@ class PgStore implements Store {
          elevation_m = CASE WHEN $7::boolean THEN $8 ELSE elevation_m END,
          open_water = CASE WHEN $9::boolean THEN $10 ELSE open_water END,
          treadmill = CASE WHEN $11::boolean THEN $12 ELSE treadmill END,
+         sets = CASE WHEN $13::boolean THEN $14::int ELSE sets END,
          updated_at = now()
        WHERE id = $1
        RETURNING ${ACTIVITY_COLS}`,
@@ -943,6 +953,8 @@ class PgStore implements Store {
         patch.openWater ?? null,
         Object.prototype.hasOwnProperty.call(patch, "treadmill"),
         patch.treadmill ?? null,
+        Object.prototype.hasOwnProperty.call(patch, "sets"),
+        patch.sets ?? null,
       ],
     );
     return r.rows[0] ? toActivity(r.rows[0] as ActivityRow) : null;
@@ -1680,6 +1692,7 @@ class MemoryStore implements Store {
       note: input.note,
       openWater: input.openWater ?? null,
       treadmill: input.treadmill ?? null,
+      sets: input.sets ?? null,
       source,
       points: input.points ?? null,
       elevationM: input.elevationM ?? null,
@@ -1708,6 +1721,9 @@ class MemoryStore implements Store {
     }
     if (Object.prototype.hasOwnProperty.call(patch, "treadmill")) {
       found.treadmill = patch.treadmill ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "sets")) {
+      found.sets = patch.sets ?? null;
     }
     return found;
   }

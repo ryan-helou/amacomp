@@ -25,6 +25,19 @@ export const BIG_SESSION_KM: Record<Sport, number> = {
   gym: Infinity,
 };
 
+/** The most sets one gym session can claim. A big session is 40; this only
+ *  catches a fat-fingered 500. */
+export const MAX_SETS = 100;
+
+/** A set count: a whole number 0–MAX_SETS, or null for blank (unknown).
+ *  `undefined` means it was supplied and is nonsense. */
+export function parseSets(value: unknown): number | null | undefined {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(n) || n < 0 || n > MAX_SETS) return undefined;
+  return n;
+}
+
 export function parseKm(value: unknown): number | null {
   const km = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(km) || km <= 0 || km > MAX_KM) return null;

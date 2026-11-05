@@ -1,4 +1,4 @@
-import { rateFor } from "./scoring";
+import { gymBySets, rateFor } from "./scoring";
 import { SPORT_UNIT, type Settings, type Sport } from "./types";
 import { SPORTS } from "./types";
 import { MAX_SCORING_GYM_PER_DAY } from "./validate";
@@ -24,8 +24,8 @@ export interface ToGoOption {
   sport: Sport;
   /** Kilometres, or whole workouts for the flat gym discipline. */
   amount: number;
-  unit: "km" | "flat";
-  /** Points per kilometre, or per workout. */
+  unit: "km" | "flat" | "sets";
+  /** Points per kilometre, per workout, or per set. */
   rate: number;
   /**
    * Gym only: the answer needs more workouts than the daily cap allows in the
@@ -64,7 +64,10 @@ export function toGo(
     const rate = rateFor(sport, settings, day, sport === "swim" ? false : null);
     if (rate <= 0) continue;
 
-    if (SPORT_UNIT[sport] === "flat") {
+    if (sport === "gym" && gymBySets(day)) {
+      // By the set: no daily cap, and the amount is sets.
+      out.push({ sport, amount: Math.ceil(shortfall / rate), unit: "sets", rate });
+    } else if (SPORT_UNIT[sport] === "flat") {
       const sessions = Math.ceil(shortfall / rate);
       const affordable = MAX_SCORING_GYM_PER_DAY * Math.max(0, daysLeft);
       out.push({

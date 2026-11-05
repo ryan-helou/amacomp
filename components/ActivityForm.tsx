@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { SPORT_ORDER, elevationPointsFor, fmtPoints, pointsFor, ratesOn, TREADMILL } from "@/lib/scoring";
+import {
+  GYM_SETS, SPORT_ORDER, elevationPointsFor, fmtPoints, gymBySets, pointsFor, ratesOn, TREADMILL,
+} from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { today, type DayKey } from "@/lib/dates";
-import { BIG_SESSION_KM, MAX_ELEVATION_M, MAX_NOTE } from "@/lib/validate";
+import { BIG_SESSION_KM, MAX_ELEVATION_M, MAX_NOTE, MAX_SETS } from "@/lib/validate";
 import {
   SPORT_UNIT, UNIT_LABEL, elevationRateLabel, rateLabel,
   type Settings, type Sport,
@@ -23,10 +25,12 @@ export interface ActivityDraft {
   openWater: boolean;
   /** Runs only: on a treadmill rather than outside. Optional so older drafts still type-check. */
   treadmill?: boolean;
+  /** Gym only, from GYM_SETS.from: sets done, as typed. */
+  sets?: string;
 }
 
 export function emptyDraft(ref: DayKey = today()): ActivityDraft {
-  return { sport: "run", km: "", occurredOn: ref, note: "", elevation: "", openWater: false, treadmill: false };
+  return { sport: "run", km: "", occurredOn: ref, note: "", elevation: "", openWater: false, treadmill: false, sets: "" };
 }
 
 /** Trim float noise off a typed distance for the confirm copy. */
@@ -62,9 +66,14 @@ export function ActivityForm({
 }) {
   const unit = SPORT_UNIT[draft.sport];
   const isFlat = unit === "flat";
-  // A flat discipline (gym) has no amount to enter — the quantity is one workout.
-  const km = isFlat ? 1 : Number(draft.km);
-  const valid = isFlat || (Number.isFinite(km) && km > 0);
+  // Gym scores by the set from GYM_SETS.from; before that it was one flat
+  // workout with no amount to enter.
+  const bySets = draft.sport === "gym" && gymBySets(draft.occurredOn);
+  const sets = Number(draft.sets ?? "");
+  const setsValid =
+    (draft.sets ?? "").trim() !== "" && Number.isInteger(sets) && sets >= 1 && sets <= MAX_SETS;
+  const km = bySets ? (setsValid ? sets : 0) : isFlat ? 1 : Number(draft.km);
+  const valid = bySets ? setsValid : isFlat || (Number.isFinite(km) && km > 0);
   // Rates are read for the DAY BEING LOGGED, not today, so backdating a session
   // into an earlier rate era previews the points it will actually score.
   const rates = ratesOn(draft.occurredOn, settings);
@@ -137,7 +146,8 @@ export function ActivityForm({
 
   // Anything typed, or an edit form open on a real session, is unsaved work —
   // UpdateWatcher will not reload the page out from under it.
-  const unsaved = draft.km !== "" || draft.note !== "" || draft.elevation !== "";
+  const unsaved =
+    draft.km !== "" || draft.note !== "" || draft.elevation !== "" || (draft.sets ?? "") !== "";
 
   return (
     <form
@@ -169,7 +179,9 @@ export function ActivityForm({
                 <SportMark sport={sport} className="h-5 w-5" />
                 <span className="eyebrow">{ui.label}</span>
                 <span className="font-mono text-[0.625rem] leading-none">
-                  {rateLabel(rates.multipliers[sport], SPORT_UNIT[sport])}
+                  {sport === "gym" && gymBySets(draft.occurredOn)
+                    ? `${GYM_SETS.perSet}/set`
+                    : rateLabel(rates.multipliers[sport], SPORT_UNIT[sport])}
                 </span>
                 {climbRateOf(sport) > 0 && (
                   <span className="font-mono text-[0.5625rem] leading-none opacity-70">
@@ -184,10 +196,26 @@ export function ActivityForm({
 
       <div className="grid grid-cols-[1fr_auto] items-end gap-3">
         <div>
-          <label htmlFor="km" className="eyebrow block text-ink-2">
-            {isFlat ? "Session" : "Distance"}
+          <label htmlFor={bySets ? "sets" : "km"} className="eyebrow block text-ink-2">
+            {bySets ? "Sets" : isFlat ? "Session" : "Distance"}
           </label>
-          {isFlat ? (
+          {bySets ? (
+            <div className="mt-2 flex items-baseline gap-2 rounded-xl pane border border-line-2 bg-tile px-4 py-2.5">
+              <input
+                id="sets"
+                type="number"
+                inputMode="numeric"
+                step="1"
+                min="1"
+                max={MAX_SETS}
+                value={draft.sets ?? ""}
+                onChange={(e) => setDraft({ ...draft, sets: e.target.value })}
+                placeholder="0"
+                className="stamp w-full min-w-0 bg-transparent text-3xl text-ink placeholder:text-ink-3 focus:outline-none"
+              />
+              <span className="eyebrow shrink-0 text-ink-2">sets</span>
+            </div>
+          ) : isFlat ? (
             <div className="mt-2 flex items-center gap-2 rounded-xl pane border border-line-2 bg-tile px-4 py-3.5">
               <span className={SPORT_UI[draft.sport].text}>
                 <SportMark sport={draft.sport} className="h-5 w-5" />
