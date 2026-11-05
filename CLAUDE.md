@@ -64,6 +64,11 @@
    3 AM still counts for the day, and week, that is ending (`logDayAt`). The old
    per-athlete `resetHour` is gone; `athletes.reset_hour` is a vestigial column.
 
+9. **Gym scores 1 point per set from 2026-11-05** (`GYM_SETS` in lib/scoring),
+   with no daily cap from that day. Strava's API does not expose sets: imports
+   read "N sets" from the description (lib/gymSets), otherwise the athlete
+   enters them; unknown scores 0.
+
 ## Gate before shipping
 
 ```bash
