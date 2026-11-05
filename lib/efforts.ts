@@ -55,8 +55,9 @@ export interface Streams {
  *   1 — original
  *   2 — power stops count as 0 W instead of splitting the ride; outdoor rides
  *       get distance (speed) bests; trainer vs outside recorded
+ *   3 — outdoor speed bests also at 1, 2 and 5 km
  */
-export const EFFORTS_VERSION = 2;
+export const EFFORTS_VERSION = 3;
 
 /** Cycling: the durations a power curve is quoted at, in seconds. */
 export const BIKE_WINDOWS_S = [
@@ -86,9 +87,10 @@ export const RUN_DISTANCES_M = [
  * ride has. Trainer speed is not comparable — it is whatever the app's virtual
  * physics says, and far easier to hold — so indoor rides never set these.
  */
-export const BIKE_DISTANCES_M = [10000, 20000, 40000, 90000, 180000] as const;
+export const BIKE_DISTANCES_M = [1000, 2000, 5000, 10000, 20000, 40000, 90000, 180000] as const;
 
 export const BIKE_DISTANCE_LABEL: Record<number, string> = {
+  1000: "1 km", 2000: "2 km", 5000: "5 km",
   10000: "10 km", 20000: "20 km", 40000: "40 km", 90000: "90 km", 180000: "180 km",
 };
 
