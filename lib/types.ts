@@ -93,6 +93,9 @@ export interface ActivityEfforts {
    *  extracted before names were stored; the sync fills those in from the
    *  activity listing it already fetches, so no extra API call. */
   name: string | null;
+  /** Trainer ride / treadmill (true), outside (false), or not known yet (null).
+   *  Splits the cycling book into Trainer and Outside — see lib/pbs. */
+  indoor: boolean | null;
 }
 
 // Twelve colours the athlete can pick from — deliberately kept apart from the

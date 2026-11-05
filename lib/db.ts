@@ -5,6 +5,7 @@ import { migrateSettings } from "./migrations";
 import { parseRule } from "./bountyRules";
 import type { Transfer } from "./transfers";
 import { markBible, type BibleDay } from "./bible";
+import { EFFORTS_VERSION } from "./efforts";
 import {
   DEFAULT_SETTINGS,
   SPORTS,
@@ -148,6 +149,9 @@ export interface Store {
   /** Fill in activity names on rows that have none, from the listing the sync
    *  already fetches. One statement, and it never overwrites a name we have. */
   fillEffortNames(pairs: { stravaId: number; name: string }[]): Promise<void>;
+  /** Trainer-or-outside onto rows extracted before it was stored — read off the
+   *  activity listing the sync already has, so it costs no Strava call. */
+  fillEffortIndoor(pairs: { stravaId: number; indoor: boolean }[]): Promise<void>;
   // Push
   savePushSub(athleteId: string, sub: PushSub): Promise<void>;
   deletePushSub(endpoint: string): Promise<void>;
@@ -430,6 +434,7 @@ function toEfforts(r: {
   bests: unknown;
   weight_kg?: string | number | null;
   name?: string | null;
+  indoor?: boolean | null;
 }): ActivityEfforts {
   const weight = r.weight_kg === null || r.weight_kg === undefined ? null : Number(r.weight_kg);
   const raw = (r.bests ?? {}) as Record<string, unknown>;
@@ -448,6 +453,7 @@ function toEfforts(r: {
     bests,
     weightKg: weight !== null && Number.isFinite(weight) && weight > 0 ? weight : null,
     name: r.name ?? null,
+    indoor: r.indoor ?? null,
   };
 }
 
@@ -637,6 +643,15 @@ class PgStore implements Store {
         // null until the sync fills them from its listing.
         await this.pool.query(
           `ALTER TABLE strava_efforts ADD COLUMN IF NOT EXISTS name TEXT`,
+        );
+        // Trainer or outside, which splits the cycling book; and which version of
+        // the extraction produced the bests, so a change to the maths re-reads
+        // every activity rather than leaving old rows on the old rules.
+        await this.pool.query(
+          `ALTER TABLE strava_efforts ADD COLUMN IF NOT EXISTS indoor BOOLEAN`,
+        );
+        await this.pool.query(
+          `ALTER TABLE strava_efforts ADD COLUMN IF NOT EXISTS extract_v INT NOT NULL DEFAULT 1`,
         );
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS strava_imports (
@@ -1066,7 +1081,7 @@ class PgStore implements Store {
     await this.init();
     const r = await this.pool.query(
       `SELECT strava_id, athlete_id, sport,
-              to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, bests, weight_kg, name
+              to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, bests, weight_kg, name, indoor
          FROM strava_efforts`,
     );
     return r.rows.map(toEfforts);
@@ -1077,8 +1092,9 @@ class PgStore implements Store {
     const r = await this.pool.query(
       `SELECT strava_id FROM strava_efforts
         WHERE athlete_id = $1
+          AND extract_v >= $2
           AND (bests <> '{}'::jsonb OR fetched_at > now() - interval '12 hours')`,
-      [athleteId],
+      [athleteId, EFFORTS_VERSION],
     );
     return new Set(r.rows.map((x) => Number(x.strava_id)));
   }
@@ -1086,13 +1102,15 @@ class PgStore implements Store {
   async saveEfforts(row: ActivityEfforts): Promise<void> {
     await this.init();
     await this.pool.query(
-      `INSERT INTO strava_efforts (strava_id, athlete_id, sport, occurred_on, bests, weight_kg, name)
-       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
+      `INSERT INTO strava_efforts
+         (strava_id, athlete_id, sport, occurred_on, bests, weight_kg, name, indoor, extract_v)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9)
        ON CONFLICT (strava_id) DO UPDATE
          SET bests = EXCLUDED.bests, weight_kg = EXCLUDED.weight_kg,
-             name = COALESCE(EXCLUDED.name, strava_efforts.name), fetched_at = now()`,
+             name = COALESCE(EXCLUDED.name, strava_efforts.name),
+             indoor = EXCLUDED.indoor, extract_v = EXCLUDED.extract_v, fetched_at = now()`,
       [row.stravaId, row.athleteId, row.sport, row.occurredOn,
-       JSON.stringify(row.bests), row.weightKg, row.name],
+       JSON.stringify(row.bests), row.weightKg, row.name, row.indoor, EFFORTS_VERSION],
     );
   }
 
@@ -1109,6 +1127,21 @@ class PgStore implements Store {
       `UPDATE strava_efforts e SET name = v.name
          FROM (VALUES ${values}) AS v(strava_id, name)
         WHERE e.strava_id = v.strava_id AND e.name IS NULL`,
+      params,
+    );
+  }
+
+  async fillEffortIndoor(pairs: { stravaId: number; indoor: boolean }[]): Promise<void> {
+    if (pairs.length === 0) return;
+    await this.init();
+    const values = pairs
+      .map((_, i) => `($${i * 2 + 1}::bigint, $${i * 2 + 2}::boolean)`)
+      .join(", ");
+    const params = pairs.flatMap((p) => [p.stravaId, p.indoor]);
+    await this.pool.query(
+      `UPDATE strava_efforts e SET indoor = v.indoor
+         FROM (VALUES ${values}) AS v(strava_id, indoor)
+        WHERE e.strava_id = v.strava_id AND e.indoor IS NULL`,
       params,
     );
   }
@@ -1770,6 +1803,12 @@ class MemoryStore implements Store {
     for (const p of pairs) {
       const e = this.efforts.get(p.stravaId);
       if (e && !e.name) e.name = p.name;
+    }
+  }
+  async fillEffortIndoor(pairs: { stravaId: number; indoor: boolean }[]) {
+    for (const p of pairs) {
+      const e = this.efforts.get(p.stravaId);
+      if (e && e.indoor === null) e.indoor = p.indoor;
     }
   }
 

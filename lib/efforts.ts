@@ -16,10 +16,16 @@ import type { Sport } from "./types";
  *   - cycling — the HIGHEST average power held for a duration, over body weight.
  */
 
-/** A break longer than this ends a segment, FOR POWER ONLY. Watts are held from
- *  each sample to the next, so a gap would otherwise fabricate energy: a stopped
+/** A step longer than this is a stop, FOR POWER ONLY. Watts are held from each
+ *  sample to the next, so holding across a gap would fabricate energy: a stopped
  *  clock at a café with the last sample reading 250 W would bank it for the
- *  whole break. Distance does not use this — see `bestTimeForDistance`. */
+ *  whole break. Such a step counts as ZERO watts instead — the stop drags the
+ *  average down, the way it does on Strava, but the ride stays one piece.
+ *
+ *  It used to split the ride at the gap. That quietly erased every long outdoor
+ *  power best: a red light every twenty minutes meant no unbroken stretch ever
+ *  reached 60 or 90 minutes, so a 1h43 ride with a power meter (Philippe,
+ *  2026-11-01, 159 W average) could set nothing past 45 minutes. */
 const MAX_SAMPLE_GAP_S = 10;
 
 /**
@@ -30,7 +36,7 @@ const MAX_SAMPLE_GAP_S = 10;
  * Set well above what a human does — the 100 m world record averages about
  * 10.4 m/s — so this rejects teleports without ever touching a real sprint.
  */
-const MAX_PLAUSIBLE_MPS: Record<string, number> = { run: 12, swim: 3 };
+const MAX_PLAUSIBLE_MPS: Record<string, number> = { run: 12, swim: 3, bike: 25 };
 
 export interface Streams {
   /** Elapsed seconds from the start, non-decreasing. */
@@ -41,6 +47,16 @@ export interface Streams {
    *  recorded with a power meter. */
   watts?: number[];
 }
+
+/**
+ * Which version of the extraction maths a stored best came from. Bump it when the
+ * maths changes and the sync re-reads every activity, a few a tick, replacing the
+ * old bests in place — the old ones stay on the board until then.
+ *   1 — original
+ *   2 — power stops count as 0 W instead of splitting the ride; outdoor rides
+ *       get distance (speed) bests; trainer vs outside recorded
+ */
+export const EFFORTS_VERSION = 2;
 
 /** Cycling: the durations a power curve is quoted at, in seconds. */
 export const BIKE_WINDOWS_S = [
@@ -60,6 +76,26 @@ export const BIKE_WINDOWS_S = [
 export const RUN_DISTANCES_M = [
   400, 1000, 1609.34, 3218.69, 5000, 10000, 15000, 21097.5, 30000, 42195,
 ] as const;
+
+/**
+ * Cycling OUTSIDE: the distances a speed best is quoted at, in metres.
+ *
+ * Outdoor rides only. Most of the league has no power meter on the road, so a
+ * power-only book left their best rides with nothing to show (Jona, 2026-11-05:
+ * "the outside bike rides scam you for records"). Speed is what every outdoor
+ * ride has. Trainer speed is not comparable — it is whatever the app's virtual
+ * physics says, and far easier to hold — so indoor rides never set these.
+ */
+export const BIKE_DISTANCES_M = [10000, 20000, 40000, 90000, 180000] as const;
+
+export const BIKE_DISTANCE_LABEL: Record<number, string> = {
+  10000: "10 km", 20000: "20 km", 40000: "40 km", 90000: "90 km", 180000: "180 km",
+};
+
+/** Storage key prefix for an outdoor ride's speed bests — `bikedist:40000`. Kept
+ *  apart from `bike:<seconds>` so a 600 m distance could never be read as a 10
+ *  minute power window. */
+export const BIKE_DIST_PREFIX = "bikedist";
 
 /** Swimming: the distances a personal best is quoted at, in metres. */
 export const SWIM_DISTANCES_M = [100, 250, 500, 1000, 1500, 1900, 3800] as const;
@@ -86,24 +122,6 @@ export function distanceTargetsFor(sport: Sport): readonly number[] | null {
   if (sport === "run") return RUN_DISTANCES_M;
   if (sport === "swim") return SWIM_DISTANCES_M;
   return null;
-}
-
-/**
- * Split a stream into contiguous segments at any gap over `MAX_SAMPLE_GAP_S`.
- * Returns index ranges `[start, end]` inclusive.
- */
-function segments(time: number[]): [number, number][] {
-  const out: [number, number][] = [];
-  if (time.length === 0) return out;
-  let start = 0;
-  for (let k = 1; k < time.length; k++) {
-    if (time[k] - time[k - 1] > MAX_SAMPLE_GAP_S) {
-      if (k - 1 > start) out.push([start, k - 1]);
-      start = k;
-    }
-  }
-  if (time.length - 1 > start) out.push([start, time.length - 1]);
-  return out;
 }
 
 /**
@@ -185,26 +203,27 @@ export function bestPowerForWindow(
   windowS: number,
 ): number | null {
   if (windowS <= 0) return null;
+  const n = time.length;
+  if (n < 2 || time[n - 1] - time[0] < windowS) return null;
+  // The power held over the step from sample k to k+1: zero across a stop.
+  const stepW = (k: number) => {
+    const w = watts[k];
+    if (!Number.isFinite(w)) return 0;
+    return time[k + 1] - time[k] > MAX_SAMPLE_GAP_S ? 0 : w;
+  };
+  // Cumulative joules from the start, one entry per sample.
+  const energy = new Array<number>(n).fill(0);
+  for (let k = 1; k < n; k++) energy[k] = energy[k - 1] + stepW(k - 1) * (time[k] - time[k - 1]);
   let best: number | null = null;
-  for (const [lo, hi] of segments(time)) {
-    // Cumulative joules from the segment start, one entry per sample.
-    const energy = new Array<number>(hi - lo + 1).fill(0);
-    for (let k = lo + 1; k <= hi; k++) {
-      const w = Number.isFinite(watts[k - 1]) ? watts[k - 1] : 0;
-      energy[k - lo] = energy[k - 1 - lo] + w * (time[k] - time[k - 1]);
-    }
-    if (time[hi] - time[lo] < windowS) continue;
-    let i = lo;
-    for (let j = lo; j <= hi; j++) {
-      const startT = time[j] - windowS;
-      if (startT < time[lo]) continue;
-      while (i + 1 <= j && time[i + 1] <= startT) i++;
-      // Energy at the exact window start, inside the sample i -> i+1 step.
-      const w = Number.isFinite(watts[i]) ? watts[i] : 0;
-      const eStart = energy[i - lo] + w * (startT - time[i]);
-      const avg = (energy[j - lo] - eStart) / windowS;
-      if (Number.isFinite(avg) && avg > 0 && (best === null || avg > best)) best = avg;
-    }
+  let i = 0;
+  for (let j = 0; j < n; j++) {
+    const startT = time[j] - windowS;
+    if (startT < time[0]) continue;
+    while (i + 1 <= j && time[i + 1] <= startT) i++;
+    // Energy at the exact window start, inside the sample i -> i+1 step.
+    const eStart = energy[i] + (i + 1 < n ? stepW(i) : 0) * (startT - time[i]);
+    const avg = (energy[j] - eStart) / windowS;
+    if (Number.isFinite(avg) && avg > 0 && (best === null || avg > best)) best = avg;
   }
   return best;
 }
@@ -217,7 +236,13 @@ export function bestPowerForWindow(
  * constant change rather than a schema change. Values are seconds for distance
  * sports and watts for cycling.
  */
-export function effortsFor(sport: Sport, streams: Streams): Record<string, number> {
+export function effortsFor(
+  sport: Sport,
+  streams: Streams,
+  /** Trainer ride or treadmill. Only a bike reads it: an indoor ride's speed is
+   *  the app's invention, so it sets no distance best. */
+  indoor: boolean | null = null,
+): Record<string, number> {
   const out: Record<string, number> = {};
   const time = streams.time ?? [];
   if (time.length < 2) return out;
@@ -226,10 +251,19 @@ export function effortsFor(sport: Sport, streams: Streams): Record<string, numbe
     const watts = streams.watts;
     // No power meter, no power curve. Estimating it from speed would invent
     // numbers nobody rode for, and these are meant to be records.
-    if (!watts || watts.length !== time.length) return out;
-    for (const windowS of BIKE_WINDOWS_S) {
-      const best = bestPowerForWindow(time, watts, windowS);
-      if (best !== null) out[`bike:${windowS}`] = Math.round(best * 10) / 10;
+    if (watts && watts.length === time.length) {
+      for (const windowS of BIKE_WINDOWS_S) {
+        const best = bestPowerForWindow(time, watts, windowS);
+        if (best !== null) out[`bike:${windowS}`] = Math.round(best * 10) / 10;
+      }
+    }
+    // Speed only for a ride known to be outside — an unknown is not a road.
+    const distance = streams.distance;
+    if (indoor === false && distance && distance.length === time.length) {
+      for (const target of BIKE_DISTANCES_M) {
+        const best = bestTimeForDistance(time, distance, target, "bike");
+        if (best !== null) out[`${BIKE_DIST_PREFIX}:${target}`] = Math.round(best * 100) / 100;
+      }
     }
     return out;
   }

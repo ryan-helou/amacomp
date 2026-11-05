@@ -203,6 +203,52 @@ export function isTreadmill(a: StravaActivity, sport: Sport | null): boolean | n
   return hasFix || hasRoute ? false : true;
 }
 
+/**
+ * Whether a ride or run happened indoors — trainer or treadmill. The same tells
+ * as `isTreadmill`, for any sport: Strava's virtual types and its `trainer` flag
+ * say so outright, and a session with neither a GPS fix nor a route was not on a
+ * road. Null for a hand-typed session, which carries no evidence either way.
+ */
+export function isIndoor(a: StravaActivity): boolean | null {
+  const t = (a.sport_type || a.type || "").toLowerCase();
+  if (t.startsWith("virtual") || a.trainer === true) return true;
+  if (a.manual === true) return null;
+  const ll = a.start_latlng;
+  const hasFix =
+    Array.isArray(ll) && ll.length === 2 && Number.isFinite(ll[0]) && Number.isFinite(ll[1]);
+  return hasFix || !!a.map?.summary_polyline ? false : true;
+}
+
+/**
+ * Every activity back to `sinceDay`, NEWEST FIRST, a page of 100 at a time, at
+ * most `maxPages` pages.
+ *
+ * The effort sync used to ask for `after=<season start>` with one page of 100,
+ * which Strava answers OLDEST first — so once an athlete passed 100 activities in
+ * the season, nothing new ever reached the record book again. Ryan's stopped at
+ * 16 Oct and Philippe's at 29 Oct, which is why a 1 Nov ride was missing.
+ */
+export async function fetchActivitiesSince(
+  accessToken: string,
+  sinceDay: string,
+  maxPages = 3,
+): Promise<StravaActivity[]> {
+  const out: StravaActivity[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const p = new URLSearchParams({ per_page: "100", page: String(page) });
+    const res = await fetch(`${API_BASE}/athlete/activities?${p.toString()}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) throw new Error(`Strava list activities failed: ${res.status}`);
+    const batch = (await res.json()) as StravaActivity[];
+    out.push(...batch);
+    const oldest = batch[batch.length - 1];
+    const oldestDay = oldest ? activityLocalDay(oldest) : null;
+    if (batch.length < 100 || !oldestDay || oldestDay < sinceDay) break;
+  }
+  return out;
+}
+
 export async function fetchRecentActivities(
   accessToken: string,
   afterEpoch?: number,
@@ -433,9 +479,20 @@ export async function syncEfforts(
     if (weightKg !== null) await store.setWeight(conn.athleteId, weightKg);
   }
 
-  const afterEpoch = Math.floor(Date.parse(`${seasonStart}T00:00:00Z`) / 1000) - 86400;
-  const acts = await fetchRecentActivities(token, afterEpoch, 100);
+  // Newest first, so a new ride is read before an old one is re-read.
+  const acts = await fetchActivitiesSince(token, seasonStart);
   const seen = await store.listEffortStravaIds(conn.athleteId);
+
+  // Trainer-or-outside onto rows read before it was stored, from the listing
+  // already in hand.
+  await store
+    .fillEffortIndoor(
+      acts.flatMap((a) => {
+        const indoor = a.id ? isIndoor(a) : null;
+        return indoor === null ? [] : [{ stravaId: a.id as number, indoor }];
+      }),
+    )
+    .catch(() => {});
 
   // Backfill activity names onto rows extracted before names were stored. The
   // listing is already in hand, so this costs no extra Strava call — only rows
@@ -463,7 +520,8 @@ export async function syncEfforts(
     // is no point burning the rest of the budget on an endpoint that is already
     // refusing us. The next tick resumes where this one stopped.
     const streams = await fetchStreams(token, a.id);
-    const bests = streams ? effortsFor(sport, streams) : {};
+    const indoor = isIndoor(a);
+    const bests = streams ? effortsFor(sport, streams, indoor) : {};
     await store.saveEfforts({
       stravaId: a.id,
       athleteId: conn.athleteId,
@@ -471,6 +529,7 @@ export async function syncEfforts(
       occurredOn: day,
       bests,
       name: (a.name || "").trim().slice(0, 120) || null,
+      indoor,
       // Pinned at extraction time, so a W/kg record stays true to the day it was
       // set rather than shifting every time the rider steps on a scale.
       weightKg,

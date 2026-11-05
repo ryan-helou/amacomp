@@ -212,8 +212,9 @@ const SEASON = "2026-08-03";
 function eff(
   stravaId: number, athleteId: string, sport: "run" | "swim" | "bike",
   occurredOn: string, bests: Record<string, number>, weightKg: number | null = null,
+  indoor: boolean | null = null,
 ): ActivityEfforts {
-  return { stravaId, athleteId, sport, occurredOn, bests, weightKg, name: null };
+  return { stravaId, athleteId, sport, occurredOn, bests, weightKg, name: null, indoor };
 }
 
 console.log("\nrecordsFor — the league's book");
@@ -319,6 +320,65 @@ console.log("\nrecordsFor — swim uses the swim ladder");
   check("seven swim targets", rows.length, 7);
   check("1.5 km is one of them", rows.some((r) => r.key === "swim:1500"), true);
   check("and it is held", rows.find((r) => r.key === "swim:1500")!.entries.length, 1);
+}
+
+console.log("\nbestPowerForWindow — a stop is zero watts, not the end of the ride");
+{
+  // 200 W for 40 min, a 2-minute red light with no samples, 200 W for 40 min.
+  // Splitting at the stop left no unbroken hour, so a 1h20 ride set no 60m best.
+  const time: number[] = [];
+  const watts: number[] = [];
+  for (let k = 0; k <= 2400; k++) { time.push(k); watts.push(200); }
+  for (let k = 2520; k <= 4920; k++) { time.push(k); watts.push(200); }
+  const hour = bestPowerForWindow(time, watts, 3600);
+  // The best hour holds 58 minutes of 200 W and the 2-minute stop at 0 W.
+  near("an hour across the stop counts, stop at 0 W", hour, (200 * 3480) / 3600, 0.5);
+  // And the stop never banks the last reading: 250 W then a 10-minute café.
+  const t2 = [0, 1, 2, 602];
+  const w2 = [250, 250, 250, 250];
+  near("a café stop is not 250 W", bestPowerForWindow(t2, w2, 602), (250 * 2) / 602, 0.01);
+}
+
+console.log("\neffortsFor — outside rides get speed bests, trainer rides don't");
+{
+  // 10 m/s for 4500 s = 45 km.
+  const n = 4501;
+  const time = Array.from({ length: n }, (_, k) => k);
+  const distance = time.map((t) => t * 10);
+  const outside = effortsFor("bike", { time, distance }, false);
+  near("40 km at 36 km/h is 4000 s", outside["bikedist:40000"], 4000);
+  check("no 90 km off a 45 km ride", outside["bikedist:90000"], undefined);
+  check("no power without a meter", outside["bike:60"], undefined);
+  check("a trainer ride sets no speed best",
+    Object.keys(effortsFor("bike", { time, distance }, true)).length, 0);
+  check("an unknown ride sets no speed best",
+    Object.keys(effortsFor("bike", { time, distance }, null)).length, 0);
+  const watts = time.map(() => 180);
+  const metered = effortsFor("bike", { time, distance, watts }, false);
+  near("an outside ride with a meter keeps its power", metered["bike:3600"], 180);
+}
+
+console.log("\nrecordsFor — trainer and outside are separate books");
+{
+  const efforts = [
+    eff(1, "phil", "bike", "2026-11-01", { "bike:5400": 159 }, 70, false),
+    eff(2, "dav", "bike", "2026-11-02", { "bike:5400": 200 }, 70, true),
+    eff(3, "jona", "bike", "2026-11-03", { "bikedist:40000": 4000 }, null, false),
+    eff(4, "ryan", "bike", "2026-11-03", { "bikedist:40000": 3600, "bike:5400": 300 }, 70, null),
+  ];
+  const row = (book: "trainer" | "outside" | "outside-power", key: string) =>
+    recordsFor("bike", efforts, SEASON, new Map(), book).find((r) => r.key === key)!;
+  check("trainer power is only trainer rides",
+    row("trainer", "bike:5400").entries.map((e) => e.athleteId), ["dav"]);
+  check("outside power is only outside rides",
+    row("outside-power", "bike:5400").entries.map((e) => e.athleteId), ["phil"]);
+  const speed = row("outside", "bikedist:40000");
+  check("outside speed needs no weight", speed.entries.map((e) => e.athleteId), ["jona"]);
+  check("and ranks the time, not W/kg", speed.entries[0].value, 4000);
+  check("a ride of unknown kind is in neither book",
+    row("trainer", "bike:5400").entries.some((e) => e.athleteId === "ryan"), false);
+  check("outside speed is never blocked on power",
+    bikeBlockedReason(efforts, SEASON, new Map(), "outside"), null);
 }
 
 console.log(failures === 0 ? "\nAll effort tests passed.\n" : `\n${failures} failing.\n`);
