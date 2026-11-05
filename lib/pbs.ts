@@ -1,5 +1,8 @@
 import type { ActivityEfforts, Sport } from "./types";
 import {
+  BIKE_DISTANCES_M,
+  BIKE_DISTANCE_LABEL,
+  BIKE_DIST_PREFIX,
   BIKE_WINDOWS_S,
   BIKE_WINDOW_LABEL,
   RUN_DISTANCES_M,
@@ -15,6 +18,18 @@ import {
  * payload, so a record is never a stale cached number — it is recomputed from
  * the efforts every render, and a newly synced activity moves it immediately.
  */
+
+/**
+ * Which slice of the cycling book (Jona, 2026-11-05: "should there be 2 records
+ * pages for outside and trainer?"). A trainer makes speed meaningless and power
+ * easy to hold, and most of the league has no meter on the road, so one book
+ * pitted the wrong things against each other:
+ *   - "trainer" — power, from indoor rides;
+ *   - "outside" — speed over each distance, from outdoor rides (everyone has it);
+ *   - "outside-power" — power, from outdoor rides with a meter.
+ * Run and swim ignore it.
+ */
+export type BikeBook = "trainer" | "outside" | "outside-power";
 
 /** Lower is better for a time, higher for power. Kept explicit because it drives
  *  both the sort and the "did this beat it" comparison, and getting it backwards
@@ -46,12 +61,31 @@ export interface RecordRow {
   entries: RecordEntry[];
 }
 
-export function directionFor(sport: Sport): Direction {
-  return sport === "bike" ? "higher" : "lower";
+export function directionFor(sport: Sport, book: BikeBook = "trainer"): Direction {
+  return sport === "bike" && book !== "outside" ? "higher" : "lower";
+}
+
+/** Whether this book ranks power (W/kg) — the only one that needs a weight. */
+export function isPowerBook(sport: Sport, book: BikeBook = "trainer"): boolean {
+  return sport === "bike" && book !== "outside";
 }
 
 /** The targets and labels a sport's record book is built from. */
-export function targetsFor(sport: Sport): { target: number; label: string }[] {
+export function targetsFor(
+  sport: Sport,
+  book: BikeBook = "trainer",
+): { target: number; label: string; key: string }[] {
+  if (sport === "bike" && book === "outside") {
+    return BIKE_DISTANCES_M.map((t) => ({
+      target: t, label: BIKE_DISTANCE_LABEL[t], key: `${BIKE_DIST_PREFIX}:${t}`,
+    }));
+  }
+  const keyed = (rows: { target: number; label: string }[]) =>
+    rows.map((r) => ({ ...r, key: `${sport}:${r.target}` }));
+  return keyed(targetsForPlain(sport));
+}
+
+function targetsForPlain(sport: Sport): { target: number; label: string }[] {
   if (sport === "bike") {
     return BIKE_WINDOWS_S.map((t) => ({ target: t, label: BIKE_WINDOW_LABEL[t] }));
   }
@@ -80,14 +114,19 @@ export function recordsFor(
   seasonStart: string,
   /** Each athlete's CURRENT weight, used when the effort has none pinned. */
   weightById: Map<string, number | null> = new Map(),
+  /** Cycling only: which slice of the book. Omitted, every ride counts — the
+   *  one-book behaviour from before the split. */
+  book?: BikeBook,
 ): RecordRow[] {
-  const direction = directionFor(sport);
+  const direction = directionFor(sport, book);
+  const power = isPowerBook(sport, book);
   const better = (a: number, b: number) => (direction === "lower" ? a < b : a > b);
 
-  const inScope = efforts.filter((e) => e.sport === sport && e.occurredOn >= seasonStart);
+  const inScope = efforts.filter(
+    (e) => e.sport === sport && e.occurredOn >= seasonStart && inBook(e, book),
+  );
 
-  return targetsFor(sport).map(({ target, label }) => {
-    const key = `${sport}:${target}`;
+  return targetsFor(sport, book).map(({ target, label, key }) => {
     const bestByAthlete = new Map<string, RecordEntry>();
 
     for (const effort of inScope) {
@@ -96,7 +135,7 @@ export function recordsFor(
 
       let value = raw;
       let weightKg: number | null = null;
-      if (sport === "bike") {
+      if (power) {
         // The weight pinned when the effort was extracted, else the athlete's
         // current one.
         //
@@ -138,6 +177,17 @@ export function recordsFor(
   });
 }
 
+/**
+ * Whether an effort belongs in a cycling book. A ride not yet known to be either
+ * (rows extracted before the flag was stored, until the next sync fills it in)
+ * is left out of both rather than guessed into one.
+ */
+function inBook(e: ActivityEfforts, book: BikeBook | undefined): boolean {
+  if (e.sport !== "bike" || !book) return true;
+  if (book === "trainer") return e.indoor === true;
+  return e.indoor === false;
+}
+
 /** How many rows in a book anyone has actually set, for the section summary. */
 export function filledCount(rows: RecordRow[]): number {
   return rows.filter((r) => r.entries.length > 0).length;
@@ -152,10 +202,15 @@ export function bikeBlockedReason(
   efforts: ActivityEfforts[],
   seasonStart: string,
   weightById: Map<string, number | null> = new Map(),
+  book?: BikeBook,
 ): "no-power" | "no-weight" | null {
-  const rides = efforts.filter((e) => e.sport === "bike" && e.occurredOn >= seasonStart);
+  // Only the power books can be blocked this way; outside speed needs neither.
+  if (book === "outside") return null;
+  const rides = efforts.filter(
+    (e) => e.sport === "bike" && e.occurredOn >= seasonStart && inBook(e, book),
+  );
   if (rides.length === 0) return null;
-  const withPower = rides.filter((e) => Object.keys(e.bests).length > 0);
+  const withPower = rides.filter((e) => Object.keys(e.bests).some((k) => k.startsWith("bike:")));
   if (withPower.length === 0) return "no-power";
   // Same resolution the records use, or the explanation would contradict the book.
   const weighed = withPower.filter(

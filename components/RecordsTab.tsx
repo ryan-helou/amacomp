@@ -3,7 +3,14 @@
 import { useMemo, useState } from "react";
 import { formatDay, type DayKey } from "@/lib/dates";
 import { formatDuration, formatPace } from "@/lib/efforts";
-import { bikeBlockedReason, recordsFor, type RecordEntry, type RecordRow } from "@/lib/pbs";
+import {
+  bikeBlockedReason,
+  isPowerBook,
+  recordsFor,
+  type BikeBook,
+  type RecordEntry,
+  type RecordRow,
+} from "@/lib/pbs";
 import { SPORT_UI } from "@/lib/ui";
 import type { AppState, Athlete, Sport } from "@/lib/types";
 import { Avatar } from "./Avatar";
@@ -24,14 +31,25 @@ import { AthleteName } from "./ProfileContext";
 
 const SPORTS_WITH_RECORDS: Sport[] = ["bike", "run", "swim"];
 
+/** The cycling book's two halves (Jona, 2026-11-05), and outside's two ways of
+ *  being read: speed, which every ride has, or power, for anyone with a meter. */
+const BIKE_BOOKS: { id: "trainer" | "outside"; label: string }[] = [
+  { id: "trainer", label: "Trainer" },
+  { id: "outside", label: "Outside" },
+];
+
 /** How a row's number is written, which differs entirely by sport. */
-function primaryValue(row: RecordRow, entry: RecordEntry): string {
-  if (row.sport === "bike") return `${entry.value.toFixed(2)}`;
+function primaryValue(row: RecordRow, entry: RecordEntry, power: boolean): string {
+  if (power) return `${entry.value.toFixed(2)}`;
   return formatDuration(entry.value);
 }
 
-function secondaryValue(row: RecordRow, entry: RecordEntry): string {
-  if (row.sport === "bike") return `${Math.round(entry.raw)} W`;
+function secondaryValue(row: RecordRow, entry: RecordEntry, power: boolean): string {
+  if (power) return `${Math.round(entry.raw)} W`;
+  if (row.sport === "bike") {
+    // Speed is how a road ride is talked about; nobody quotes a pace per km.
+    return `${((row.target / entry.value) * 3.6).toFixed(1)} km/h`;
+  }
   return formatPace(entry.value, row.target, row.sport);
 }
 
@@ -43,6 +61,11 @@ export function RecordsTab({
   refDay: DayKey;
 }) {
   const [sport, setSport] = useState<Sport>("run");
+  const [bikeBook, setBikeBook] = useState<"trainer" | "outside">("outside");
+  const [outsidePower, setOutsidePower] = useState(false);
+  const book: BikeBook =
+    bikeBook === "trainer" ? "trainer" : outsidePower ? "outside-power" : "outside";
+  const power = isPowerBook(sport, book);
   const [expanded, setExpanded] = useState<string | null>(null);
   // "Mine" narrows every row to the signed-in athlete's own mark. The league
   // view is the default because a record book is a comparison first.
@@ -64,13 +87,13 @@ export function RecordsTab({
   }, [state.athletes]);
 
   const rows = useMemo(
-    () => recordsFor(sport, state.efforts, state.settings.seasonStart, weightById),
-    [sport, state.efforts, state.settings.seasonStart, weightById],
+    () => recordsFor(sport, state.efforts, state.settings.seasonStart, weightById, book),
+    [sport, state.efforts, state.settings.seasonStart, weightById, book],
   );
 
   const blocked = useMemo(
-    () => bikeBlockedReason(state.efforts, state.settings.seasonStart, weightById),
-    [state.efforts, state.settings.seasonStart, weightById],
+    () => bikeBlockedReason(state.efforts, state.settings.seasonStart, weightById, book),
+    [state.efforts, state.settings.seasonStart, weightById, book],
   );
 
   const ui = SPORT_UI[sport];
@@ -113,12 +136,74 @@ export function RecordsTab({
         })}
       </div>
 
+      {/* ── Cycling: trainer and outside are different books ──────── */}
+      {sport === "bike" && (
+        <div className="flex items-center gap-2">
+          <div
+            role="tablist"
+            aria-label="Trainer or outside"
+            className="flex flex-1 gap-1 rounded-xl border border-line bg-tile p-1"
+          >
+            {BIKE_BOOKS.map((b) => {
+              const on = bikeBook === b.id;
+              return (
+                <button
+                  key={b.id}
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => {
+                    setBikeBook(b.id);
+                    setExpanded(null);
+                  }}
+                  className={`eyebrow flex-1 rounded-lg py-2 transition-colors ${
+                    on ? "bg-ink text-on-ink" : "text-ink-2"
+                  }`}
+                >
+                  {b.label}
+                </button>
+              );
+            })}
+          </div>
+          {bikeBook === "outside" && (
+            <div
+              role="tablist"
+              aria-label="Speed or power"
+              className="flex shrink-0 gap-1 rounded-xl border border-line bg-tile p-1"
+            >
+              {([false, true] as const).map((p) => {
+                const on = outsidePower === p;
+                return (
+                  <button
+                    key={String(p)}
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => {
+                      setOutsidePower(p);
+                      setExpanded(null);
+                    }}
+                    className={`eyebrow rounded-lg px-3 py-2 transition-colors ${
+                      on ? `${ui.bg} text-white` : "text-ink-2"
+                    }`}
+                  >
+                    {p ? "Watts" : "Speed"}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── What this book is, and how full it is ──────────────────── */}
       <div className="flex items-center justify-between gap-3">
         <p className="text-[0.8125rem] text-ink-2">
-          {sport === "bike"
-            ? "Best watts per kilo held for each duration."
-            : `Fastest ${ui.label.toLowerCase()} over each distance.`}{" "}
+          {sport !== "bike"
+            ? `Fastest ${ui.label.toLowerCase()} over each distance.`
+            : book === "outside"
+              ? "Fastest outdoor ride over each distance."
+              : book === "trainer"
+                ? "Best watts per kilo on the trainer."
+                : "Best watts per kilo outside, power meter only."}{" "}
           <span className="text-ink-3">Since kickoff.</span>
         </p>
         <button
@@ -143,9 +228,9 @@ export function RecordsTab({
           <p className="text-[0.8125rem] text-ink-2">
             {blocked === "no-power" ? (
               <>
-                No rides with power yet. Watts per kilo needs a power meter — Strava
-                only sends a watts stream when the ride was recorded with one, and
-                guessing it from speed would invent records nobody set.
+                No rides with power here yet. Watts per kilo needs a power meter —
+                Strava only sends a watts stream when the ride was recorded with one,
+                and guessing it from speed would invent records nobody set.
               </>
             ) : (
               <>
@@ -218,13 +303,13 @@ export function RecordsTab({
                     </span>
                     <span className="shrink-0 text-right">
                       <span className={`block font-mono text-base font-semibold ${ui.text}`}>
-                        {primaryValue(row, leader)}
-                        {row.sport === "bike" && (
+                        {primaryValue(row, leader, power)}
+                        {power && (
                           <span className="text-[0.6875rem] font-normal text-ink-3"> W/kg</span>
                         )}
                       </span>
                       <span className="block font-mono text-[0.6875rem] text-ink-3">
-                        {secondaryValue(row, leader)}
+                        {secondaryValue(row, leader, power)}
                       </span>
                     </span>
                   </>
@@ -265,15 +350,15 @@ export function RecordsTab({
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="block font-mono text-[0.8125rem] text-ink">
-                          {primaryValue(row, entry)}
-                          {row.sport === "bike" && (
+                          {primaryValue(row, entry, power)}
+                          {power && (
                             <span className="text-[0.625rem] font-normal text-ink-3"> W/kg</span>
                           )}
                         </span>
                         {/* Watts, because W/kg alone is unreadable as a number
                             you can compare to anything you know. */}
                         <span className="block font-mono text-[0.625rem] text-ink-3">
-                          {secondaryValue(row, entry)}
+                          {secondaryValue(row, entry, power)}
                         </span>
                       </span>
                     </li>
