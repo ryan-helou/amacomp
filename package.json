@@ -8,7 +8,7 @@
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx lib/dates.test.ts && tsx lib/efforts.test.ts && tsx lib/scoring.test.ts && tsx lib/race.test.ts && tsx lib/climb.test.ts && tsx lib/togo.test.ts && tsx lib/away.test.ts && tsx lib/update.test.ts && tsx lib/club.test.ts && tsx lib/coins.test.ts && tsx lib/bets.test.ts && tsx lib/bountyRules.test.ts && tsx lib/recap.test.ts && tsx lib/prizes.test.ts && tsx lib/openBets.test.ts && tsx lib/rename.test.ts && tsx lib/stakes.test.ts && tsx lib/retro.test.ts && tsx lib/waiting.test.ts && tsx lib/pixelAvatar.test.ts && tsx lib/steps.test.ts && tsx lib/bible.test.ts && tsx lib/gymSets.test.ts && tsx --conditions=react-server lib/strava.test.ts && tsx --conditions=react-server lib/treadmill.test.ts",
+    "test": "tsx lib/dates.test.ts && tsx lib/efforts.test.ts && tsx lib/scoring.test.ts && tsx lib/race.test.ts && tsx lib/climb.test.ts && tsx lib/togo.test.ts && tsx lib/away.test.ts && tsx lib/update.test.ts && tsx lib/club.test.ts && tsx lib/coins.test.ts && tsx lib/bets.test.ts && tsx lib/bountyRules.test.ts && tsx lib/recap.test.ts && tsx lib/prizes.test.ts && tsx lib/openBets.test.ts && tsx lib/rename.test.ts && tsx lib/stakes.test.ts && tsx lib/retro.test.ts && tsx lib/waiting.test.ts && tsx lib/pixelAvatar.test.ts && tsx lib/steps.test.ts && tsx lib/bible.test.ts && tsx lib/gymSets.test.ts && tsx --conditions=react-server lib/strava.test.ts && tsx --conditions=react-server lib/treadmill.test.ts && tsx --conditions=react-server lib/gymFill.test.ts",
     "icons": "node scripts/gen-icons.mjs"
   },
   "dependencies": {

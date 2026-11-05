@@ -392,22 +392,75 @@ export async function importActivities(
     if (!mapped) continue;
     if (firstDay && mapped.input.occurredOn < firstDay) continue;
     const row = await store.importStravaActivity(mapped.input, mapped.stravaId);
+    if (row) created.push(row.id);
+  }
+  if (accessToken) await fillGymSets(store, athleteId, acts, accessToken);
+  return created;
+}
+
+/** How long after a gym session is imported we keep looking for its sets. People
+ *  write the description after the upload, usually within the hour; past this
+ *  the athlete is asked instead, and we stop spending Strava requests on it. */
+export const GYM_SETS_WATCH_MS = 6 * 3_600_000;
+/** At most this many description reads per athlete per sync. */
+const GYM_SETS_BUDGET = 3;
+
+/**
+ * Count the sets of recent Strava gym sessions that don't have one yet.
+ *
+ * Strava's API has no way to read back the sets logged in its strength tracker
+ * (it can upload them, not return them — developers.strava.com/docs/uploads),
+ * so the description is the only thing to read: "Lat pulldown — 2 sets",
+ * "3 x 8 leg press". Plain parsing, no model (lib/gymSets).
+ *
+ * Fills only a NULL count, so an athlete's own entry is never overwritten, and
+ * only for a session imported in the last `GYM_SETS_WATCH_MS`. A session is
+ * matched to its row by day and moving time, because the import ledger keys on
+ * the Strava id without recording which row it became.
+ */
+export async function fillGymSets(
+  store: Store,
+  athleteId: string,
+  acts: StravaActivity[],
+  accessToken: string,
+  now = Date.now(),
+): Promise<number> {
+  const waiting = (await store.listActivities()).filter(
+    (r) =>
+      r.athleteId === athleteId &&
+      r.sport === "gym" &&
+      r.source === "strava" &&
+      r.sets == null &&
+      gymBySets(r.occurredOn) &&
+      now - Date.parse(r.createdAt) < GYM_SETS_WATCH_MS,
+  );
+  if (waiting.length === 0) return 0;
+  let reads = 0;
+  let filled = 0;
+  for (const a of acts) {
+    if (reads >= GYM_SETS_BUDGET) break;
+    const mapped = toImport(athleteId, a);
+    if (!mapped || mapped.input.sport !== "gym") continue;
+    const row = waiting.find(
+      (r) =>
+        r.occurredOn === mapped.input.occurredOn &&
+        (r.movingSeconds ?? null) === (mapped.input.movingSeconds ?? null),
+    );
     if (!row) continue;
-    created.push(row.id);
-    // A gym session scores by the set (GYM_SETS), and the only place Strava's
-    // API lets us read sets is the description, which the activity list leaves
-    // out. One extra request, once, for a newly imported gym session.
-    if (accessToken && row.sport === "gym" && gymBySets(row.occurredOn)) {
-      try {
-        const sets = setsFromDescription(await fetchDescription(accessToken, mapped.stravaId));
-        if (sets !== null) await store.updateActivity(row.id, { sets });
-      } catch (e) {
-        // Not worth failing the import over: the athlete can enter the sets.
-        console.error("[strava] gym description", mapped.stravaId, e);
+    reads++;
+    try {
+      const sets = setsFromDescription(await fetchDescription(accessToken, mapped.stravaId));
+      if (sets !== null) {
+        await store.updateActivity(row.id, { sets });
+        filled++;
       }
+    } catch (e) {
+      // Strava saying not now; the next sync tries again inside the window.
+      console.error("[strava] gym description", mapped.stravaId, e);
+      break;
     }
   }
-  return created;
+  return filled;
 }
 
 /** An activity's description, which only the detailed activity carries. */
