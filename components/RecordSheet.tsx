@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { activityPoints, fmtDuration, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
+import { activityPoints, fmtDuration, gymAmountLabel, fmtKm, fmtPoints, unscoredGymIds } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { SPORT_UNIT, isGrant, type AppState } from "@/lib/types";
 import { addDays, formatDay, monthEnd, monthStart } from "@/lib/dates";
@@ -176,7 +176,7 @@ export function RecordSheet({
                           <span className="text-ink-2">
                             {" — "}
                             {isFlat
-                              ? `${ui.label.toLowerCase()} workout`
+                              ? `${ui.label.toLowerCase()} ${gymAmountLabel(a)}`
                               : `${fmtKm(a.km)} ${SPORT_UNIT[a.sport]} ${ui.label.toLowerCase()}`}
                           </span>
                           {a.source === "strava" && (

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  activityPoints, elevationPointsFor, fmtKm, fmtPoints, pointsFor, ratesOn, unscoredGymIds, TREADMILL,
+  activityPoints, elevationPointsFor, fmtKm, fmtPoints, gymBySets, pointsFor, ratesOn, unscoredGymIds, TREADMILL,
 } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import { RESET_HOUR, formatDay, formatDayRelative, weekStart, type DayKey } from "@/lib/dates";
@@ -72,6 +72,7 @@ export function LogTab({
         elevationM: draft.elevation.trim() === "" ? null : Number(draft.elevation),
         openWater: draft.sport === "swim" ? draft.openWater : null,
         treadmill: draft.sport === "run" ? (draft.treadmill ?? false) : null,
+        sets: draft.sport === "gym" && gymBySets(draft.occurredOn) ? Number(draft.sets) : null,
       }),
     });
     if (err) {
@@ -79,7 +80,9 @@ export function LogTab({
       return;
     }
     const points = fmtPoints(
-      pointsFor(Number(draft.km), draft.sport, state.settings, draft.occurredOn,
+      pointsFor(
+        draft.sport === "gym" && gymBySets(draft.occurredOn) ? Number(draft.sets) : Number(draft.km),
+        draft.sport, state.settings, draft.occurredOn,
         draft.sport === "swim" ? draft.openWater : null,
         draft.sport === "run" ? (draft.treadmill ?? false) : null) +
         elevationPointsFor(
@@ -131,6 +134,7 @@ export function LogTab({
       treadmill: a.treadmill === true,
       note: a.note ?? "",
       elevation: a.elevationM === null ? "" : String(a.elevationM),
+      sets: a.sets == null ? "" : String(a.sets),
     });
   }
 
@@ -147,6 +151,9 @@ export function LogTab({
           editDraft.elevation.trim() === "" ? null : Number(editDraft.elevation),
         openWater: editDraft.sport === "swim" ? editDraft.openWater : null,
         treadmill: editDraft.sport === "run" ? (editDraft.treadmill ?? false) : null,
+        ...(editDraft.sport === "gym" && gymBySets(editDraft.occurredOn)
+          ? { sets: Number(editDraft.sets) }
+          : {}),
       }),
     });
     if (err) {
@@ -252,10 +259,19 @@ export function LogTab({
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
-                        <span className="stamp text-lg text-ink">
-                          {fmtKm(a.km)}
-                        </span>
-                        <span className="eyebrow text-ink-3">{UNIT_LABEL[SPORT_UNIT[a.sport]]}</span>
+                        {a.sport === "gym" && gymBySets(a.occurredOn) ? (
+                          <>
+                            <span className="stamp text-lg text-ink">{a.sets ?? "?"}</span>
+                            <span className="eyebrow text-ink-3">{a.sets === 1 ? "set" : "sets"}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="stamp text-lg text-ink">
+                              {fmtKm(a.km)}
+                            </span>
+                            <span className="eyebrow text-ink-3">{UNIT_LABEL[SPORT_UNIT[a.sport]]}</span>
+                          </>
+                        )}
                         <span className="text-xs text-ink-3">·</span>
                         <span className="font-mono text-xs text-ink-2">
                           {formatDayRelative(a.occurredOn, refDay)}
@@ -265,6 +281,15 @@ export function LogTab({
                         <p className="mt-0.5 truncate text-[0.8125rem] text-ink-2">
                           {a.note}
                         </p>
+                      )}
+                      {a.sport === "gym" && gymBySets(a.occurredOn) && a.sets == null && (
+                        <button
+                          type="button"
+                          onClick={() => startEdit(a)}
+                          className="mt-1 text-left text-[0.8125rem] font-medium text-gym underline underline-offset-2"
+                        >
+                          How many sets? Scores 0 until you add them.
+                        </button>
                       )}
                       {unscored.has(a.id) && (
                         <p className="mt-0.5 text-[0.8125rem] text-ink-3">

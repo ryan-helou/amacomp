@@ -169,6 +169,15 @@ export interface Activity {
    */
   treadmill?: boolean | null;
   /**
+   * Sets done, for gym sessions only. From `GYM_SETS.from` (lib/scoring) a gym
+   * session scores one point per set instead of a flat amount. `null` is
+   * unknown: Strava's API doesn't share the sets an athlete logs in the
+   * Strava app, so an import reads them from the description ("Lat pulldown —
+   * 2 sets") when it can and otherwise waits for the athlete to enter them.
+   * Unknown scores 0.
+   */
+  sets?: number | null;
+  /**
    * A flat points override. Non-null only for admin grants, where it is the
    * awarded amount; null for logged activities, which score from km × multiplier.
    */

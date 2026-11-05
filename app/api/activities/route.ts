@@ -4,7 +4,9 @@ import { currentAthlete } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { isDayKey, leagueToday } from "@/lib/dates";
 import { isSport, SPORT_UNIT } from "@/lib/types";
-import { MAX_ELEVATION_M, MAX_KM, parseElevation, parseKm, parseNote } from "@/lib/validate";
+import {
+  MAX_ELEVATION_M, MAX_KM, MAX_SETS, parseElevation, parseKm, parseNote, parseSets,
+} from "@/lib/validate";
 import { notifyOvertakes, notifyQuotaHits, notifySeasonLead } from "@/lib/push";
 import { waitingFor } from "@/lib/waiting";
 
@@ -46,6 +48,15 @@ export async function POST(req: Request) {
     );
   }
 
+  // Sets, for a gym session (lib/scoring GYM_SETS). Blank is unknown.
+  const sets = body.sport === "gym" ? parseSets(body.sets) : null;
+  if (sets === undefined) {
+    return NextResponse.json(
+      { error: `Enter a number of sets between 0 and ${MAX_SETS}.` },
+      { status: 400 },
+    );
+  }
+
   // A man still on the coming-soon screen cannot log a session, and this is
   // the same predicate the screen uses (lib/waiting). Without it he can post
   // one from the API — and because the screen hides itself the moment he has
@@ -77,6 +88,7 @@ export async function POST(req: Request) {
     // Likewise only for a run.
     treadmill:
       body.sport === "run" && typeof body.treadmill === "boolean" ? body.treadmill : null,
+    sets,
   });
 
   const state = await readState();

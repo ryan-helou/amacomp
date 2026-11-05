@@ -4,7 +4,9 @@ import { currentAthlete, isAdmin } from "@/lib/session";
 import { readState } from "@/lib/state";
 import { isDayKey } from "@/lib/dates";
 import { isSport, SPORT_UNIT } from "@/lib/types";
-import { MAX_ELEVATION_M, MAX_KM, parseElevation, parseKm, parseNote } from "@/lib/validate";
+import {
+  MAX_ELEVATION_M, MAX_KM, MAX_SETS, parseElevation, parseKm, parseNote, parseSets,
+} from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +85,21 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (body.treadmill !== undefined) {
     patch.treadmill =
       effectiveSport === "run" && typeof body.treadmill === "boolean" ? body.treadmill : null;
+  }
+
+  if (body.sets !== undefined || (patch.sport && patch.sport !== "gym")) {
+    if (effectiveSport !== "gym") {
+      patch.sets = null;
+    } else {
+      const sets = parseSets(body.sets);
+      if (sets === undefined) {
+        return NextResponse.json(
+          { error: `Enter a number of sets between 0 and ${MAX_SETS}.` },
+          { status: 400 },
+        );
+      }
+      patch.sets = sets;
+    }
   }
 
   await getStore().updateActivity(id, patch);

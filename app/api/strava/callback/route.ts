@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     try {
       const after = Math.floor(Date.now() / 1000) - 14 * 86400;
       const acts = await fetchRecentActivities(t.accessToken, after, 40);
-      await importActivities(store, me.id, acts);
+      await importActivities(store, me.id, acts, t.accessToken);
       await store.touchStravaSync(me.id);
     } catch {
       /* backfill is optional */
