@@ -148,6 +148,10 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
     rows: true, weights: [3, 5, 16, 5, 3], art: FLAG_ART.il,
     price: 600, // Ryan, 2026-10-06
   },
+  // Red with a green pentagram, drawn as an outline. One field, so the lane
+  // is solid red with the star kept to its shape in the middle. Ryan,
+  // 2026-11-07.
+  { id: "ma", label: "Morocco", bands: ["#C1272D"], weights: [1], art: FLAG_ART.ma },
   { id: "ke", label: "Kenya", bands: ["#000000", "#FFFFFF", "#BB0000", "#FFFFFF", "#006600"], rows: true, weights: [6, 1, 6, 1, 6], art: FLAG_ART.ke },
   // The one flag with nothing to copy. Magenta, black and mint are the app's
   // own colours and the star is the only shape here anybody drew.

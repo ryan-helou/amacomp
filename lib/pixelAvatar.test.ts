@@ -216,7 +216,7 @@ console.log("\nflags are tags, not cloth hung behind him");
   check("each names a flag that exists", flags.every((f) => FLAG_BY_ID.has(f.flag ?? "")), true);
 
   // The ones Ryan asked for by name.
-  for (const id of ["it", "lb", "ca", "qc", "jp", "jo"]) {
+  for (const id of ["it", "lb", "ca", "qc", "jp", "jo", "ma"]) {
     check(`${id} is in the catalogue`, FLAG_BY_ID.has(id), true);
   }
 
