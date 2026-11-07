@@ -48,6 +48,9 @@ export const FLAG_ART: Record<string, string> = {
   // Israel — commons/d/d4/Flag_of_Israel.svg
   il:
     `<g transform="scale(0.027273,0.025)"><path d="M 0,0 H 1100 V 800 H 0 Z" fill="#fff"/><path d="M 0,75 H 1100 V 200 H 0 Z" fill="#0038b8"/><path d="M 0,600 H 1100 V 725 H 0 Z" fill="#0038b8"/><path d="M 423.81566,472.85253 H 676.18435 L 550.00001,254.29492 Z m 126.18435,72.85255 126.1843,-218.55765 H 423.81566 Z" fill="none" stroke="#0038b8" stroke-width="27.5"/></g>`,
+  // Morocco — commons/2/2c/Flag_of_Morocco.svg
+  ma:
+    `<g transform="scale(0.000333,0.000333)"><path fill="#c1272d" d="m0 0h90000v60000H0z"/><path fill="none" stroke="#006233" stroke-width="1426" d="m45000 17308 7460 22960-19531-14190h24142L37540 40268z"/></g>`,
 };
 
 /**
@@ -91,4 +94,7 @@ export const FLAG_MOTIF: Record<string, string> = {
   // Israel, field removed
   il:
     `<g transform="scale(0.027273,0.025)"><path d="M 423.81566,472.85253 H 676.18435 L 550.00001,254.29492 Z m 126.18435,72.85255 126.1843,-218.55765 H 423.81566 Z" fill="none" stroke="#0038b8" stroke-width="27.5"/></g>`,
+  // Morocco, field removed
+  ma:
+    `<g transform="scale(0.000333,0.000333)"><path fill="none" stroke="#006233" stroke-width="1426" d="m45000 17308 7460 22960-19531-14190h24142L37540 40268z"/></g>`,
 };
