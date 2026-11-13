@@ -57,7 +57,10 @@
    its athlete ticked "I read the Bible today" for that day (`bible_days`).
    Applied in the STORE's `listActivities` (stamps `bibleMissing`), so every
    scoring path agrees; `activityPoints` returns 0 for it. Grants are exempt.
-   Ticks are today-only. The QA seed ticks everyone for today.
+   The Week-tab box ticks today; since 2026-11-13 Settings lists past days
+   that lost points ("Missed Bible days") and the athlete can tick those
+   himself (PATCH /api/session `bibleDay`, tick-only, only a day with one of
+   his sessions waiting). The QA seed ticks everyone for today.
 
 8. **The day rolls over at 3 AM, league-wide** (`RESET_HOUR` in `lib/dates.ts`).
    The board turns over at midnight (`viewDayAt`) but a session logged before

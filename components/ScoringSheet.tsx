@@ -10,6 +10,7 @@ import {
   type Sport,
 } from "@/lib/types";
 import { formatDay, type DayKey } from "@/lib/dates";
+import { BibleMissed } from "./BibleMissed";
 import { SportMark } from "./SportMark";
 import { Glyph } from "./Glyph";
 import { NotificationSetup } from "./NotificationSetup";
@@ -44,6 +45,7 @@ const CLIMB_KEY = {
 export function ScoringSheet({
   league,
   refDay,
+  logDay,
   onClose,
   onOpenRules,
 }: {
@@ -51,6 +53,8 @@ export function ScoringSheet({
   /** Today. The inputs show the rates in force NOW, and a save takes effect from
    *  here forward — the base rates in `settings` may be an older era's. */
   refDay: DayKey;
+  /** The day a session logged now counts for — the Bible box's "today". */
+  logDay: DayKey;
   onClose: () => void;
   /** Swap this sheet for the House Rules one — the rules are the clearest
    *  explainer in the app and the header "?" is easy to miss. */
@@ -177,6 +181,8 @@ export function ScoringSheet({
             </svg>
           </span>
         </button>
+
+        <BibleMissed league={league} logDay={logDay} />
 
         <div className="mt-6 border-t border-line pt-4">
           <NotificationSetup />

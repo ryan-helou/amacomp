@@ -46,3 +46,35 @@ export function markBible(activities: Activity[], days: BibleDay[]): Activity[] 
       : a,
   );
 }
+
+/**
+ * The past days an athlete lost points to the box, newest first, with what the
+ * day would score once ticked. Today is left out: it has its own box on the
+ * Week tab.
+ *
+ * Ryan, 2026-11-13: a section in Settings "with the list of days you lost
+ * points cuz u didnt read the bible and u can check it off urself". So any past
+ * day since BIBLE_FROM can be ticked after the fact, by the athlete, for
+ * himself only — and only a day that actually has a session waiting on it.
+ */
+export function missedBibleDays(
+  activities: Activity[],
+  athleteId: string,
+  today: string,
+  pointsOf: (a: Activity) => number,
+): { day: string; points: number; sessions: number }[] {
+  const byDay = new Map<string, { points: number; sessions: number }>();
+  for (const a of activities) {
+    if (a.athleteId !== athleteId || !a.bibleMissing || a.occurredOn >= today) continue;
+    const row = byDay.get(a.occurredOn) ?? { points: 0, sessions: 0 };
+    row.points += pointsOf({ ...a, bibleMissing: false });
+    row.sessions += 1;
+    byDay.set(a.occurredOn, row);
+  }
+  return [...byDay.entries()]
+    .map(([day, r]) => ({ day, ...r }))
+    // Only days that actually cost points. A day whose sessions would still
+    // score 0 ticked (a gym session with no sets) lost nothing to the box.
+    .filter((d) => d.points > 0)
+    .sort((x, y) => y.day.localeCompare(x.day));
+}
