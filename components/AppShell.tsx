@@ -702,6 +702,7 @@ export function AppShell({
         <ScoringSheet
           league={league}
           refDay={refDay}
+          logDay={logDay}
           onClose={() => setScoringOpen(false)}
           onOpenRules={() => {
             setScoringOpen(false);

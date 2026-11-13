@@ -3,7 +3,8 @@ import { getStore, normalizeName } from "@/lib/db";
 import { currentAthlete, isAdmin, signIn, signOut } from "@/lib/session";
 import { nameProblem, renameInSettings } from "@/lib/rename";
 import { loadoutFor } from "@/lib/pixelAvatar";
-import { leagueLogToday } from "@/lib/dates";
+import { isDayKey, leagueLogToday } from "@/lib/dates";
+import { bibleApplies } from "@/lib/bible";
 import { readState } from "@/lib/state";
 import { isAvatarColor, isAvatarGlyph } from "@/lib/types";
 
@@ -34,6 +35,7 @@ export async function PATCH(req: Request) {
     weightKg?: unknown;
     name?: unknown;
     bibleRead?: unknown;
+    bibleDay?: unknown;
   };
   const store = getStore();
 
@@ -43,7 +45,25 @@ export async function PATCH(req: Request) {
     if (typeof body.bibleRead !== "boolean") {
       return NextResponse.json({ error: "Tick it or untick it." }, { status: 400 });
     }
-    await store.setBibleDay(me.id, leagueLogToday(), body.bibleRead);
+    const today = leagueLogToday();
+    if (body.bibleDay === undefined || body.bibleDay === today) {
+      await store.setBibleDay(me.id, today, body.bibleRead);
+    } else {
+      // A missed PAST day, ticked from Settings (lib/bible missedBibleDays).
+      // Tick only — a day once counted is not taken back — and only a day
+      // that has one of his own sessions waiting on it.
+      const day = body.bibleDay;
+      if (!isDayKey(day) || !bibleApplies(day) || day > today || body.bibleRead !== true) {
+        return NextResponse.json({ error: "That day can't be ticked." }, { status: 400 });
+      }
+      const waiting = (await store.listActivities()).some(
+        (a) => a.athleteId === me.id && a.occurredOn === day && a.bibleMissing,
+      );
+      if (!waiting) {
+        return NextResponse.json({ error: "Nothing on that day is waiting on the box." }, { status: 400 });
+      }
+      await store.setBibleDay(me.id, day, true);
+    }
   }
 
   // Avatar fields come through this endpoint so the settings sheet doesn't need
