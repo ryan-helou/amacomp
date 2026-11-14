@@ -167,9 +167,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
   );
 
   const top = standings[0]?.points ?? 0;
-  const anyPoints = standings.some((s) => s.points > 0);
   const sportTop = sportRanked?.[0]?.value ?? 0;
-  const anySport = (sportRanked ?? []).some((r) => r.value > 0);
   const climbTop = climbRows?.[0]?.total ?? 0;
   const anyClimb = (climbRows ?? []).some((r) => r.total > 0);
 
@@ -306,12 +304,9 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           removed it on 2026-10-06; lib/race.ts still holds the maths. */}
 
       {sport === "climb" ? (
-        !anyClimb ? (
-          <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
-            Nobody has climbed anything in this window. Bike and run ascent counts —
-            the flat stuff doesn&rsquo;t.
-          </p>
-        ) : (
+        // Ryan, 2026-11-15: a quiet window shows everyone at 0, not an
+        // empty card — the board is the same list whether or not anyone moved.
+        (
           <>
             <ol key={`${period}-${sport}`} className="space-y-0">
               {(climbRows ?? []).map((row, i) => (
@@ -328,15 +323,11 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                 </li>
               ))}
             </ol>
-            <ClimbSubTitles rows={climbRows ?? []} />
+            {anyClimb && <ClimbSubTitles rows={climbRows ?? []} />}
           </>
         )
       ) : sport === "all" ? (
-        !anyPoints ? (
-          <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
-            No points in this window yet. The lanes fill as sessions come in.
-          </p>
-        ) : (
+        (
           <ol key={`${period}-${sport}`} className="space-y-0">
             {standings.map((row, i) => (
               <li key={row.athlete.id}>
@@ -356,10 +347,6 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
             ))}
           </ol>
         )
-      ) : !anySport ? (
-        <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-2">
-          No {SPORT_UI[sport].label.toLowerCase()} logged in this window yet.
-        </p>
       ) : (
         <ol key={`${period}-${sport}`} className="space-y-0">
           {(sportRanked ?? []).map((row, i) => (
