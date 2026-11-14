@@ -17,6 +17,7 @@ import { SPORT_UNIT, elevationRateLabel, rateLabel, isGrant, type Athlete, type 
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { flagInk, flagWash, type Flag } from "@/lib/away";
 import { firstSeason, seasonFor } from "@/lib/season";
+import { firstDayIn } from "@/lib/waiting";
 import { FlagName, FlagTag, useAwayIn, useOpenProfile, useReigningChampion } from "./ProfileContext";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
@@ -111,9 +112,34 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
     setBrowse(nextRange[1] >= refDay ? null : next);
   }
 
+  // Ryan, 2026-11-15: going back in time, someone who hadn't joined yet
+  // shouldn't be on the board. He's in a window if he'd joined by its last day
+  // — or had something logged by then, which covers a session dated before his
+  // account (a grant, an import). With neither known, he stays.
+  const firstSeen = useMemo(() => {
+    const m = new Map<string, DayKey>();
+    // His first day IN the league, not the day the account was made: a man
+    // who joined in a season's last week waited for the next one (lib/waiting).
+    for (const a of state.athletes)
+      if (a.joinedOn) m.set(a.id, firstDayIn(a.joinedOn as DayKey, state.settings.seasonStart));
+    for (const act of state.activities) {
+      const cur = m.get(act.athleteId);
+      if (!cur || act.occurredOn < cur) m.set(act.athleteId, act.occurredOn);
+    }
+    return m;
+  }, [state.athletes, state.activities, state.settings.seasonStart]);
+  const athletes = useMemo(
+    () =>
+      state.athletes.filter((a) => {
+        const seen = firstSeen.get(a.id);
+        return !seen || seen <= range[1];
+      }),
+    [state.athletes, firstSeen, range],
+  );
+
   const standings = useMemo(
-    () => standingsForRange(state.athletes, state.activities, state.settings, range),
-    [state.athletes, state.activities, state.settings, range],
+    () => standingsForRange(athletes, state.activities, state.settings, range),
+    [athletes, state.activities, state.settings, range],
   );
 
   // Single-sport ranking by raw volume, computed straight from the activities so
@@ -123,7 +149,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
     if (sport === "all") return null;
     const [from, to] = range;
     const agg = new Map<string, { athlete: Athlete; value: number; sessions: number }>();
-    for (const a of state.athletes) agg.set(a.id, { athlete: a, value: 0, sessions: 0 });
+    for (const a of athletes) agg.set(a.id, { athlete: a, value: 0, sessions: 0 });
     for (const act of state.activities) {
       if (isGrant(act)) continue;
       if (act.sport !== sport || act.occurredOn < from || act.occurredOn > to) continue;
@@ -146,7 +172,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
       }
       return { ...r, rank };
     });
-  }, [sport, range, state.athletes, state.activities]);
+  }, [sport, range, athletes, state.activities]);
 
   // Only the Week tab flies it. An excuse is a week-shaped thing: it says
   // nothing about today, and on Month/Season/All the flagged athlete is being
@@ -155,8 +181,8 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
   const away = period === "week" ? awayWeek : null;
 
   const climbRows = useMemo<ClimbRow[] | null>(
-    () => (sport === "climb" ? climbStandings(state.athletes, state.activities, range) : null),
-    [sport, state.athletes, state.activities, range],
+    () => (sport === "climb" ? climbStandings(athletes, state.activities, range) : null),
+    [sport, athletes, state.activities, range],
   );
 
   const titles = useMemo(
