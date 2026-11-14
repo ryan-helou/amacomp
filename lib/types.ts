@@ -63,6 +63,9 @@ export interface Athlete {
    *  not the same as light — a rider with no weight gets no W/kg rather than a
    *  made-up one. */
   weightKg: number | null;
+  /** The league day his account was made. Hides him from board windows that
+   *  ended before he joined. Optional: older payloads and test fixtures lack it. */
+  joinedOn?: string | null;
 }
 
 /**

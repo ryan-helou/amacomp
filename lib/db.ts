@@ -411,6 +411,7 @@ function toAthlete(r: {
   strava_photo_url?: string | null;
   avatar_image_type?: string | null;
   avatar_image_v?: string | number | null;
+  joined_ms?: string | number | null;
 }): Athlete {
   // An uploaded image wins; otherwise the Strava photo; otherwise null (initials).
   // The `?v=` busts the immutable image cache whenever a new one is uploaded.
@@ -427,6 +428,9 @@ function toAthlete(r: {
     avatarColor: r.avatar_color ?? null,
     avatarGlyph: r.avatar_glyph ?? null,
     avatarUrl,
+    // The league day he joined, by the clock that files a session — the same
+    // answer athleteJoinedOn gives.
+    joinedOn: r.joined_ms == null ? null : logDayAt(Number(r.joined_ms)),
   };
 }
 
@@ -462,7 +466,8 @@ function toEfforts(r: {
 }
 
 const ATHLETE_COLS =
-  "id, name, weight_kg, avatar_color, avatar_glyph, strava_photo_url, avatar_image_type, avatar_image_v";
+  "id, name, weight_kg, avatar_color, avatar_glyph, strava_photo_url, avatar_image_type, avatar_image_v, " +
+  "extract(epoch FROM created_at) * 1000 AS joined_ms";
 
 class PgStore implements Store {
   private pool: PgPool;
