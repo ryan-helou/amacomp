@@ -10,7 +10,9 @@ import {
   type Standing,
 } from "@/lib/scoring";
 import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
-import { addDays, formatRange, monthEnd, monthStart, periodRange, type DayKey, type Period } from "@/lib/dates";
+import {
+  addDays, formatDay, formatRange, monthEnd, monthStart, periodRange, weekStart, type DayKey, type Period,
+} from "@/lib/dates";
 import { SPORT_UNIT, elevationRateLabel, rateLabel, isGrant, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { flagInk, flagWash, type Flag } from "@/lib/away";
@@ -278,7 +280,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
               </span>
             )
           )}
-          {period === "all" ? "Every session ever logged" : formatRange(range)}
+          {rangeLabel(period, range, cursor, season.label, state.settings.seasonStart)}
         </p>
         <button
           type="button"
@@ -795,4 +797,42 @@ function BoardChevron({ dir }: { dir: "left" | "right" }) {
       {dir === "left" ? <path d="M15 5l-7 7 7 7" /> : <path d="M9 5l7 7-7 7" />}
     </svg>
   );
+}
+
+/**
+ * The window's name and its dates: "Season 2 (5 Oct – 6 Dec)", "Week 15 (9 Nov
+ * – 15 Nov)", "Day 104 (Sat 14 Nov)", "Month 4 (1 Nov – 30 Nov)". Ryan,
+ * 2026-11-15. Days, weeks and months count from the league's kickoff
+ * (`seasonStart`): Day 1 is kickoff day, Week 1 its week, Month 1 its month.
+ * Anything before kickoff — the warm-up — has no number and shows its dates.
+ */
+function rangeLabel(
+  period: BoardPeriod,
+  range: [DayKey, DayKey],
+  cursor: DayKey,
+  seasonLabel: string,
+  kickoff: DayKey,
+): string {
+  const DAY = 86_400_000;
+  const days = (a: DayKey, b: DayKey) => Math.round((Date.parse(b) - Date.parse(a)) / DAY);
+  const dates = formatRange(range);
+  switch (period) {
+    case "all":
+      return "Every session ever logged";
+    case "season":
+      return `${seasonLabel} (${dates})`;
+    case "week": {
+      const n = Math.floor(days(weekStart(kickoff), weekStart(cursor)) / 7) + 1;
+      return n >= 1 ? `Week ${n} (${dates})` : dates;
+    }
+    case "today": {
+      const n = days(kickoff, cursor) + 1;
+      return n >= 1 ? `Day ${n} (${formatDay(cursor)})` : formatDay(cursor);
+    }
+    case "month": {
+      const ym = (d: DayKey) => Number(d.slice(0, 4)) * 12 + Number(d.slice(5, 7));
+      const n = ym(cursor) - ym(kickoff) + 1;
+      return n >= 1 ? `Month ${n} (${dates})` : dates;
+    }
+  }
 }
