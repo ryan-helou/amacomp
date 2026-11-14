@@ -168,6 +168,43 @@ export const COUNTRY_FLAGS: CountryFlag[] = [
 
 export const FLAG_BY_ID = new Map(COUNTRY_FLAGS.map((f) => [f.id, f]));
 
+/**
+ * China, for the tag beside an excused week (not on the shop shelf). Built
+ * from the flag's construction sheet rather than fetched, because Wikimedia
+ * was unreachable when Ryan asked (2026-11-14) — and the construction IS the
+ * flag: a 30x20 red field, the large star centred at (5,5) with radius 3, and
+ * four stars of radius 1 at (10,2), (12,4), (12,7), (10,9), each turned so a
+ * point aims at the large star's centre. The angles below are computed from
+ * that geometry and match the Commons file (Flag_of_the_People's_Republic_of_China.svg).
+ */
+const CN_STAR = "M0,-1 0.587785,0.809017 -0.951057,-0.309017H0.951057L-0.587785,0.809017z";
+const CHINA_ART =
+  `<rect width="30" height="20" fill="#EE1C25"/>` +
+  [
+    "translate(5,5) scale(3)",
+    "translate(10,2) rotate(23.036243)",
+    "translate(12,4) rotate(45.869898)",
+    "translate(12,7) rotate(69.945396)",
+    "translate(10,9) rotate(20.659808)",
+  ].map((t) => `<path fill="#FFFF00" transform="${t}" d="${CN_STAR}"/>`).join("");
+
+/**
+ * The little flag beside the word "Excused", read off the excuse's note.
+ * Ryan, 2026-11-14: "put the little flag next to the excused word" — the tag
+ * only, NOT the away-week treatment that paints the whole row (lib/away).
+ * Matches China, or any shop flag named in the note.
+ */
+export function excuseFlagSvg(note: string | null): { label: string; svg: string } | null {
+  if (!note) return null;
+  const wrap = (art: string) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" ${XLINK} viewBox="0 0 30 20" preserveAspectRatio="none">${art}</svg>`;
+  if (/\bchin(a|e|ese)\b/i.test(note)) return { label: "China", svg: wrap(CHINA_ART) };
+  const shop = COUNTRY_FLAGS.find(
+    (f) => f.id !== "ama" && new RegExp(`\\b${f.label}\\b`, "i").test(note),
+  );
+  return shop ? { label: shop.label, svg: wrap(shop.art) } : null;
+}
+
 /** Several of the copied files use `xlink:href`, so every wrapper declares it. */
 const XLINK = 'xmlns:xlink="http://www.w3.org/1999/xlink"';
 

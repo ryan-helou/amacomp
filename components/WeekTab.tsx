@@ -15,6 +15,7 @@ import {
 } from "@/lib/dates";
 import { SPORT_UNIT, isGrant, isExcuse, type Activity } from "@/lib/types";
 import { toGo } from "@/lib/togo";
+import { excuseFlagSvg } from "@/lib/flags";
 import { flagInk, flagWash } from "@/lib/away";
 import { laneFor, useFigures } from "./AthleteFigure";
 import { MAX_SCORING_GYM_PER_DAY } from "@/lib/validate";
@@ -474,6 +475,19 @@ export function WeekTab({
                       }`}
                     >
                       {excused ? "Excused" : "Met"}
+                      {excused && (() => {
+                        const note = weekGrants(row.athlete.id).find((g) => isExcuse(g))?.note ?? null;
+                        const tag = excuseFlagSvg(note);
+                        return tag ? (
+                          <span
+                            role="img"
+                            aria-label={tag.label}
+                            title={tag.label}
+                            className="ml-1.5 inline-block h-[0.6875rem] w-4 overflow-hidden rounded-[2px] align-[-1px] ring-1 ring-black/10 [&>svg]:h-full [&>svg]:w-full"
+                            dangerouslySetInnerHTML={{ __html: tag.svg }}
+                          />
+                        ) : null;
+                      })()}
                     </span>
                   )}
                   <svg
