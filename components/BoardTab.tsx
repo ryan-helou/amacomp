@@ -10,7 +10,7 @@ import {
   type Standing,
 } from "@/lib/scoring";
 import { SPORT_UI, GRANT_HATCH } from "@/lib/ui";
-import { formatRange, periodRange, type DayKey, type Period } from "@/lib/dates";
+import { addDays, formatRange, monthEnd, monthStart, periodRange, type DayKey, type Period } from "@/lib/dates";
 import { SPORT_UNIT, elevationRateLabel, rateLabel, isGrant, type Athlete, type AppState, type Sport } from "@/lib/types";
 import { championshipsByAthlete, movementByAthlete } from "@/lib/achievements";
 import { flagInk, flagWash, type Flag } from "@/lib/away";
@@ -58,15 +58,56 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
   const openProfile = useOpenProfile();
   const reigning = useReigningChampion();
 
+  // Browsing back in time. Ryan, 2026-11-15: arrows to go back through days,
+  // weeks, months and seasons, and forward again to the present; on All they
+  // stay, shaded. Null is "the present" rather than a stored copy of today, so
+  // the board still turns over at midnight while nobody is browsing.
+  const [browse, setBrowse] = useState<DayKey | null>(null);
+  const cursor = browse ?? refDay;
+
   const liveSeason = seasonFor(refDay, state.settings.seasonStart);
-  const season = liveSeason ?? firstSeason(state.settings.seasonStart);
+  const season =
+    seasonFor(cursor, state.settings.seasonStart) ?? firstSeason(state.settings.seasonStart);
 
   // One date window drives everything, so the Season tab reuses the same
   // range-based standings as the calendar periods.
   const range = useMemo<[DayKey, DayKey]>(
-    () => (period === "season" ? [season.start, season.end] : periodRange(period, refDay)),
-    [period, refDay, season.start, season.end],
+    () => (period === "season" ? [season.start, season.end] : periodRange(period, cursor)),
+    [period, cursor, season.start, season.end],
   );
+  const atPresent = period === "all" || range[1] >= refDay;
+
+  // Nothing to browse to before the first session anybody logged.
+  const earliest = useMemo(
+    () => state.activities.reduce<DayKey | null>((m, a) => (m === null || a.occurredOn < m ? a.occurredOn : m), null),
+    [state.activities],
+  );
+  function stepped(dir: -1 | 1): DayKey {
+    if (period === "today") return addDays(cursor, dir);
+    if (period === "week") return addDays(cursor, 7 * dir);
+    if (period === "month") return dir < 0 ? addDays(monthStart(cursor), -1) : addDays(monthEnd(cursor), 1);
+    return dir < 0 ? addDays(season.start, -1) : addDays(season.end, 1);
+  }
+  const prevDay = stepped(-1);
+  const canBack =
+    period !== "all" &&
+    earliest !== null &&
+    (period === "season"
+      ? seasonFor(prevDay, state.settings.seasonStart) !== null && prevDay >= earliest
+      : prevDay >= earliest);
+  const canForward = period !== "all" && !atPresent;
+  function go(dir: -1 | 1) {
+    const next = stepped(dir);
+    // Landing on (or past) the window that holds today is the present again.
+    const nextRange: [DayKey, DayKey] =
+      period === "season"
+        ? (() => {
+            const sn = seasonFor(next, state.settings.seasonStart);
+            return sn ? [sn.start, sn.end] : [next, next];
+          })()
+        : periodRange(period as Period, next);
+    setBrowse(nextRange[1] >= refDay ? null : next);
+  }
 
   const standings = useMemo(
     () => standingsForRange(state.athletes, state.activities, state.settings, range),
@@ -108,7 +149,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
   // Only the Week tab flies it. An excuse is a week-shaped thing: it says
   // nothing about today, and on Month/Season/All the flagged athlete is being
   // ranked over spans the excuse doesn't cover.
-  const awayWeek = useAwayIn(refDay);
+  const awayWeek = useAwayIn(cursor);
   const away = period === "week" ? awayWeek : null;
 
   const climbRows = useMemo<ClimbRow[] | null>(
@@ -152,7 +193,10 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
               key={p.id}
               role="tab"
               aria-selected={period === p.id}
-              onClick={() => setPeriod(p.id)}
+              onClick={() => {
+                setPeriod(p.id);
+                setBrowse(null);
+              }}
               className={`eyebrow flex-1 rounded-lg py-2.5 transition-colors ${
                 period === p.id ? "bg-ink text-on-ink" : "text-ink-2"
               }`}
@@ -216,7 +260,17 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           </button>
         </div>
 
-        <p className="mt-2 text-center font-mono text-xs text-ink-3">
+        <div className="mt-2 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => go(-1)}
+          disabled={!canBack}
+          aria-label="Back in time"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full pane border border-line bg-tile text-ink-2 active:bg-tile/70 disabled:opacity-30"
+        >
+          <BoardChevron dir="left" />
+        </button>
+        <p className="min-w-0 text-center font-mono text-xs text-ink-3">
           {sport === "climb" ? (
             <span className="text-gold">King of the Mountains · </span>
           ) : (
@@ -228,6 +282,16 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           )}
           {period === "all" ? "Every session ever logged" : formatRange(range)}
         </p>
+        <button
+          type="button"
+          onClick={() => go(1)}
+          disabled={!canForward}
+          aria-label="Forward in time"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full pane border border-line bg-tile text-ink-2 active:bg-tile/70 disabled:opacity-30"
+        >
+          <BoardChevron dir="right" />
+        </button>
+        </div>
       </div>
 
       {/* Every lane list below is keyed by period and discipline, so switching
@@ -283,7 +347,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
                   isMe={row.athlete.id === state.me?.id}
                   index={i}
                   titles={titles.get(row.athlete.id) ?? 0}
-                  delta={period === "week" ? movement.get(row.athlete.id)?.delta ?? 0 : 0}
+                  delta={period === "week" && atPresent ? movement.get(row.athlete.id)?.delta ?? 0 : 0}
                   awayFlag={away?.get(row.athlete.id)}
                   champion={reigning === row.athlete.id}
                   onSelect={() => openProfile(row.athlete.id)}
@@ -726,5 +790,22 @@ function ClimbSubTitles({ rows }: { rows: ClimbRow[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function BoardChevron({ dir }: { dir: "left" | "right" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      {dir === "left" ? <path d="M15 5l-7 7 7 7" /> : <path d="M9 5l7 7-7 7" />}
+    </svg>
   );
 }
