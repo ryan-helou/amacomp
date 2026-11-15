@@ -78,3 +78,20 @@ export function missedBibleDays(
     .filter((d) => d.points > 0)
     .sort((x, y) => y.day.localeCompare(x.day));
 }
+
+/**
+ * Which day a tick of the box lands on, given the day the phone asked for and
+ * the league's own day (Toronto). A phone abroad is up to a day either side of
+ * Toronto — Ryan in China at 9 AM on the 15th is still the evening of the 14th
+ * in Toronto — and its sessions are dated by the phone, so "today" is the
+ * phone's day whenever it is within a day of the league's. Anything older is a
+ * past day ticked from Settings; anything else is refused.
+ */
+export function bibleTickKind(requested: string, leagueDay: string): "today" | "past" | null {
+  const diff = Math.round(
+    (Date.parse(`${requested}T00:00:00Z`) - Date.parse(`${leagueDay}T00:00:00Z`)) / 86_400_000,
+  );
+  if (!Number.isFinite(diff)) return null;
+  if (Math.abs(diff) <= 1) return "today";
+  return diff < 0 ? "past" : null;
+}
