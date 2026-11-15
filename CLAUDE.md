@@ -62,10 +62,10 @@
    himself (PATCH /api/session `bibleDay`, tick-only, only a day with one of
    his sessions waiting). The QA seed ticks everyone for today.
 
-8. **The day rolls over at 3 AM, league-wide** (`RESET_HOUR` in `lib/dates.ts`).
-   The board turns over at midnight (`viewDayAt`) but a session logged before
-   3 AM still counts for the day, and week, that is ending (`logDayAt`). The old
-   per-athlete `resetHour` is gone; `athletes.reset_hour` is a vestigial column.
+8. **The day rolls over at MIDNIGHT, Montreal time** (`RESET_HOUR = 0` in
+   `lib/dates.ts`, Ryan's call 2026-09-27, replacing the old 3 AM window). A ride
+   started at 00:10 belongs to the new day, and needs THAT day's Bible tick. The
+   old per-athlete `resetHour` is gone; `athletes.reset_hour` is a vestigial column.
 
 9. **Gym scores 1 point per set from 2026-11-05** (`GYM_SETS` in lib/scoring),
    with no daily cap from that day. Strava's API does not expose sets: imports
