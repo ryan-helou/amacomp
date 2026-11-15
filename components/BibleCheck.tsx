@@ -28,7 +28,7 @@ export function BibleCheck({ league, logDay }: { league: League; logDay: DayKey 
     setError(null);
     const err = await send("/api/session", {
       method: "PATCH",
-      body: JSON.stringify({ bibleRead: !read }),
+      body: JSON.stringify({ bibleRead: !read, bibleDay: logDay }),
     });
     if (err) setError(err);
   }

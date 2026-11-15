@@ -1,4 +1,4 @@
-import { markBible, missedBibleDays } from "./bible";
+import { bibleTickKind, markBible, missedBibleDays } from "./bible";
 import { activityPoints } from "./scoring";
 import { DEFAULT_SETTINGS, type Activity, type Settings } from "./types";
 
@@ -29,6 +29,16 @@ console.log("\nmissed Bible days list only past, unticked days of your own");
   check("a day that would still score 0 isn't a lost day",
     missedBibleDays(zero, "j", "2026-11-13", (a) => activityPoints(a, S)), []);
   check("someone else's days aren't yours", missedBibleDays(acts, "x", "2026-11-13", (a) => activityPoints(a, S)), []);
+}
+
+console.log("\nthe box ticks the phone's day, even a day off Toronto");
+{
+  // Ryan in China, 9 AM on the 15th: Toronto is still on the 14th.
+  check("a day ahead of Toronto is today", bibleTickKind("2026-11-15", "2026-11-14"), "today");
+  check("the same day is today", bibleTickKind("2026-11-14", "2026-11-14"), "today");
+  check("a day behind Toronto is today", bibleTickKind("2026-11-13", "2026-11-14"), "today");
+  check("older is a past day", bibleTickKind("2026-11-10", "2026-11-14"), "past");
+  check("two days ahead is refused", bibleTickKind("2026-11-16", "2026-11-14"), null);
 }
 
 if (failed) { console.error(`\n${failed} failing.`); process.exit(1); }

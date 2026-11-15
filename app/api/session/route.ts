@@ -4,7 +4,7 @@ import { currentAthlete, isAdmin, signIn, signOut } from "@/lib/session";
 import { nameProblem, renameInSettings } from "@/lib/rename";
 import { loadoutFor } from "@/lib/pixelAvatar";
 import { isDayKey, leagueLogToday } from "@/lib/dates";
-import { bibleApplies } from "@/lib/bible";
+import { bibleApplies, bibleTickKind } from "@/lib/bible";
 import { readState } from "@/lib/state";
 import { isAvatarColor, isAvatarGlyph } from "@/lib/types";
 
@@ -46,14 +46,19 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Tick it or untick it." }, { status: 400 });
     }
     const today = leagueLogToday();
-    if (body.bibleDay === undefined || body.bibleDay === today) {
-      await store.setBibleDay(me.id, today, body.bibleRead);
+    // The Week-tab box sends the PHONE's day: abroad, that can be a day ahead
+    // of or behind Toronto, and the sessions waiting on it are dated by the
+    // phone (bibleTickKind).
+    const kind =
+      body.bibleDay === undefined ? "today" : isDayKey(body.bibleDay) ? bibleTickKind(body.bibleDay, today) : null;
+    if (kind === "today") {
+      await store.setBibleDay(me.id, (body.bibleDay as string | undefined) ?? today, body.bibleRead);
     } else {
       // A missed PAST day, ticked from Settings (lib/bible missedBibleDays).
       // Tick only — a day once counted is not taken back — and only a day
       // that has one of his own sessions waiting on it.
       const day = body.bibleDay;
-      if (!isDayKey(day) || !bibleApplies(day) || day > today || body.bibleRead !== true) {
+      if (kind !== "past" || !isDayKey(day) || !bibleApplies(day) || body.bibleRead !== true) {
         return NextResponse.json({ error: "That day can't be ticked." }, { status: 400 });
       }
       const waiting = (await store.listActivities()).some(
