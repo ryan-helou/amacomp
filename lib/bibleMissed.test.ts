@@ -15,7 +15,7 @@ const run = (athleteId: string, day: string, km: number): Activity => ({
   elevationM: null, movingSeconds: null, localHour: 12, openWater: null, treadmill: false, createdAt: "2026-11-01T00:00:00Z",
 });
 
-console.log("\nmissed Bible days list only past, unticked days of your own");
+console.log("\nmissed Bible days list unticked days up to today of your own");
 {
   const acts = markBible(
     [run("j", "2026-11-11", 5), run("j", "2026-11-11", 2.5), run("j", "2026-11-09", 4), run("j", "2026-11-13", 6),
@@ -23,8 +23,8 @@ console.log("\nmissed Bible days list only past, unticked days of your own");
     [{ athleteId: "j", day: "2026-11-09" }],
   );
   const got = missedBibleDays(acts, "j", "2026-11-13", (a) => activityPoints(a, S));
-  check("only the 11th: the 9th is ticked, today has its own box, the 2nd is before the rule",
-    got, [{ day: "2026-11-11", points: 30, sessions: 2 }]);
+  check("today and the 11th: the 9th is ticked, the 2nd is before the rule",
+    got, [{ day: "2026-11-13", points: 24, sessions: 1 }, { day: "2026-11-11", points: 30, sessions: 2 }]);
   const zero = markBible([{ ...run("j", "2026-11-10", 0), sport: "gym", km: 1, sets: null }], []);
   check("a day that would still score 0 isn't a lost day",
     missedBibleDays(zero, "j", "2026-11-13", (a) => activityPoints(a, S)), []);

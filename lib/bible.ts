@@ -56,6 +56,8 @@ export function markBible(activities: Activity[], days: BibleDay[]): Activity[] 
  * points cuz u didnt read the bible and u can check it off urself". So any past
  * day since BIBLE_FROM can be ticked after the fact, by the athlete, for
  * himself only — and only a day that actually has a session waiting on it.
+ * Ryan, 2026-11-16: "make it list current days too" — so today is listed as
+ * well, beside the Week-tab box.
  */
 export function missedBibleDays(
   activities: Activity[],
@@ -65,7 +67,7 @@ export function missedBibleDays(
 ): { day: string; points: number; sessions: number }[] {
   const byDay = new Map<string, { points: number; sessions: number }>();
   for (const a of activities) {
-    if (a.athleteId !== athleteId || !a.bibleMissing || a.occurredOn >= today) continue;
+    if (a.athleteId !== athleteId || !a.bibleMissing || a.occurredOn > today) continue;
     const row = byDay.get(a.occurredOn) ?? { points: 0, sessions: 0 };
     row.points += pointsOf({ ...a, bibleMissing: false });
     row.sessions += 1;
