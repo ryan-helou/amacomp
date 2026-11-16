@@ -7,9 +7,9 @@ import { formatDay, type DayKey } from "@/lib/dates";
 import type { League } from "./useLeague";
 
 /**
- * The past days you lost points to the Bible box, each one tickable here.
- * Ryan, 2026-11-13. Today's box stays on the Week tab; this is for the days
- * that slipped by. Hidden when there's nothing to catch up on.
+ * The days you're losing points to the Bible box, today included, each one
+ * tickable here. Ryan, 2026-11-13 (past days) and 2026-11-16 (today too).
+ * Hidden when there's nothing to catch up on.
  */
 export function BibleMissed({ league, logDay }: { league: League; logDay: DayKey }) {
   const { state, send, busy } = league;
@@ -35,7 +35,7 @@ export function BibleMissed({ league, logDay }: { league: League; logDay: DayKey
     <div className="mt-4 rounded-xl pane border border-gold/60 bg-tile px-4 py-3">
       <p className="eyebrow text-ink">Missed Bible days</p>
       <p className="mt-0.5 text-[0.8125rem] text-ink-2">
-        Days your sessions scored 0 because the box wasn&apos;t ticked. Read that day? Tick it.
+        Days your sessions are scoring 0 because the box isn&apos;t ticked. Read that day? Tick it.
       </p>
       <ul className="mt-3 space-y-2">
         {days.map((d) => (
@@ -50,7 +50,7 @@ export function BibleMissed({ league, logDay }: { league: League; logDay: DayKey
             >
               <span aria-hidden className="h-5 w-5 shrink-0 rounded-md border-2 border-ink-3" />
               <span className="min-w-0 flex-1 text-[0.875rem] font-semibold text-ink">
-                {formatDay(d.day as DayKey)}
+                {d.day === logDay ? `Today · ${formatDay(d.day as DayKey)}` : formatDay(d.day as DayKey)}
               </span>
               <span className="shrink-0 font-mono text-xs text-gold">
                 +{fmtPoints(d.points)} pts
