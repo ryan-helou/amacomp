@@ -1,5 +1,7 @@
 "use client";
 
+import { isLeftIn, LEFT_ROW } from "@/lib/left";
+
 import { useMemo, useState } from "react";
 import {
   SPORT_ORDER,
@@ -338,7 +340,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
           <>
             <ol key={`${period}-${sport}`} className="space-y-0">
               {(climbRows ?? []).map((row, i) => (
-                <li key={row.athlete.id}>
+                <li key={row.athlete.id} className={isLeftIn(row.athlete.name, range[1], state.settings.seasonStart) ? LEFT_ROW : undefined}>
                   {i > 0 && <div className="lane-rope my-1" />}
                   <ClimbLane
                     row={row}
@@ -358,7 +360,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
         (
           <ol key={`${period}-${sport}`} className="space-y-0">
             {standings.map((row, i) => (
-              <li key={row.athlete.id}>
+              <li key={row.athlete.id} className={isLeftIn(row.athlete.name, range[1], state.settings.seasonStart) ? LEFT_ROW : undefined}>
                 {i > 0 && <div className="lane-rope my-1" />}
                 <Lane
                   row={row}
@@ -378,7 +380,7 @@ export function BoardTab({ state, refDay }: { state: AppState; refDay: DayKey })
       ) : (
         <ol key={`${period}-${sport}`} className="space-y-0">
           {(sportRanked ?? []).map((row, i) => (
-            <li key={row.athlete.id}>
+            <li key={row.athlete.id} className={isLeftIn(row.athlete.name, range[1], state.settings.seasonStart) ? LEFT_ROW : undefined}>
               {i > 0 && <div className="lane-rope my-1" />}
               <SportLane
                 row={row}

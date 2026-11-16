@@ -28,6 +28,7 @@ import {
 } from "@/lib/achievements";
 import { PaceClock } from "./PaceClock";
 import { BibleCheck } from "./BibleCheck";
+import { isLeftIn, LEFT_ROW } from "@/lib/left";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
 import { SportMark } from "./SportMark";
@@ -367,7 +368,7 @@ export function WeekTab({
                 key={row.athlete.id}
                 className={`overflow-hidden rounded-xl border bg-tile ${
                   isMe ? "border-ink" : "border-line"
-                }`}
+                } ${isLeftIn(row.athlete.name, range[1], state.settings.seasonStart) ? LEFT_ROW : ""}`}
               >
                 <button
                   type="button"
