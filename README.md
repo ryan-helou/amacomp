@@ -1,51 +1,22 @@
+<div align="center">
+
 # AmaComp
 
-A weekly points competition for a small group training triathlon. Log the
-kilometres you swim, bike and run — plus every gym workout; each discipline is
-worth a different number of points; hit the weekly quota and stay ahead of your
-friends on the board.
+**A weekly points competition that turns triathlon training into a game for a whole training group.**
 
-Built to be added to the home screen from Safari — it installs and behaves like
-an app, no App Store involved.
+<!-- facts --><img alt="Sports: swim, bike, run + gym" src="https://img.shields.io/badge/Sports-swim,_bike,_run_%2B_gym-24292f?style=for-the-badge"> <img alt="Syncs with: Strava" src="https://img.shields.io/badge/Syncs_with-Strava-24292f?style=for-the-badge"> <img alt="Leaderboards: points + climbing" src="https://img.shields.io/badge/Leaderboards-points_%2B_climbing-24292f?style=for-the-badge"> <img alt="Commits: 290+" src="https://img.shields.io/badge/Commits-290%2B-24292f?style=for-the-badge">
 
-## How it works
+</div>
 
-- **Name-only login.** Five friends, no passwords. Type the same name each time
-  and your history follows you.
-- **Points per unit**, set per discipline. Defaults: swim **25**/km, bike
-  **1**/km, run **5**/km, gym **30**/workout. Weekly quota **75 points**.
-- **Four sections:** Log a session, your Week (quota pace-clock), the Board
-  (leaderboard for today / week / month / all-time), and the Feed (everyone's
-  sessions).
-- **Edit or delete** your own sessions any time.
-- **One admin** (Ryan by default) can change the scoring. Changing a multiplier
-  re-scores every session ever logged — nobody keeps points earned under a rule
-  that no longer exists.
+<br>
 
-## Stack
+Training is easier to stick with when it's a game. Every swim, ride, run and gym session earns points, everyone has a weekly target to hit, and a live leaderboard shows who's ahead. I built it for my training group, and it installs on your phone's home screen, where it works like a native app.
 
-Next.js (App Router) · Postgres on Railway · Tailwind v4 · installable PWA. No
-database needed to run locally — it falls back to an in-memory store.
+## What you can do with it
 
-## Develop
-
-```bash
-npm install
-npm run dev
-```
-
-Open http://localhost:3000. With no `DATABASE_URL` set, data lives in memory and
-resets when the server restarts.
-
-## Environment
-
-| Variable         | Purpose                                             |
-| ---------------- | --------------------------------------------------- |
-| `DATABASE_URL`   | Postgres connection string. Unset → in-memory store |
-| `SESSION_SECRET` | Signs the login cookie                              |
-| `ADMIN_NAME`     | The one athlete allowed to edit scoring (`Ryan`)    |
-
-## Deploy
-
-Pushed to Railway (`AmagohTrain` service + Postgres). `railway up` builds with
-Nixpacks and runs `npm run start`.
+- Log a swim, ride, run or gym session, or have workouts brought in automatically from Strava.
+- See your week at a glance: your points so far and whether you're on pace for the weekly target.
+- Check the leaderboard for today, this week, this month or all time, plus a separate board for metres climbed.
+- Browse personal records, season titles and past winners.
+- Follow everyone's sessions in a shared feed.
+- Earn coins on the side for bets, bounties and cosmetic items for your pixel-art avatar, without ever changing the points standings.
