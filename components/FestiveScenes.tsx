@@ -46,7 +46,17 @@ export function StarShape({ className = "", glow = true }: { className?: string;
  * The star on top of the week tree. Easter egg: tap it and it spins, flares
  * and wishes you a merry Christmas.
  */
-export function RingStar({ className = "top-[-18px]", lit = false }: { className?: string; lit?: boolean }) {
+export function RingStar({
+  className = "top-[-18px]",
+  size = "h-9 w-9",
+  bubble = "top-[-58px]",
+  lit = false,
+}: {
+  className?: string;
+  size?: string;
+  bubble?: string;
+  lit?: boolean;
+}) {
   const { on } = useFestive();
   const [sing, setSing] = useState(0);
   useEffect(() => {
@@ -61,14 +71,14 @@ export function RingStar({ className = "top-[-18px]", lit = false }: { className
         type="button"
         aria-label="The star"
         onClick={() => setSing((n) => n + 1)}
-        className={`xmas-star absolute left-1/2 z-[2] h-9 w-9 -translate-x-1/2 ${className}`}
+        className={`xmas-star absolute left-1/2 z-[2] -translate-x-1/2 ${size} ${className}`}
       >
         <StarShape className={`h-full w-full ${sing ? "xmas-star-sing" : lit ? "xmas-star-blaze" : ""}`} />
       </button>
       {sing > 0 && (
         <p
           key={sing}
-          className="xmas-gloria pointer-events-none absolute left-1/2 top-[-58px] z-[3] w-max -translate-x-1/2 rounded-lg border border-gold/50 bg-deck/90 px-3 py-1 text-center text-[0.75rem] font-semibold text-ink"
+          className={`xmas-gloria pointer-events-none absolute left-1/2 ${bubble} z-[3] w-max -translate-x-1/2 rounded-lg border border-gold/50 bg-deck/90 px-3 py-1 text-center text-[0.75rem] font-semibold text-ink`}
         >
           Merry Christmas!
         </p>

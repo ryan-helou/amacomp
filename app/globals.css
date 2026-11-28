@@ -925,3 +925,16 @@ input[type="number"] {
 .xmas-star-flare { animation: xmas-flare 1.4s ease-out 3; transform-origin: 160px 12px; transform-box: view-box; }
 @keyframes xmas-flare { 0%, 100% { filter: none; } 40% { filter: drop-shadow(0 0 10px #fff3c4) drop-shadow(0 0 20px rgb(242 201 76 / 0.9)); } }
 .xmas-star-blaze { animation: xmas-flare 1.8s ease-in-out infinite; }
+
+/* The snow globe (components/TreeClock). */
+.xmas-wave { animation: xmas-wave 3s linear infinite; }
+@keyframes xmas-wave { from { transform: translateX(0); } to { transform: translateX(20px); } }
+.xmas-globe-snow { animation-name: xmas-globe-snow; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+@keyframes xmas-globe-snow {
+  0% { transform: translate(0, -14px); opacity: 0; }
+  20% { opacity: 0.9; }
+  50% { transform: translate(3px, 0); }
+  80% { opacity: 0.9; }
+  100% { transform: translate(-2px, 14px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .xmas-wave, .xmas-globe-snow { animation: none; } }
