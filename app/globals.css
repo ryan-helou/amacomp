@@ -938,3 +938,19 @@ input[type="number"] {
   100% { transform: translate(-2px, 14px); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .xmas-wave, .xmas-globe-snow { animation: none; } }
+
+/* The four sports in Christmas colours (Ryan, 2026-11-28): the string of
+   lights — cranberry, holly, ice and gold — instead of mint, lime, magenta and
+   cyan. Still four colours that can't be mistaken for each other. */
+:root[data-festive="xmas"] {
+  --color-swim: #2f7fb8;
+  --color-bike: #1d8a4a;
+  --color-run: #c41e3a;
+  --color-gym: #a87a06;
+}
+:root[data-festive="xmas"][data-palette="dark"] {
+  --color-swim: #8fd3ff;
+  --color-bike: #3ddc84;
+  --color-run: #ff4d5e;
+  --color-gym: #f2c94c;
+}
