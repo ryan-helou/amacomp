@@ -785,3 +785,143 @@ input[type="number"] {
   border-radius: 0.625rem;
   box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
 }
+
+/* ---------------------------------------------------------------------------
+   Christmas (lib/festive): Dec 7 – Jan 6. A tint over light and dark, not a
+   third scheme — the same app in a pine-and-cranberry jumper. The four sport
+   colours are left alone: they still mean swim, bike, run and gym.
+   --------------------------------------------------------------------------- */
+
+:root[data-festive="xmas"] {
+  --deck: #eef3ef;
+  --deck-2: rgb(20 60 38 / 0.07);
+  --line: rgb(20 60 38 / 0.14);
+  --line-2: rgb(20 60 38 / 0.26);
+  --gold: #8a5a12;
+  --island: #fbfdfb;
+}
+
+:root[data-festive="xmas"][data-palette="dark"] {
+  --deck: #0b1611;
+  --deck-2: rgb(214 240 224 / 0.07);
+  --tile: rgb(214 240 224 / 0.065);
+  --line: rgb(214 240 224 / 0.12);
+  --line-2: rgb(214 240 224 / 0.22);
+  --gold: #ecc46e;
+  --raised: rgb(18 34 26 / 0.96);
+  --island: rgb(20 38 29);
+}
+
+/* A glow of cranberry from above and pine from below, on the same fixed pane
+   of light as every scheme (body::before), so the forest can stand in front. */
+:root[data-festive="xmas"] body::before {
+  background-image:
+    radial-gradient(120% 45% at 50% -8%, rgb(226 58 68 / 0.10), transparent 60%),
+    radial-gradient(110% 40% at 50% 108%, rgb(31 122 69 / 0.14), transparent 60%),
+    radial-gradient(150% 62% at 50% -24%, var(--lamp) 0%, transparent 74%),
+    linear-gradient(180deg, transparent 44%, var(--floor) 100%);
+}
+
+/* The lane rope becomes a string of lights: a thin wire, and bulbs in red,
+   gold and green that twinkle out of step with each other. */
+:root[data-festive="xmas"] .lane-rope {
+  height: 8px;
+  opacity: 1;
+  border-radius: 0;
+  background-image:
+    radial-gradient(circle at 50% 55%, #e23a44 0 2.6px, transparent 3.2px),
+    radial-gradient(circle at 50% 55%, #f2c94c 0 2.6px, transparent 3.2px),
+    radial-gradient(circle at 50% 55%, #2fbf6a 0 2.6px, transparent 3.2px),
+    linear-gradient(var(--color-ink-3), var(--color-ink-3));
+  background-size: 54px 8px, 54px 8px, 54px 8px, 100% 1px;
+  background-position: 0 0, 18px 0, 36px 0, 0 1px;
+  background-repeat: repeat-x, repeat-x, repeat-x, no-repeat;
+  animation: xmas-twinkle 2.4s steps(2, jump-none) infinite;
+}
+@keyframes xmas-twinkle { 0% { filter: brightness(1); } 50% { filter: brightness(1.35) saturate(1.2); } 100% { filter: brightness(1); } }
+
+.snowflake {
+  position: absolute;
+  top: -12px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 4px rgb(255 255 255 / 0.6);
+  animation-name: xmas-snow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+:root:not([data-palette="dark"]) .snowflake {
+  background: #a3b9cb;
+  box-shadow: none;
+}
+@keyframes xmas-snow {
+  0% { transform: translate3d(0, -12px, 0); }
+  100% { transform: translate3d(var(--drift, 0), 105vh, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .snowfall { display: none; }
+  :root[data-festive="xmas"] .lane-rope { animation: none; }
+}
+
+/* Christmas easter eggs (components/FestiveScenes). */
+.xmas-star { animation: xmas-bob 3.2s ease-in-out infinite; }
+@keyframes xmas-bob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-2px) rotate(8deg); } }
+.xmas-star-sing { animation: xmas-sing 900ms ease-out; }
+@keyframes xmas-sing { 0% { transform: scale(1); filter: drop-shadow(0 0 6px rgb(242 201 76 / 0.85)); } 40% { transform: scale(1.5) rotate(45deg); filter: drop-shadow(0 0 18px rgb(255 240 180 / 1)); } 100% { transform: scale(1); } }
+.xmas-gloria { animation: xmas-fade 4.2s ease-out both; }
+@keyframes xmas-fade { 0% { opacity: 0; transform: translateY(6px); } 10%, 85% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; } }
+.xmas-star-pulse { animation: xmas-pulse 2.8s ease-in-out infinite; transform-origin: 160px 12px; transform-box: view-box; }
+@keyframes xmas-pulse { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; filter: drop-shadow(0 0 6px rgb(242 201 76 / 0.9)); } }
+
+/* Once a minute and a half, a shooting star crosses the top of the sky. */
+.xmas-shooting-star {
+  position: absolute;
+  top: 12%;
+  left: -20%;
+  width: 110px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #fff8d6);
+  box-shadow: 0 0 6px #fff3c4;
+  opacity: 0;
+  transform: rotate(-14deg);
+  animation: xmas-shoot 90s linear 20s infinite;
+}
+@keyframes xmas-shoot {
+  0% { left: -20%; top: 10%; opacity: 0; }
+  0.5% { opacity: 1; }
+  2% { left: 110%; top: 26%; opacity: 0; }
+  100% { left: 110%; top: 26%; opacity: 0; }
+}
+
+/* Santa's sleigh, across the sky once per three taps on the holly. */
+.xmas-sleigh {
+  top: 18%;
+  left: -260px;
+  animation: xmas-sleigh 4.6s cubic-bezier(0.35, 0, 0.65, 1) both;
+}
+@keyframes xmas-sleigh {
+  0% { transform: translate(0, 40px) rotate(-6deg); }
+  50% { transform: translate(calc(50vw + 130px), -10px) rotate(-2deg); }
+  100% { transform: translate(calc(100vw + 520px), -60px) rotate(-8deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmas-star, .xmas-star-pulse { animation: none; }
+}
+
+/* The background forest (components/FestiveScenes BackgroundForest). */
+:root[data-festive="xmas"] {
+  --forest-far: rgb(31 122 69 / 0.16);
+  --forest-near: rgb(24 95 54 / 0.32);
+  --forest-snow: rgb(255 255 255 / 0.75);
+}
+:root[data-festive="xmas"][data-palette="dark"] {
+  --forest-far: rgb(47 191 106 / 0.09);
+  --forest-near: rgb(31 122 69 / 0.32);
+  --forest-snow: rgb(235 245 240 / 0.35);
+}
+.xmas-bulb { animation: xmas-twinkle 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .xmas-bulb { animation: none; } }
+.xmas-star-flare { animation: xmas-flare 1.4s ease-out 3; transform-origin: 160px 12px; transform-box: view-box; }
+@keyframes xmas-flare { 0%, 100% { filter: none; } 40% { filter: drop-shadow(0 0 10px #fff3c4) drop-shadow(0 0 20px rgb(242 201 76 / 0.9)); } }
+.xmas-star-blaze { animation: xmas-flare 1.8s ease-in-out infinite; }

@@ -6,6 +6,7 @@ import { loadoutFor, type Loadout } from "@/lib/pixelAvatar";
 import { flagLane } from "@/lib/flags";
 import { PixelAvatar } from "./PixelAvatar";
 import { Glyph, type GlyphName } from "./Glyph";
+import { Snow, useFestive } from "./Festive";
 
 /**
  * The season kickoff — the one screen where the app goes dark.
@@ -72,6 +73,9 @@ export function SeasonKickoff({
 
   // Which page. 0 is the title card; the rest are what changed.
   const [page, setPage] = useState(0);
+  // At Christmas the card leaves the pool for a winter night: pine instead of
+  // pool-deck ink, cranberry light from above, and snow (lib/festive).
+  const { on: festive } = useFestive();
   const last = news ? NEWS.length : 0;
 
   return (
@@ -82,7 +86,7 @@ export function SeasonKickoff({
       className="fixed inset-0 z-[60] overflow-hidden text-white"
       style={{
         // Deep pool-deck ink — the app's own colour taken down for the night.
-        backgroundColor: "#081722",
+        backgroundColor: festive ? "#0a1811" : "#081722",
         animation: "sk-veil 420ms ease-out both",
       }}
     >
@@ -93,11 +97,20 @@ export function SeasonKickoff({
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            "radial-gradient(115% 55% at 50% -10%, rgba(61,90,255,0.30) 0%, transparent 55%)," +
-            "radial-gradient(90% 45% at 50% 108%, rgba(176,131,7,0.20) 0%, transparent 60%)",
+            festive
+              ? "radial-gradient(115% 55% at 50% -10%, rgba(226,58,68,0.34) 0%, transparent 55%)," +
+                "radial-gradient(90% 45% at 50% 108%, rgba(47,191,106,0.22) 0%, transparent 60%)"
+              : "radial-gradient(115% 55% at 50% -10%, rgba(61,90,255,0.30) 0%, transparent 55%)," +
+                "radial-gradient(90% 45% at 50% 108%, rgba(176,131,7,0.20) 0%, transparent 60%)",
         }}
       />
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {festive && <Snow />}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+        // Christmas turns the pool's blues and violets to pine and cranberry.
+        style={festive ? { filter: "hue-rotate(150deg) saturate(1.1)" } : undefined}
+      >
         <div
           className="absolute inset-[-25%]"
           style={{

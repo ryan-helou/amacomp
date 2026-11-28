@@ -5,6 +5,7 @@ import { bibleApplies, hasRead } from "@/lib/bible";
 import { activityPoints, fmtPoints } from "@/lib/scoring";
 import type { DayKey } from "@/lib/dates";
 import type { League } from "./useLeague";
+import { BibleCross } from "./FestiveScenes";
 
 /**
  * "I read the Bible today" — the box every session's points hang on
@@ -58,7 +59,7 @@ export function BibleCheck({ league, logDay }: { league: League; logDay: DayKey 
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.9375rem] font-semibold text-ink">I read the Bible today</span>
+          <span className="block text-[0.9375rem] font-semibold text-ink">I read the Bible today<BibleCross /></span>
           <span className="block text-[0.75rem] text-ink-3">
             {read
               ? "Today's sessions count."

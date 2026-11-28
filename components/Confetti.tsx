@@ -5,6 +5,8 @@ import { useEffect, useRef } from "react";
 const COLORS = [
   "#3d5aff", "#8b3df5", "#0d93bd", "#d98217", "#d93b30", "#6d4fc4", "#b08307",
 ];
+// At Christmas the burst is cranberry, pine, gold and snow.
+const XMAS_COLORS = ["#d42a35", "#e23a44", "#1f7a45", "#2fbf6a", "#f2c94c", "#ffffff"];
 
 /** A one-shot confetti burst. Increment `fireKey` to set it off. */
 export function Confetti({ fireKey }: { fireKey: number }) {
@@ -12,6 +14,7 @@ export function Confetti({ fireKey }: { fireKey: number }) {
 
   useEffect(() => {
     if (fireKey === 0) return;
+    const palette = document.documentElement.getAttribute("data-festive") ? XMAS_COLORS : COLORS;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
@@ -32,7 +35,7 @@ export function Confetti({ fireKey }: { fireKey: number }) {
       vy: (2 + Math.random() * 4) * dpr,
       rot: Math.random() * Math.PI,
       vr: -0.2 + Math.random() * 0.4,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      color: palette[Math.floor(Math.random() * palette.length)],
     }));
 
     const DURATION = 2600;

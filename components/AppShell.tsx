@@ -17,6 +17,8 @@ import { ScoringSheet } from "./ScoringSheet";
 import { HouseRulesSheet } from "./HouseRulesSheet";
 import { Confetti } from "./Confetti";
 import { SeasonKickoff } from "./SeasonKickoff";
+import { FestiveProvider, Holly, Snowfall, useFestive } from "./Festive";
+import { NativityFooter } from "./FestiveScenes";
 import { WaitingRoom } from "./WaitingRoom";
 import { waitingFor } from "@/lib/waiting";
 import { SeasonMoment } from "./SeasonMoment";
@@ -456,8 +458,10 @@ export function AppShell({
   }
 
   return (
+    <FestiveProvider day={refDay}>
     <ProfileProvider state={state} refDay={refDay} championId={championId} send={send}>
     <LoadoutsProvider loadouts={state.loadouts} showFigures={newShape} champion={championId}>
+    <Snowfall />
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <PullToRefresh onRefresh={refresh} />
       {/* The notch strip.
@@ -491,7 +495,10 @@ export function AppShell({
               aria-label="House rules"
               className="block text-left"
             >
-              <h1 className="stamp text-2xl leading-none text-ink">AMACOMP</h1>
+              <h1 className="stamp relative inline-block text-2xl leading-none text-ink">
+                AMACOMP
+                <FestiveHolly />
+              </h1>
             </button>
             <p className="eyebrow mt-1 text-ink-3">
               <AthleteName id={state.me.id} name={state.me.name} />
@@ -572,6 +579,7 @@ export function AppShell({
         {tab === "club" && <ClubTab state={state} refDay={refDay} send={send} house="club" />}
         {tab === "arena" && <ClubTab state={state} refDay={refDay} send={send} house="arena" />}
         {tab === "records" && <RecordsAndFame state={state} refDay={refDay} />}
+        <NativityFooter />
       </main>
 
       {/* The tab island.
@@ -745,5 +753,31 @@ export function AppShell({
     </div>
     </LoadoutsProvider>
     </ProfileProvider>
+    </FestiveProvider>
+  );
+}
+
+/** The holly on the wordmark, only while it's Christmas (lib/festive). */
+function FestiveHolly() {
+  const { on, fly } = useFestive();
+  const [taps, setTaps] = useState(0);
+  if (!on) return null;
+  // Easter egg: three taps on the holly sends Santa's sleigh across the sky.
+  // It sits inside the wordmark's button, so it keeps its taps to itself.
+  return (
+    <span
+      aria-hidden
+      onClick={(e) => {
+        e.stopPropagation();
+        const n = taps + 1;
+        if (n >= 3) {
+          fly();
+          setTaps(0);
+        } else setTaps(n);
+      }}
+      className="absolute -right-4 -top-4 p-1"
+    >
+      <Holly className="block h-4 w-6 rotate-12" />
+    </span>
   );
 }

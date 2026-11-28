@@ -28,6 +28,8 @@ import {
 } from "@/lib/achievements";
 import { PaceClock } from "./PaceClock";
 import { BibleCheck } from "./BibleCheck";
+import { Gift, useFestive } from "./Festive";
+import { ChristmasDayBanner, ChristmasTree } from "./FestiveScenes";
 import { isLeftIn, LEFT_ROW } from "@/lib/left";
 import { Glyph } from "./Glyph";
 import { Avatar } from "./Avatar";
@@ -47,6 +49,7 @@ export function WeekTab({
   logDay: DayKey;
 }) {
   const { state, send, busy } = league;
+  const { on: festive } = useFestive();
   // Athletes want to look at where they finished a past week — a leaderboard's
   // no fun if it evaporates on Monday. Nav is local to this tab; the rest of
   // the app keeps tracking "today" from AppShell's refDay.
@@ -159,6 +162,7 @@ export function WeekTab({
           </button>
         </div>
 
+        {isCurrentWeek && <ChristmasDayBanner />}
         {isCurrentWeek && <BibleCheck league={league} logDay={logDay} />}
 
         {inWeekGrace && isCurrentWeek && (
@@ -331,7 +335,10 @@ export function WeekTab({
 
       <section>
         <div className="flex items-baseline justify-between">
-          <h2 className="eyebrow text-ink-2">Everyone</h2>
+          <h2 className="eyebrow flex items-center gap-1.5 text-ink-2">
+            {festive && <ChristmasTree className="-mt-1 h-4 w-3" />}
+            Everyone
+          </h2>
           <span className="font-mono text-xs text-ink-3">
             {met}/{standings.length} through
           </span>
@@ -475,6 +482,7 @@ export function WeekTab({
                         excused ? "bg-ink-2/10 text-ink-2" : "bg-good/12 text-good"
                       }`}
                     >
+                      {!excused && festive && <Gift className="-mt-0.5 mr-1 inline-block h-3 w-3 align-middle" />}
                       {excused ? "Excused" : "Met"}
                       {excused && (() => {
                         const note = weekGrants(row.athlete.id).find((g) => isExcuse(g))?.note ?? null;

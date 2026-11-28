@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { avatarSvg, type Loadout } from "@/lib/pixelAvatar";
+import { SANTA_HAT } from "@/lib/festive";
+import { useFestive } from "./Festive";
 
 /**
  * The pixel figure, drawn from a loadout.
@@ -33,9 +35,16 @@ export function PixelAvatar({
   flat?: boolean;
   className?: string;
 }) {
+  // At Christmas every figure wears the Santa hat (lib/festive) — over
+  // whatever he bought for his head, which comes back on Jan 7.
+  const { on: festive } = useFestive();
+  const dressed = useMemo(
+    () => (festive ? { ...loadout, head: { item: SANTA_HAT } } : loadout),
+    [festive, loadout],
+  );
   const svg = useMemo(
-    () => avatarSvg(loadout, { view, crop: bust ? "bust" : "full", gilded }),
-    [loadout, view, bust, gilded],
+    () => avatarSvg(dressed, { view, crop: bust ? "bust" : "full", gilded }),
+    [dressed, view, bust, gilded],
   );
 
   // The champion's glow. Ryan, 2026-10-07: "just add a gold glow around me."

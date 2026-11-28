@@ -17,6 +17,7 @@ import { NotificationSetup } from "./NotificationSetup";
 import { StravaSetup } from "./StravaSetup";
 import { Avatar } from "./Avatar";
 import { PalettePicker } from "./PalettePicker";
+import { FestivePreview } from "./Festive";
 import type { League } from "./useLeague";
 
 /**
@@ -197,6 +198,8 @@ export function ScoringSheet({
         </div>
 
         <PalettePicker />
+
+        {state.isAdmin && <FestivePreview />}
 
         <NameField league={league} />
 

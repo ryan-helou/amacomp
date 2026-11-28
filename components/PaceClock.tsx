@@ -4,6 +4,8 @@ import { useEffect, useId, useState } from "react";
 import { SPORT_ORDER, fmtPoints } from "@/lib/scoring";
 import { SPORT_UI } from "@/lib/ui";
 import type { Sport } from "@/lib/types";
+import { useFestive } from "./Festive";
+import { TreeClock } from "./TreeClock";
 
 // Awarded points belong to no discipline, so they run in a neutral — present on
 // the lap like everything else, rather than called out as not-really-yours.
@@ -131,6 +133,7 @@ export function PaceClock({
   animate?: boolean;
 }) {
   const hatch = `hatch-${useId().replace(/:/g, "")}`;
+  const { on: festive } = useFestive();
   const earned = SPORT_ORDER.reduce((sum, s) => sum + (bySport?.[s] ?? 0), 0);
   const points = earned + awarded + excused;
   const forQuota = quotaPoints ?? points;
@@ -151,6 +154,24 @@ export function PaceClock({
     const t = setTimeout(() => setShown(true), 30);
     return () => clearTimeout(t);
   }, [animate]);
+
+  // At Christmas the lap is a garland up a Christmas tree (TreeClock).
+  if (festive) {
+    return (
+      <TreeClock
+        parts={parts}
+        done={done}
+        points={points}
+        remaining={remaining}
+        goal={goal}
+        excused={excused}
+        size={Math.max(size, 170)}
+        animate={animate}
+        hatch={hatch}
+        grantTip={GRANT_TIP}
+      />
+    );
+  }
 
   return (
     <div
@@ -179,7 +200,20 @@ export function PaceClock({
         ))}
 
         {/* Your lap, run in lane one. */}
-        {done ? (
+        {done && festive ? (
+          // At Christmas a finished lap is a candy cane: white, striped red.
+          <g style={{ filter: "drop-shadow(0 0 5px rgb(226 58 68 / 0.45))" }}>
+            <path d={track(LANE)} fill="none" stroke="#fbf7f2" strokeWidth={LANE_W} />
+            <path
+              d={track(LANE)}
+              pathLength={100}
+              fill="none"
+              stroke="#d42a35"
+              strokeWidth={LANE_W}
+              strokeDasharray="1.6 1.6"
+            />
+          </g>
+        ) : done ? (
           <path
             d={track(LANE)}
             fill="none"
@@ -222,7 +256,11 @@ export function PaceClock({
               height={round(CHEQUER)}
               // Ink against deck, not against white: on a dark scheme the ink
               // IS near-white, and a white-on-white chequer is no chequer.
-              fill={(row + col) % 2 ? "var(--color-deck)" : "var(--color-ink)"}
+              fill={
+                festive
+                  ? (row + col) % 2 ? "#fbf7f2" : "#d42a35"
+                  : (row + col) % 2 ? "var(--color-deck)" : "var(--color-ink)"
+              }
               opacity="0.85"
             />
           );
